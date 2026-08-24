@@ -1,0 +1,77 @@
+name: TVVolumeBridge
+
+options:
+  createIntermediateGroups: true
+  defaultConfig: Debug
+  deploymentTarget:
+    macOS: "15.0"
+  minimumXcodeGenVersion: "2.40.0"
+
+configs:
+  Debug: debug
+  Release: release
+  AppStore: release
+
+settings:
+  base:
+    CLANG_ENABLE_MODULES: YES
+    ENABLE_HARDENED_RUNTIME: YES
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_VERSION: "6.0"
+
+targets:
+  VolumeBridgeCore:
+    type: library.static
+    platform: macOS
+    sources:
+      - path: Sources/VolumeBridgeCore
+    settings:
+      base:
+        PRODUCT_NAME: VolumeBridgeCore
+        SKIP_INSTALL: true
+
+  TVVolumeBridge:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/TVVolumeBridgeApp
+    dependencies:
+      - target: VolumeBridgeCore
+    settings:
+      base:
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+        CODE_SIGN_ENTITLEMENTS: Config/TVVolumeBridge.entitlements
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: Config/TVVolumeBridge-Info.plist
+        MARKETING_VERSION: "0.1.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.tv-volume-bridge
+        PRODUCT_NAME: TV Volume Bridge
+        SWIFT_EMIT_LOC_STRINGS: YES
+      configs:
+        AppStore:
+          CODE_SIGN_ENTITLEMENTS: Config/TVVolumeBridgeAppStore.entitlements
+
+  VolumeBridgeCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/VolumeBridgeCoreTests
+    dependencies:
+      - target: VolumeBridgeCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.tv-volume-bridge.core-tests
+
+schemes:
+  TVVolumeBridge:
+    build:
+      targets:
+        TVVolumeBridge: all
+    run:
+      config: Debug
+    test:
+      targets:
+        - VolumeBridgeCoreTests
