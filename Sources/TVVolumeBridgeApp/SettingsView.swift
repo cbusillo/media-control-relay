@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -26,6 +27,57 @@ struct SettingsView: View {
             }
 
             Form {
+                Section("Volume Key Access") {
+                    LabeledContent("Status") {
+                        Label {
+                            Text(model.inputMonitoringTitle)
+                        } icon: {
+                            Image(systemName: model.inputMonitoringSystemImage)
+                        }
+                    }
+                    Text(model.inputMonitoringDetail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    if model.inputMonitoringAuthorization == .granted,
+                       !model.inputMonitoringUnavailable {
+                        LabeledContent(
+                            "Detected Presses",
+                            value: model.observedVolumeKeyPressCount.formatted()
+                        )
+                        if let lastAction = model.lastObservedVolumeActionTitle {
+                            LabeledContent("Last Detected") {
+                                Text(lastAction)
+                            }
+                        }
+                    } else {
+                        switch model.inputMonitoringAuthorization {
+                        case .notDetermined:
+                            Button("Allow Volume Key Access") {
+                                model.requestInputMonitoring()
+                            }
+                        case .requested:
+                            Button("Quit to Apply Access") {
+                                model.quitApplication()
+                            }
+                            Button("Open Privacy & Security") {
+                                model.openInputMonitoringSettings()
+                            }
+                        case .denied:
+                            Button("Open Privacy & Security") {
+                                model.openInputMonitoringSettings()
+                            }
+                            Button("Quit After Changing Access") {
+                                model.quitApplication()
+                            }
+                        case .granted:
+                            Button("Quit and Reopen TV Volume Bridge") {
+                                model.quitApplication()
+                            }
+                        }
+                    }
+                }
+
                 Section("General") {
                     Toggle("Launch at login", isOn: $model.launchAtLogin)
                         .disabled(true)
@@ -63,5 +115,12 @@ struct SettingsView: View {
             }
         }
         .frame(width: 560, height: 380)
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: NSApplication.didBecomeActiveNotification
+            )
+        ) { _ in
+            model.refreshInputMonitoring()
+        }
     }
 }

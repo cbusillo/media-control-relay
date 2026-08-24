@@ -2,22 +2,27 @@
 
 TV Volume Bridge is designed to operate locally.
 
-## Planned Data Handling
+## Data Handling
 
 - Volume and mute actions are processed on the Mac and sent only to the
   configured TV on the local network.
-- Input Monitoring is used only to identify supported media-key actions.
+- Input Monitoring uses a listen-only event tap restricted to macOS
+  system-defined events. Typed characters are never delivered to the app.
+- During the current app run, the app keeps only aggregate event and action
+  counts plus the most recently detected Volume Up, Volume Down, or Mute action
+  for local setup feedback. It does not persist key histories or raw event
+  payloads.
 - Pairing credentials will be stored in Keychain.
 - Diagnostics will redact TV addresses, credentials, session identifiers,
   device identifiers, and raw pairing responses.
 - The app does not require an account, analytics service, advertising SDK, or
   cloud relay.
 
-## Current Foundation
+## Current Preview
 
-The current source does not monitor input, discover devices, store credentials,
-or send network commands. It contains only pure routing logic and a native UI
-shell that accurately reports the unconfigured state.
+The current source can observe supported volume keys after the user grants Input
+Monitoring access. It does not discover devices, store credentials, or send
+network commands. Its native UI accurately reports the unconfigured TV state.
 
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.
