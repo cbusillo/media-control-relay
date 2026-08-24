@@ -30,6 +30,7 @@ This initial slice includes:
 - pure Swift routing and state-resolution models;
 - activation matching for audio output and display names;
 - bounded repeat, debounce, deduplication, and queue policy;
+- passive listen-only volume-key observation with permission recovery UI;
 - privacy-safe diagnostics redaction;
 - a native SwiftUI menu-bar and setup/settings shell;
 - separate Developer ID and App Store entitlement files;
@@ -75,6 +76,7 @@ scripts/generate-project.sh
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Input Monitoring probe](docs/input-monitoring.md)
 - [Protocol provenance audit](docs/provenance-audit.md)
 - [Privacy](docs/privacy.md)
 - [Product plan](https://github.com/cbusillo/tv-volume-bridge-for-samsung/issues/1)

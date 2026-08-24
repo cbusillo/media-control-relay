@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import Observation
 import VolumeBridgeCore
 
@@ -7,9 +8,45 @@ import VolumeBridgeCore
 final class BridgeAppModel {
     var bridgeState: BridgeState = .unconfigured
     var launchAtLogin = false
+    var inputMonitoringAuthorization: InputMonitoringAuthorization = .notDetermined
+    var inputMonitoringUnavailable = false
+    var observedVolumeKeyEventCount = 0
+    var observedVolumeKeyPressCount = 0
+    var observedVolumeActionCount = 0
+    var lastObservedVolumeAction: VolumeAction?
 
     let productStatus: LocalizedStringResource = "Preview build"
     let configuredDeviceName: LocalizedStringResource = "No TV selected"
+
+    private let volumeKeyMonitor = EventTapVolumeKeyMonitor()
+    private let volumeKeyGestureMonitor = VolumeKeyGestureMonitor()
+    private var volumeKeyTask: Task<Void, Never>?
+    private var volumeActionTask: Task<Void, Never>?
+    private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
+    private var requestedInputMonitoringThisLaunch = false
+
+    init() {
+        let events = volumeKeyMonitor.events
+        volumeKeyTask = Task { @MainActor [weak self] in
+            for await event in events {
+                guard !Task.isCancelled else {
+                    return
+                }
+                self?.record(event)
+            }
+        }
+
+        let actions = volumeKeyGestureMonitor.actions
+        volumeActionTask = Task { @MainActor [weak self] in
+            for await action in actions {
+                guard !Task.isCancelled else {
+                    return
+                }
+                self?.record(action)
+            }
+        }
+        refreshInputMonitoring()
+    }
 
     var buildDescription: String {
         let version = Bundle.main.object(
@@ -25,18 +62,24 @@ final class BridgeAppModel {
         let fields = [
             "app_version": buildDescription,
             "bridge_state": bridgeState.diagnosticName,
+            "input_monitoring": inputMonitoringDiagnosticName,
             "macos_version": ProcessInfo.processInfo.operatingSystemVersionString,
             "product_status": "preview",
             "setup_complete": "no",
             "tv_connection": "not-available",
+            "volume_actions_emitted": observedVolumeActionCount.formatted(),
+            "volume_events_observed": observedVolumeKeyEventCount.formatted(),
         ]
         let allowedFieldNames: Set<String> = [
             "app_version",
             "bridge_state",
+            "input_monitoring",
             "macos_version",
             "product_status",
             "setup_complete",
             "tv_connection",
+            "volume_actions_emitted",
+            "volume_events_observed",
         ]
         return DiagnosticsRedaction.redact(
             fields: DiagnosticsRedaction.allowlisted(
@@ -52,6 +95,140 @@ final class BridgeAppModel {
     func copyDiagnostics() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(diagnosticsSummary, forType: .string)
+    }
+
+    func requestInputMonitoring() {
+        UserDefaults.standard.set(true, forKey: inputMonitoringRequestedKey)
+        requestedInputMonitoringThisLaunch = true
+        _ = CGRequestListenEventAccess()
+        refreshInputMonitoring()
+    }
+
+    func quitApplication() {
+        NSApplication.shared.terminate(nil)
+    }
+
+    func openInputMonitoringSettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+        ) else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
+    func refreshInputMonitoring() {
+        inputMonitoringAuthorization = InputMonitoringDecision.resolve(
+            preflightGranted: CGPreflightListenEventAccess(),
+            hasRequestedAccess: UserDefaults.standard.bool(
+                forKey: inputMonitoringRequestedKey
+            ),
+            requestedThisLaunch: requestedInputMonitoringThisLaunch
+        )
+
+        guard inputMonitoringAuthorization == .granted else {
+            volumeKeyMonitor.stop()
+            volumeKeyGestureMonitor.cancel()
+            inputMonitoringUnavailable = false
+            return
+        }
+
+        do {
+            try volumeKeyMonitor.start()
+            inputMonitoringUnavailable = false
+        } catch {
+            inputMonitoringUnavailable = true
+        }
+    }
+
+    var inputMonitoringTitle: LocalizedStringResource {
+        if inputMonitoringUnavailable {
+            return "Volume key listening is unavailable"
+        }
+        switch inputMonitoringAuthorization {
+        case .notDetermined: return "Volume key access is not set up"
+        case .requested: return "Volume key access needs a restart"
+        case .denied: return "Volume key access needs attention"
+        case .granted: return "Volume key access is ready"
+        }
+    }
+
+    var inputMonitoringDetail: LocalizedStringResource {
+        if inputMonitoringUnavailable {
+            return "Quit and reopen TV Volume Bridge, then check access again."
+        }
+        switch inputMonitoringAuthorization {
+        case .notDetermined:
+            return "Allow access so TV Volume Bridge can detect Volume Up, Volume Down, and Mute. Typed keys are never delivered to the app."
+        case .requested:
+            return "Complete the macOS prompt, then quit and reopen TV Volume Bridge to apply your choice."
+        case .denied:
+            return "Turn on TV Volume Bridge in Privacy & Security > Input Monitoring, then quit and reopen the app."
+        case .granted:
+            return "Press Volume Up, Volume Down, or Mute to confirm that this Mac can detect the controls."
+        }
+    }
+
+    var inputMonitoringSetupDetail: LocalizedStringResource {
+        if inputMonitoringUnavailable {
+            return "Quit and reopen TV Volume Bridge, then check access in Settings."
+        }
+        switch inputMonitoringAuthorization {
+        case .notDetermined:
+            return "Let TV Volume Bridge detect Volume Up, Volume Down, and Mute."
+        case .requested:
+            return "Quit and reopen TV Volume Bridge to apply your choice."
+        case .denied:
+            return "Turn on access in Privacy & Security, then reopen the app."
+        case .granted:
+            return "Volume key access is ready on this Mac."
+        }
+    }
+
+    var inputMonitoringSystemImage: String {
+        if inputMonitoringUnavailable {
+            return "exclamationmark.triangle"
+        }
+        switch inputMonitoringAuthorization {
+        case .notDetermined: return "hand.raised"
+        case .requested: return "arrow.clockwise.circle"
+        case .denied: return "hand.raised.slash"
+        case .granted: return "checkmark.circle.fill"
+        }
+    }
+
+    var lastObservedVolumeActionTitle: LocalizedStringResource? {
+        switch lastObservedVolumeAction {
+        case .up: return "Volume Up"
+        case .down: return "Volume Down"
+        case .mute: return "Mute"
+        case nil: return nil
+        }
+    }
+
+    private var inputMonitoringDiagnosticName: String {
+        if inputMonitoringUnavailable {
+            return "unavailable"
+        }
+        switch inputMonitoringAuthorization {
+        case .notDetermined: return "not-determined"
+        case .requested: return "requested"
+        case .denied: return "denied"
+        case .granted: return "granted"
+        }
+    }
+
+    private func record(_ event: VolumeKeyEvent) {
+        observedVolumeKeyEventCount += 1
+        if event.phase == .pressed, !event.isRepeat {
+            observedVolumeKeyPressCount += 1
+        }
+        volumeKeyGestureMonitor.ingest(event)
+    }
+
+    private func record(_ action: VolumeAction) {
+        observedVolumeActionCount += 1
+        lastObservedVolumeAction = action
     }
 }
 
@@ -74,7 +251,7 @@ extension BridgeState {
         case .unsupported:
             "Choose another TV or check the compatibility list."
         case .needsPermission:
-            "Allow TV Volume Bridge to respond to your Mac’s volume and mute keys."
+            "Allow TV Volume Bridge to detect your Mac’s volume and mute keys."
         case .dormant:
             "Your TV isn’t the current sound output, so your Mac handles the volume keys."
         case .offline:

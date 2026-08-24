@@ -42,6 +42,8 @@ struct DiagnosticsRedactionTests {
             "tv_host": "tv.example",
             "tv_ip": "192.0.2.1",
             "tv_serial": "serial",
+            "volume_actions_emitted": "1",
+            "volume_events_observed": "2",
         ])
 
         #expect(redacted["TVIPAddress"] == DiagnosticsRedaction.redactedValue)
@@ -55,6 +57,8 @@ struct DiagnosticsRedactionTests {
         #expect(redacted["tv_host"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_ip"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_serial"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["volume_actions_emitted"] == "1")
+        #expect(redacted["volume_events_observed"] == "2")
     }
 
     @Test("Allowlisting omits unexpected diagnostics fields")

@@ -1,6 +1,8 @@
+import AppKit
 import SwiftUI
 
 struct SetupView: View {
+    @Environment(\.openSettings) private var openSettings
     let model: BridgeAppModel
 
     var body: some View {
@@ -40,8 +42,12 @@ struct SetupView: View {
                 SetupStepRow(
                     number: 2,
                     title: "Allow volume key access",
-                    detail: "Let TV Volume Bridge respond to Volume Up, Volume Down, and Mute."
+                    detail: model.inputMonitoringSetupDetail
                 )
+                Button("Open Volume Key Settings") {
+                    openSettings()
+                }
+                .buttonStyle(.link)
                 SetupStepRow(
                     number: 3,
                     title: "Test your controls",
@@ -56,6 +62,13 @@ struct SetupView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(28)
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: NSApplication.didBecomeActiveNotification
+            )
+        ) { _ in
+            model.refreshInputMonitoring()
+        }
     }
 }
 
