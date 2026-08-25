@@ -14,18 +14,23 @@ final class RelayAppModel {
     var observedVolumeKeyPressCount = 0
     var observedVolumeActionCount = 0
     var lastObservedVolumeAction: VolumeAction?
+    var routeSnapshot = RouteSnapshot(audioOutput: nil, displays: [])
+    var routeObservationState: RouteObservationState = .stopped
 
     let productStatus: LocalizedStringResource = "Preview build"
     let configuredDeviceName: LocalizedStringResource = "No media target selected"
 
     private let volumeKeyMonitor = EventTapVolumeKeyMonitor()
     private let volumeKeyGestureMonitor = VolumeKeyGestureMonitor()
+    private let routeObserver: any RouteObserving
     private var volumeKeyTask: Task<Void, Never>?
     private var volumeActionTask: Task<Void, Never>?
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
 
-    init() {
+    init(routeObserver: any RouteObserving = SystemRouteObserver()) {
+        self.routeObserver = routeObserver
+
         let events = volumeKeyMonitor.events
         volumeKeyTask = Task { @MainActor [weak self] in
             for await event in events {
@@ -45,6 +50,16 @@ final class RelayAppModel {
                 self?.record(action)
             }
         }
+        routeObserver.onSnapshot = { [weak self] snapshot in
+            self?.routeSnapshot = snapshot
+        }
+        routeObserver.onStateChange = { [weak self] state in
+            self?.routeObservationState = state
+        }
+        routeObserver.onSleep = { [weak self] in
+            self?.volumeKeyGestureMonitor.cancel()
+        }
+        routeObserver.start()
         refreshInputMonitoring()
     }
 
@@ -59,6 +74,10 @@ final class RelayAppModel {
     }
 
     var diagnosticsSummary: String {
+        let routeDiagnostics = RouteObservationDiagnostics(
+            state: routeObservationState,
+            snapshot: routeSnapshot
+        ).fields
         let fields = [
             "app_version": buildDescription,
             "relay_state": relayState.diagnosticName,
@@ -69,7 +88,7 @@ final class RelayAppModel {
             "target_connection": "not-available",
             "volume_actions_emitted": observedVolumeActionCount.formatted(),
             "volume_events_observed": observedVolumeKeyEventCount.formatted(),
-        ]
+        ].merging(routeDiagnostics) { current, _ in current }
         let allowedFieldNames: Set<String> = [
             "app_version",
             "relay_state",
@@ -80,6 +99,9 @@ final class RelayAppModel {
             "target_connection",
             "volume_actions_emitted",
             "volume_events_observed",
+            "route_observation",
+            "audio_transport",
+            "active_displays",
         ]
         return DiagnosticsRedaction.redact(
             fields: DiagnosticsRedaction.allowlisted(
@@ -139,6 +161,10 @@ final class RelayAppModel {
         } catch {
             inputMonitoringUnavailable = true
         }
+    }
+
+    var activationSnapshot: ActivationSnapshot {
+        routeSnapshot.activationSnapshot
     }
 
     var inputMonitoringTitle: LocalizedStringResource {

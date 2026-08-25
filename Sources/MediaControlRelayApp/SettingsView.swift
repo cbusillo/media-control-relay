@@ -99,6 +99,18 @@ struct SettingsView: View {
             Form {
                 Section("Diagnostics") {
                     LabeledContent("Build", value: model.buildDescription)
+                    LabeledContent(
+                        "Route Observation",
+                        value: model.routeObservationState.rawValue
+                    )
+                    LabeledContent(
+                        "Audio Transport",
+                        value: model.routeSnapshot.audioOutput?.transportKind.rawValue ?? "none"
+                    )
+                    LabeledContent(
+                        "Active Displays",
+                        value: model.routeSnapshot.displays.count.formatted()
+                    )
                     Button("Copy Diagnostics") {
                         model.copyDiagnostics()
                     }

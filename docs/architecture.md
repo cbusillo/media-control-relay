@@ -18,6 +18,7 @@ Pure Swift logic with a Foundation-only dependency:
 
 - relay-state precedence;
 - audio/display activation matching;
+- route snapshot normalization, duplicate suppression, and observer lifecycle;
 - volume action semantics;
 - repeat, deduplication, debounce, batch, and queue policy;
 - diagnostics redaction.
@@ -31,7 +32,8 @@ The native macOS shell owns:
 
 - menu-bar, setup, and settings scenes;
 - permission and local-network presentation;
-- future Core Audio and display observation;
+- read-only Core Audio default-output and active-display observation;
+- sleep/wake observer registration and volume-gesture cancellation;
 - future Keychain credential storage;
 - launch-at-login registration;
 - coordination between input monitoring and protocol adapters.
@@ -42,6 +44,21 @@ integration must not make the core app depend on that device.
 
 The current foundation UI reports only facts that are implemented. It does not
 simulate discovery, pairing, connectivity, or successful volume control.
+
+### Route Observation
+
+`SystemRouteObserver` reads the current default Core Audio output and active
+`NSScreen` displays. Platform values are converted into normalized
+`RouteSnapshot` values before they reach `RelayAppModel`. The snapshot bridges to
+the existing `ActivationSnapshot`, but route observation does not change
+`relayState` and does not emit target commands.
+
+The core coalescer publishes the first snapshot immediately, suppresses
+unchanged snapshots, and retains at most one pending change during its bounded
+duplicate window. Sleep unregisters platform observers and cancels pending
+refresh work; wake registers them again and publishes one fresh snapshot. Audio
+UIDs and display identifiers remain private in memory for stable equality only.
+They are not included in diagnostics or logs.
 
 ### Future Samsung Adapter
 
