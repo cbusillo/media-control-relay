@@ -13,7 +13,7 @@ command -v rg >/dev/null 2>&1 || {
 forbidden_files="$(find . \
 	-path './.git' -prune -o \
 	-path './.build' -prune -o \
-	-path './TVVolumeBridge.xcodeproj' -prune -o \
+	-path './MediaControlRelay.xcodeproj' -prune -o \
 	-path './scratch' -prune -o \
 	-type f \( \
 	-name '.env*' -o \
@@ -37,7 +37,7 @@ fi
 if rg -n --hidden \
 	--glob '!.git/**' \
 	--glob '!.build/**' \
-	--glob '!TVVolumeBridge.xcodeproj/**' \
+	--glob '!MediaControlRelay.xcodeproj/**' \
 	--glob '!scratch/**' \
 	--glob '!scripts/check-secrets.sh' \
 	'\b(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3})\b' .; then

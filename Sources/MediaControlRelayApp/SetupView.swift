@@ -3,7 +3,7 @@ import SwiftUI
 
 struct SetupView: View {
     @Environment(\.openSettings) private var openSettings
-    let model: BridgeAppModel
+    let model: RelayAppModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
@@ -14,9 +14,9 @@ struct SetupView: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("TV Volume Bridge")
+                    Text("Media Control Relay")
                         .font(.largeTitle.weight(.semibold))
-                    Text("Use your Mac’s volume keys to control a compatible Samsung TV")
+                    Text("Connect controls from your Mac to supported media devices")
                         .foregroundStyle(.secondary)
                     Label {
                         Text(model.productStatus)
@@ -36,8 +36,8 @@ struct SetupView: View {
 
                 SetupStepRow(
                     number: 1,
-                    title: "Choose your TV",
-                    detail: "Find a compatible TV on your network or add it manually."
+                    title: "Choose a media target",
+                    detail: "Find a supported media device on your network or add it manually."
                 )
                 SetupStepRow(
                     number: 2,
@@ -51,13 +51,13 @@ struct SetupView: View {
                 SetupStepRow(
                     number: 3,
                     title: "Test your controls",
-                    detail: "Confirm that your Mac controls the TV only while you’re using it."
+                    detail: "Confirm that your Mac controls only the selected media target."
                 )
             }
 
             Spacer()
 
-            Text("TV setup isn’t available in this preview.")
+            Text("Media target setup isn’t available in this preview.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -73,19 +73,19 @@ struct SetupView: View {
 }
 
 private struct StatusCard: View {
-    let model: BridgeAppModel
+    let model: RelayAppModel
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: model.bridgeState.systemImage)
+            Image(systemName: model.relayState.systemImage)
                 .font(.title2)
                 .foregroundStyle(.secondary)
                 .frame(width: 34)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(model.bridgeState.title)
+                Text(model.relayState.title)
                     .font(.headline)
-                Text(model.bridgeState.detail)
+                Text(model.relayState.detail)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

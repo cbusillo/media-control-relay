@@ -22,22 +22,22 @@ plutil -lint Config/*.plist Config/*.entitlements
 git diff --check
 scripts/generate-project.sh
 xcodebuild \
-	-project TVVolumeBridge.xcodeproj \
-	-scheme TVVolumeBridge \
+	-project MediaControlRelay.xcodeproj \
+	-scheme MediaControlRelay \
 	-configuration Debug \
 	-destination 'platform=macOS' \
 	CODE_SIGNING_ALLOWED=NO \
 	test
 xcodebuild \
-	-project TVVolumeBridge.xcodeproj \
-	-scheme TVVolumeBridge \
+	-project MediaControlRelay.xcodeproj \
+	-scheme MediaControlRelay \
 	-configuration Release \
 	-destination 'platform=macOS' \
 	CODE_SIGNING_ALLOWED=NO \
 	build
 xcodebuild \
-	-project TVVolumeBridge.xcodeproj \
-	-scheme TVVolumeBridge \
+	-project MediaControlRelay.xcodeproj \
+	-scheme MediaControlRelay \
 	-configuration AppStore \
 	-destination 'platform=macOS' \
 	CODE_SIGNING_ALLOWED=NO \

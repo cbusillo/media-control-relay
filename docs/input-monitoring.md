@@ -2,16 +2,16 @@
 
 Last updated: August 24, 2026.
 
-This probe determines whether TV Volume Bridge can passively observe Volume Up,
-Volume Down, and Mute in both direct and sandboxed macOS builds. It does not
-send TV commands or suppress normal macOS behavior.
+This probe determines whether Media Control Relay can passively observe Volume
+Up, Volume Down, and Mute in both direct and sandboxed macOS builds. It does not
+send target commands or suppress normal macOS behavior.
 
 ## Implementation Boundary
 
 - The event tap is restricted to system-defined events and uses listen-only
   mode.
 - Typed keys are never delivered to the app.
-- `VolumeBridgeCore` decodes plain event payloads and bounds repeat behavior;
+- `MediaControlCore` decodes plain event payloads and bounds repeat behavior;
   the app adapter drives those deadlines before emitting `VolumeAction` values.
 - The app stores only aggregate event counts and the latest supported action for
   local setup feedback.
@@ -27,18 +27,37 @@ send TV commands or suppress normal macOS behavior.
 ## Test Environment
 
 - Date: August 24, 2026.
-- Host: Apple silicon Mac running macOS 27.0 build `26A5416b`.
+- Host: Apple silicon Mac running macOS 27.0 build `26A5421a`.
 - Toolchain: Xcode 27.0 build `27A5194q`.
-- Direct bundle: `com.shinycomputers.tv-volume-bridge`, signed with Developer
+- Direct bundle: `com.shinycomputers.media-control-relay`, signed with Developer
   ID Application for team `MM5YXC7T6E` and hardened runtime enabled.
 - Sandbox probe: AppStore configuration copied to the distinct local bundle ID
-  `com.shinycomputers.tv-volume-bridge.sandbox-probe`, signed with the same
+  `com.shinycomputers.media-control-relay.sandbox-probe`, signed with the same
   Developer ID identity and the checked-in AppStore entitlements.
 - Both installed bundles passed `codesign --verify --deep --strict`.
 - The direct bundle had no application entitlements. The sandbox probe had only
   `com.apple.security.app-sandbox` and
   `com.apple.security.network.client`; neither bundle had
   `com.apple.security.get-task-allow`.
+
+## Product Identity Migration
+
+- The GitHub repository and local checkout were renamed to
+  `media-control-relay`.
+- The direct bundle moved from `com.shinycomputers.tv-volume-bridge` to
+  `com.shinycomputers.media-control-relay`.
+- The sandbox probe moved from
+  `com.shinycomputers.tv-volume-bridge.sandbox-probe` to
+  `com.shinycomputers.media-control-relay.sandbox-probe`.
+- The old development app, preference domain, sandbox container, and Input
+  Monitoring records were removed. The separate working `Samsung TV Volume`
+  prototype was intentionally left untouched pending the cutover tracked in
+  issue #8.
+- Both renamed identities completed a fresh request, enable, quit/reopen, and
+  event-observation flow under the new product name.
+- Public diagnostics renamed `bridge_state` to `relay_state` and
+  `tv_connection` to `target_connection`; both remain aggregate state fields
+  without target identity or address data.
 
 ## Runtime Findings
 
@@ -63,9 +82,9 @@ send TV commands or suppress normal macOS behavior.
   callback returning the original event.
 - The synthetic probe validates the event-tap boundary but is not a substitute
   for a final physical-key smoke test on release hardware.
-- Copied diagnostics from the final signed direct build preserved only the
-  aggregate `volume_events_observed=2` and `volume_actions_emitted=1` counters;
-  neither field was redacted or exposed raw event data.
+- Copied diagnostics from the full renamed press/release probe preserved only
+  the aggregate `volume_events_observed=6` and `volume_actions_emitted=3`
+  counters; neither field was redacted or exposed raw event data.
 - Duplicate suppression applies to repeated press events without an intervening
   release. A complete second press/release pair is treated as a deliberate
   rapid press rather than discarded.

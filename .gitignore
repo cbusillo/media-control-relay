@@ -2,7 +2,7 @@
 .build/
 .swiftpm/
 DerivedData/
-TVVolumeBridge.xcodeproj/
+MediaControlRelay.xcodeproj/
 scratch/
 xcuserdata/
 *.xcuserstate

@@ -2,20 +2,21 @@
 
 ## Product Boundary
 
-TV Volume Bridge forwards discrete Volume Up, Volume Down, and Mute actions to a
-configured TV only when its activation rule matches the current macOS audio and
-display state. It remains dormant for every other route.
+Media Control Relay maps actions from local control surfaces to supported media
+targets. The first target family forwards discrete Volume Up, Volume Down, and
+Mute actions to a configured Samsung TV only when its activation rule matches
+the current macOS audio and display state.
 
-The app is intentionally not a general-purpose remote, media dashboard, or
-cloud service.
+The app is intentionally not a universal remote, smart-home hub, media
+dashboard, streaming service, or cloud relay.
 
 ## Modules
 
-### VolumeBridgeCore
+### MediaControlCore
 
 Pure Swift logic with a Foundation-only dependency:
 
-- bridge-state precedence;
+- relay-state precedence;
 - audio/display activation matching;
 - volume action semantics;
 - repeat, deduplication, debounce, batch, and queue policy;
@@ -24,7 +25,7 @@ Pure Swift logic with a Foundation-only dependency:
 This module must remain testable on public CI without AppKit, IOKit, Network,
 Keychain, credentials, or TV hardware.
 
-### TVVolumeBridgeApp
+### MediaControlRelayApp
 
 The native macOS shell owns:
 
@@ -34,6 +35,10 @@ The native macOS shell owns:
 - future Keychain credential storage;
 - launch-at-login registration;
 - coordination between input monitoring and protocol adapters.
+
+Future control-surface and target adapters remain optional boundaries around
+the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
+integration must not make the core app depend on that device.
 
 The current foundation UI reports only facts that are implemented. It does not
 simulate discovery, pairing, connectivity, or successful volume control.
@@ -56,8 +61,9 @@ State precedence is deterministic:
 6. `active`
 
 Configuration precedes permission so the app does not request global input
-access before the user has a TV to configure. Dormant precedes transport health
-because an inactive route should not alarm the user about an unreachable TV.
+access before the user has a media target to configure. Dormant precedes
+transport health because an inactive route should not alarm the user about an
+unreachable media target.
 
 ## Activation Rule
 

@@ -1,12 +1,12 @@
 import AppKit
 import CoreGraphics
 import Observation
-import VolumeBridgeCore
+import MediaControlCore
 
 @MainActor
 @Observable
-final class BridgeAppModel {
-    var bridgeState: BridgeState = .unconfigured
+final class RelayAppModel {
+    var relayState: RelayState = .unconfigured
     var launchAtLogin = false
     var inputMonitoringAuthorization: InputMonitoringAuthorization = .notDetermined
     var inputMonitoringUnavailable = false
@@ -16,7 +16,7 @@ final class BridgeAppModel {
     var lastObservedVolumeAction: VolumeAction?
 
     let productStatus: LocalizedStringResource = "Preview build"
-    let configuredDeviceName: LocalizedStringResource = "No TV selected"
+    let configuredDeviceName: LocalizedStringResource = "No media target selected"
 
     private let volumeKeyMonitor = EventTapVolumeKeyMonitor()
     private let volumeKeyGestureMonitor = VolumeKeyGestureMonitor()
@@ -61,23 +61,23 @@ final class BridgeAppModel {
     var diagnosticsSummary: String {
         let fields = [
             "app_version": buildDescription,
-            "bridge_state": bridgeState.diagnosticName,
+            "relay_state": relayState.diagnosticName,
             "input_monitoring": inputMonitoringDiagnosticName,
             "macos_version": ProcessInfo.processInfo.operatingSystemVersionString,
             "product_status": "preview",
             "setup_complete": "no",
-            "tv_connection": "not-available",
+            "target_connection": "not-available",
             "volume_actions_emitted": observedVolumeActionCount.formatted(),
             "volume_events_observed": observedVolumeKeyEventCount.formatted(),
         ]
         let allowedFieldNames: Set<String> = [
             "app_version",
-            "bridge_state",
+            "relay_state",
             "input_monitoring",
             "macos_version",
             "product_status",
             "setup_complete",
-            "tv_connection",
+            "target_connection",
             "volume_actions_emitted",
             "volume_events_observed",
         ]
@@ -155,15 +155,15 @@ final class BridgeAppModel {
 
     var inputMonitoringDetail: LocalizedStringResource {
         if inputMonitoringUnavailable {
-            return "Quit and reopen TV Volume Bridge, then check access again."
+            return "Quit and reopen Media Control Relay, then check access again."
         }
         switch inputMonitoringAuthorization {
         case .notDetermined:
-            return "Allow access so TV Volume Bridge can detect Volume Up, Volume Down, and Mute. Typed keys are never delivered to the app."
+            return "Allow access so Media Control Relay can detect Volume Up, Volume Down, and Mute. Typed keys are never delivered to the app."
         case .requested:
-            return "Complete the macOS prompt, then quit and reopen TV Volume Bridge to apply your choice."
+            return "Complete the macOS prompt, then quit and reopen Media Control Relay to apply your choice."
         case .denied:
-            return "Turn on TV Volume Bridge in Privacy & Security > Input Monitoring, then quit and reopen the app."
+            return "Turn on Media Control Relay in Privacy & Security > Input Monitoring, then quit and reopen the app."
         case .granted:
             return "Press Volume Up, Volume Down, or Mute to confirm that this Mac can detect the controls."
         }
@@ -171,13 +171,13 @@ final class BridgeAppModel {
 
     var inputMonitoringSetupDetail: LocalizedStringResource {
         if inputMonitoringUnavailable {
-            return "Quit and reopen TV Volume Bridge, then check access in Settings."
+            return "Quit and reopen Media Control Relay, then check access in Settings."
         }
         switch inputMonitoringAuthorization {
         case .notDetermined:
-            return "Let TV Volume Bridge detect Volume Up, Volume Down, and Mute."
+            return "Let Media Control Relay detect Volume Up, Volume Down, and Mute."
         case .requested:
-            return "Quit and reopen TV Volume Bridge to apply your choice."
+            return "Quit and reopen Media Control Relay to apply your choice."
         case .denied:
             return "Turn on access in Privacy & Security, then reopen the app."
         case .granted:
@@ -232,32 +232,32 @@ final class BridgeAppModel {
     }
 }
 
-extension BridgeState {
+extension RelayState {
     var title: LocalizedStringResource {
         switch self {
-        case .unconfigured: "TV setup is coming soon"
-        case .unsupported: "This TV isn’t supported"
+        case .unconfigured: "Media target setup is coming soon"
+        case .unsupported: "This media target isn’t supported"
         case .needsPermission: "Allow volume key access"
         case .dormant: "Using Mac volume"
-        case .offline: "Can’t reach your TV"
-        case .active: "Controlling TV volume"
+        case .offline: "Can’t reach your media target"
+        case .active: "Controlling media volume"
         }
     }
 
     var detail: LocalizedStringResource {
         switch self {
         case .unconfigured:
-            "This preview shows the setup flow but can’t connect to a TV yet."
+            "This preview shows the setup flow but can’t connect to a media target yet."
         case .unsupported:
-            "Choose another TV or check the compatibility list."
+            "Choose another media target or check the compatibility list."
         case .needsPermission:
-            "Allow TV Volume Bridge to detect your Mac’s volume and mute keys."
+            "Allow Media Control Relay to detect your Mac’s volume and mute keys."
         case .dormant:
-            "Your TV isn’t the current sound output, so your Mac handles the volume keys."
+            "Your selected media target isn’t the current audio and display route, so your Mac handles the volume keys."
         case .offline:
-            "Make sure the TV is on and connected to the same network as your Mac."
+            "Make sure the media target is on and connected to the same network as your Mac."
         case .active:
-            "Your Mac’s volume and mute keys are controlling the TV."
+            "Your Mac’s volume and mute keys are controlling the selected media device."
         }
     }
 

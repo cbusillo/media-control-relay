@@ -1,18 +1,18 @@
 import Testing
-@testable import VolumeBridgeCore
+@testable import MediaControlCore
 
 @Suite("Diagnostics redaction")
 struct DiagnosticsRedactionTests {
     @Test("Sensitive fields are removed while public state remains")
     func fieldRedaction() {
         let redacted = DiagnosticsRedaction.redact(fields: [
-            "bridge_state": "dormant",
+            "relay_state": "dormant",
             "server_address": "192.0.2.10",
             "session_key": "000102030405060708090a0b0c0d0e0f",
             "device_uuid": "test-device",
         ])
 
-        #expect(redacted["bridge_state"] == "dormant")
+        #expect(redacted["relay_state"] == "dormant")
         #expect(redacted["server_address"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["session_key"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["device_uuid"] == DiagnosticsRedaction.redactedValue)
@@ -65,12 +65,12 @@ struct DiagnosticsRedactionTests {
     func diagnosticsAllowlist() {
         let report = DiagnosticsRedaction.allowlisted(
             fields: [
-                "bridge_state": "active",
+                "relay_state": "active",
                 "pairing_key": "secret-key",
             ],
-            allowedFieldNames: ["bridge_state"]
+            allowedFieldNames: ["relay_state"]
         )
 
-        #expect(report == ["bridge_state": "active"])
+        #expect(report == ["relay_state": "active"])
     }
 }

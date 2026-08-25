@@ -3,18 +3,18 @@ import SwiftUI
 
 struct MenuBarStatusView: View {
     @Environment(\.openWindow) private var openWindow
-    let model: BridgeAppModel
+    let model: RelayAppModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 3) {
                 Label {
-                    Text(model.bridgeState.title)
+                    Text(model.relayState.title)
                 } icon: {
-                    Image(systemName: model.bridgeState.systemImage)
+                    Image(systemName: model.relayState.systemImage)
                 }
                     .font(.headline)
-                Text(model.bridgeState.detail)
+                Text(model.relayState.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -34,7 +34,7 @@ struct MenuBarStatusView: View {
 
             Divider()
 
-            Button("Quit TV Volume Bridge") {
+            Button("Quit Media Control Relay") {
                 NSApplication.shared.terminate(nil)
             }
         }

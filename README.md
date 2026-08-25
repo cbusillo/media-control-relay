@@ -1,33 +1,35 @@
-# TV Volume Bridge
+# Media Control Relay
 
-TV Volume Bridge is a native macOS utility for routing volume and mute controls
-over the local network to compatible Samsung TVs when the configured TV output
-is active. Other audio routes continue to use normal macOS volume behavior.
+Media Control Relay is a native macOS utility that routes actions from local
+control surfaces to supported media devices. The first target family is
+compatible Samsung TVs, with optional integrations tracked for Apple TV,
+HomePod, and Loupedeck and room for future control surfaces and targets.
 
 > [!IMPORTANT]
 > This repository is an early development preview. The app cannot connect to or
-> control a TV yet, and there is no downloadable release.
+> control a media device yet, and there is no downloadable release.
 
 ## Product Direction
 
 The finished app is intended to be a quiet menu-bar utility with a focused
 setup flow:
 
-1. Select or enter a compatible TV.
+1. Select or enter a supported media target.
 2. Pair or import credentials through a provenance-safe path.
 3. Grant the required macOS permissions.
-4. Match the TV to its display and audio output.
-5. Test Volume Up, Volume Down, and Mute.
+4. Match the target to its display and audio output when required.
+5. Test the actions supported by that target.
 
-The app will ship through Developer ID distribution first. A sandboxed Mac App
-Store build remains a product goal, gated by a real Input Monitoring probe and
-App Review evidence.
+The initial release remains focused on reliable volume and mute control for
+compatible Samsung TVs. Media Control Relay is not a universal remote or a
+general-purpose smart-home hub. It will ship through Developer ID distribution
+first; a sandboxed Mac App Store build remains a product goal.
 
 ## Current Foundation
 
 This initial slice includes:
 
-- pure Swift routing and state-resolution models;
+- pure Swift control-routing and state-resolution models;
 - activation matching for audio output and display names;
 - bounded repeat, debounce, deduplication, and queue policy;
 - passive listen-only volume-key observation with permission recovery UI;
@@ -77,15 +79,16 @@ scripts/generate-project.sh
 
 - [Architecture](docs/architecture.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
+- [Product identity](docs/product-identity.md)
 - [Protocol provenance audit](docs/provenance-audit.md)
 - [Privacy](docs/privacy.md)
-- [Product plan](https://github.com/cbusillo/tv-volume-bridge-for-samsung/issues/1)
+- [Product plan](https://github.com/cbusillo/media-control-relay/issues/1)
 
 ## Compatibility And Affiliation
 
 Compatibility claims will be limited to models validated on real hardware.
-Samsung is a trademark of Samsung Electronics Co., Ltd. TV Volume Bridge is an
-independent project and is not affiliated with or endorsed by Samsung.
+Samsung is a trademark of Samsung Electronics Co., Ltd. Media Control Relay is
+an independent project and is not affiliated with or endorsed by Samsung.
 
 ## License
 

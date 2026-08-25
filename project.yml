@@ -1,4 +1,4 @@
-name: TVVolumeBridge
+name: MediaControlRelay
 
 options:
   createIntermediateGroups: true
@@ -21,57 +21,57 @@ settings:
     SWIFT_VERSION: "6.0"
 
 targets:
-  VolumeBridgeCore:
+  MediaControlCore:
     type: library.static
     platform: macOS
     sources:
-      - path: Sources/VolumeBridgeCore
+      - path: Sources/MediaControlCore
     settings:
       base:
-        PRODUCT_NAME: VolumeBridgeCore
+        PRODUCT_NAME: MediaControlCore
         SKIP_INSTALL: true
 
-  TVVolumeBridge:
+  MediaControlRelay:
     type: application
     platform: macOS
     sources:
-      - path: Sources/TVVolumeBridgeApp
+      - path: Sources/MediaControlRelayApp
     dependencies:
-      - target: VolumeBridgeCore
+      - target: MediaControlCore
     settings:
       base:
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
-        CODE_SIGN_ENTITLEMENTS: Config/TVVolumeBridge.entitlements
+        CODE_SIGN_ENTITLEMENTS: Config/MediaControlRelay.entitlements
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: NO
-        INFOPLIST_FILE: Config/TVVolumeBridge-Info.plist
+        INFOPLIST_FILE: Config/MediaControlRelay-Info.plist
         MARKETING_VERSION: "0.1.0"
-        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.tv-volume-bridge
-        PRODUCT_NAME: TV Volume Bridge
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay
+        PRODUCT_NAME: Media Control Relay
         SWIFT_EMIT_LOC_STRINGS: YES
       configs:
         AppStore:
-          CODE_SIGN_ENTITLEMENTS: Config/TVVolumeBridgeAppStore.entitlements
+          CODE_SIGN_ENTITLEMENTS: Config/MediaControlRelayAppStore.entitlements
 
-  VolumeBridgeCoreTests:
+  MediaControlCoreTests:
     type: bundle.unit-test
     platform: macOS
     sources:
-      - path: Tests/VolumeBridgeCoreTests
+      - path: Tests/MediaControlCoreTests
     dependencies:
-      - target: VolumeBridgeCore
+      - target: MediaControlCore
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.tv-volume-bridge.core-tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay.core-tests
 
 schemes:
-  TVVolumeBridge:
+  MediaControlRelay:
     build:
       targets:
-        TVVolumeBridge: all
+        MediaControlRelay: all
     run:
       config: Debug
     test:
       targets:
-        - VolumeBridgeCoreTests
+        - MediaControlCoreTests

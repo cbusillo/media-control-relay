@@ -1,8 +1,8 @@
 import Testing
-@testable import VolumeBridgeCore
+@testable import MediaControlCore
 
-@Suite("Bridge state resolution")
-struct BridgeStateTests {
+@Suite("Relay state resolution")
+struct RelayStateTests {
     @Test("Every public state is reachable")
     func everyStateIsReachable() {
         #expect(resolve(credentials: false) == .unconfigured)
@@ -16,14 +16,14 @@ struct BridgeStateTests {
 
     @Test("Earlier recovery conditions take precedence")
     func precedence() {
-        let inputs = BridgeStateInputs(
+        let inputs = RelayStateInputs(
             credentialsConfigured: false,
             deviceSupported: false,
             inputMonitoringGranted: false,
             activationMatches: false,
             transportReachability: .unreachable
         )
-        #expect(BridgeStateResolver.resolve(inputs) == .unconfigured)
+        #expect(RelayStateResolver.resolve(inputs) == .unconfigured)
     }
 
     private func resolve(
@@ -32,9 +32,9 @@ struct BridgeStateTests {
         permission: Bool = true,
         matches: Bool = true,
         reachability: TransportReachability = .reachable
-    ) -> BridgeState {
-        BridgeStateResolver.resolve(
-            BridgeStateInputs(
+    ) -> RelayState {
+        RelayStateResolver.resolve(
+            RelayStateInputs(
                 credentialsConfigured: credentials,
                 deviceSupported: supported,
                 inputMonitoringGranted: permission,
