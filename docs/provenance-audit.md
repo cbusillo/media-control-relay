@@ -34,6 +34,10 @@ It introduces no Samsung framing, SOAP, XML, SSDP, or network transport code,
 and no third-party-derived protocol source was used to define the contract,
 rail model, or reconciliation behavior.
 
+The initial UPnP MediaRenderer transport slice is also original Swift code.
+It implements endpoint safety and bounded device-description parsing without
+copying third-party source, protocol framing, or device-specific control code.
+
 `THIRD-PARTY-NOTICES.md` is required only if a compatible external source
 implementation is copied or adapted. Reading published protocol specifications
 does not by itself introduce third-party source code into the repository.

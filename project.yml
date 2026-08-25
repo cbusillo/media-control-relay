@@ -31,6 +31,18 @@ targets:
         PRODUCT_NAME: MediaControlCore
         SKIP_INSTALL: true
 
+  UPnPMediaTarget:
+    type: library.static
+    platform: macOS
+    sources:
+      - path: Sources/UPnPMediaTarget
+    dependencies:
+      - target: MediaControlCore
+    settings:
+      base:
+        PRODUCT_NAME: UPnPMediaTarget
+        SKIP_INSTALL: true
+
   MediaControlRelay:
     type: application
     platform: macOS
@@ -65,6 +77,19 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay.core-tests
 
+  UPnPMediaTargetTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/UPnPMediaTargetTests
+    dependencies:
+      - target: UPnPMediaTarget
+      - target: MediaControlCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay.upnp-tests
+
 schemes:
   MediaControlRelay:
     build:
@@ -75,3 +100,4 @@ schemes:
     test:
       targets:
         - MediaControlCoreTests
+        - UPnPMediaTargetTests

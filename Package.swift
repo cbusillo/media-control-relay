@@ -12,12 +12,24 @@ let package = Package(
             name: "MediaControlCore",
             targets: ["MediaControlCore"]
         ),
+        .library(
+            name: "UPnPMediaTarget",
+            targets: ["UPnPMediaTarget"]
+        ),
     ],
     targets: [
         .target(name: "MediaControlCore"),
+        .target(
+            name: "UPnPMediaTarget",
+            dependencies: ["MediaControlCore"]
+        ),
         .testTarget(
             name: "MediaControlCoreTests",
             dependencies: ["MediaControlCore"]
+        ),
+        .testTarget(
+            name: "UPnPMediaTargetTests",
+            dependencies: ["UPnPMediaTarget"]
         ),
     ]
 )
