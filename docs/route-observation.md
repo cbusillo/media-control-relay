@@ -2,10 +2,11 @@
 
 Last updated: August 25, 2026.
 
-Issue #4 adds a read-only observation slice for the current macOS route. It is
-intended to provide the future routing coordinator with an honest, deterministic
-activation input without changing the selected system output or sending target
-commands.
+Issue #4 adds the observation slice used by the routing coordinator for the
+current macOS route. It provides an honest, deterministic activation input
+without changing the selected system output. The milestone-0.1 preview sink
+may record commands after the reducer confirms that route, permission, observer
+lifecycle, and sink state are eligible; no device commands are sent.
 
 ## Observation Boundary
 
@@ -41,9 +42,10 @@ identifiers never enter diagnostics or logs. Copied diagnostics expose only:
 - coarse audio transport kind;
 - active display count.
 
-The latest snapshot is available to `RelayAppModel` for read-only status and for
-the future activation coordinator. This change intentionally does not resolve
-`relayState` to `active` or `dormant` and does not add a command sink.
+The latest snapshot is available to `RelayAppModel` and is routed through the
+pure `RelayRoutingReducer`. Suspended and stopped observation invalidate the
+cached activation match immediately, so a preview target cannot continue
+recording while observers are asleep or stopped.
 
 ## Qualification Boundary
 

@@ -6,8 +6,10 @@ compatible Samsung TVs, with optional integrations tracked for Apple TV,
 HomePod, and Loupedeck and room for future control surfaces and targets.
 
 > [!IMPORTANT]
-> This repository is an early development preview. The app cannot connect to or
-> control a media device yet, and there is no downloadable release.
+> This repository is an early development preview. The app can create an
+> explicitly labeled in-process preview target that records routed commands.
+> No TV or media device is connected or controlled, normal Mac volume behavior
+> is preserved, and there is no downloadable release.
 
 ## Product Direction
 
@@ -30,6 +32,8 @@ first; a sandboxed Mac App Store build remains a product goal.
 This initial slice includes:
 
 - pure Swift control-routing and state-resolution models;
+- a deterministic routing reducer with active-route cancellation behavior;
+- a removable local preview target with bounded command recording;
 - activation matching for audio output and display names;
 - bounded repeat, debounce, deduplication, and queue policy;
 - passive listen-only volume-key observation with permission recovery UI;
@@ -78,6 +82,7 @@ scripts/generate-project.sh
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Relay routing](docs/relay-routing.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
 - [Product identity](docs/product-identity.md)
 - [Protocol provenance audit](docs/provenance-audit.md)

@@ -11,25 +11,26 @@ public enum RelayState: Equatable, Sendable {
     case unsupported
     case needsPermission
     case dormant
+    case checkingTarget
     case offline
     case active
 }
 
 public struct RelayStateInputs: Equatable, Sendable {
-    public var credentialsConfigured: Bool
+    public var targetConfigured: Bool
     public var deviceSupported: Bool
     public var inputMonitoringGranted: Bool
     public var activationMatches: Bool
     public var transportReachability: TransportReachability
 
     public init(
-        credentialsConfigured: Bool,
+        targetConfigured: Bool,
         deviceSupported: Bool,
         inputMonitoringGranted: Bool,
         activationMatches: Bool,
         transportReachability: TransportReachability
     ) {
-        self.credentialsConfigured = credentialsConfigured
+        self.targetConfigured = targetConfigured
         self.deviceSupported = deviceSupported
         self.inputMonitoringGranted = inputMonitoringGranted
         self.activationMatches = activationMatches
@@ -39,7 +40,7 @@ public struct RelayStateInputs: Equatable, Sendable {
 
 public enum RelayStateResolver {
     public static func resolve(_ inputs: RelayStateInputs) -> RelayState {
-        guard inputs.credentialsConfigured else {
+        guard inputs.targetConfigured else {
             return .unconfigured
         }
         guard inputs.deviceSupported else {
@@ -51,9 +52,13 @@ public enum RelayStateResolver {
         guard inputs.activationMatches else {
             return .dormant
         }
-        guard inputs.transportReachability == .reachable else {
+        switch inputs.transportReachability {
+        case .reachable:
+            return .active
+        case .unknown:
+            return .checkingTarget
+        case .unreachable:
             return .offline
         }
-        return .active
     }
 }
