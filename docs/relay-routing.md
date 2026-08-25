@@ -77,10 +77,28 @@ UUIDs, target labels, credentials, or raw events. Preview connection status is
 Automated tests cover state precedence, Codable configuration, route-derived
 matching, reducer cancellation and sequence behavior, sink ordering and
 backpressure, preview status honesty, and diagnostics privacy. Manual
-qualification still needs a signed macOS app run to verify permission recovery,
-real volume-key observation, route changes, sleep/wake cancellation, target
-creation/removal, and the Settings counters. That manual run must confirm that
-the Mac volume HUD and level remain normal while preview commands are recorded.
+qualification uses a signed macOS app run to verify permission recovery, real
+volume-key observation, route changes, sleep/wake cancellation, target
+creation/removal, and the Settings counters.
+
+The August 25, 2026 direct-build run confirmed:
+
+- an active display-audio route recorded an isolated physical Up, Down, Mute,
+  and Mute sequence as 8 events, 4 actions, and 4 commands with no unrecorded
+  action;
+- physical Up and Down holds stopped without any count growth across a second
+  diagnostic snapshot three seconds after release;
+- switching to built-in speakers produced `dormant` and `activation=no-match`;
+- one isolated physical Up tap on the built-in route changed normal Mac volume
+  from 25 to 31, emitted one action, recorded no command, and counted one
+  unrecorded action; and
+- returning to display audio produced a fresh `active` and
+  `activation=match` snapshot.
+
+AirPlay was unavailable during the run. Normal TV standby kept the HDMI display
+and audio route online, so it was not evidence of detach behavior. A true
+detach still needs relay diagnostics captured while the display is absent.
+Real sleep/wake cancellation also remains open.
 
 No real device, Samsung transport, network, pairing, or credential behavior is
 claimed by this milestone.
