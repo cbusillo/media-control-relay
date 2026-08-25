@@ -51,6 +51,12 @@ recording while observers are asleep or stopped.
 
 Deterministic package tests cover normalization, equality suppression,
 coalescing, lifecycle idempotence, wake refresh semantics, privacy-safe
-diagnostics, and activation bridging. Physical HDMI, AirPlay/HomePod, display
-attach/detach, and real sleep/wake behavior remain manual qualification work;
-this issue does not claim evidence for those environments.
+diagnostics, and activation bridging. A signed physical run confirmed live
+display-audio to built-in-audio fallback and return: the relay changed from
+active/match to dormant/no-match, preserved normal Mac volume handling on the
+built-in route, and returned to active/match from a fresh snapshot.
+
+No AirPlay/HomePod output was available. TV standby kept the HDMI display
+online and primary, so it did not constitute a detach. True display
+attach/detach with relay diagnostics captured during the absent state and real
+sleep/wake behavior remain manual qualification work.

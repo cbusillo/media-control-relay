@@ -23,7 +23,7 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 | Build | Sandbox | Signing | Permission | Tap created | Keys observed | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Release | No | Developer ID Application, team `MM5YXC7T6E` | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands; missed release stopped at 25 actions | Signed direct integration path is viable; physical-key confirmation remains |
+| Release | No | Developer ID Application, team `MM5YXC7T6E` | Prior fresh grant survived signed rebuilds, relaunches, and one warm host reboot | Yes | 8 isolated physical events produced 4 actions and 4 recorded commands; physical holds stopped after release; synthetic missed release stopped at 25 actions | Signed direct physical integration path is viable; sleep/wake and fresh TCC recovery remain |
 | AppStore local probe | Yes | Developer ID Application with AppStore entitlements and probe bundle ID | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands | Local sandbox integration path is viable; physical keys and App Store distribution remain unproven |
 
 ## Test Environment
@@ -83,13 +83,40 @@ recorded by the in-process preview sink; they are never sent to a device.
   action plus 24 policy repeats) and then stopped without further input. A
   release and one balancing Volume Down pair restored the synthetic volume
   step.
+- After a warm host reboot, rebuilding and relaunching the same Developer ID
+  bundle identity preserved Input Monitoring authorization. The rebuilt app
+  recreated its event tap, restored the saved preview target, and returned to
+  active route matching without a new permission request.
+- An isolated physical Volume Up, Volume Down, Mute, and second Mute sequence on
+  the active display-audio route produced exactly 8 observed events, 4 emitted
+  actions, 4 recorded preview commands, and 0 unrecorded actions.
+- A physical Volume Up hold produced 27 observed events and 4 actions. A later
+  Volume Down hold added 46 events and 7 actions. For each hold, two diagnostic
+  snapshots taken three seconds apart were identical after release, proving
+  that no repeat continued after the physical key was released. Three later
+  quick Volume Up taps added exactly 6 events and 3 actions.
+- Switching the default output from display audio to built-in speakers changed
+  the relay to `dormant` with `activation=no-match`. One isolated physical
+  Volume Up tap changed normal Mac output volume from 25 to 31 while producing
+  2 observed events, 1 emitted action, 0 recorded preview commands, and 1
+  unrecorded action. A second snapshot three seconds later was unchanged.
+  Returning to the display-audio output restored `active` with
+  `activation=match` from a fresh route snapshot.
+- No AirPlay or HomePod output was exposed as a selectable Core Audio device
+  during this qualification window, so no AirPlay behavior is claimed.
+- Normal TV standby did not constitute a display detach on this hardware:
+  macOS continued reporting the display online and primary, and the selected
+  display-audio route remained present. A later physical power disconnect and
+  reconnect occurred, but relay diagnostics were not captured while the
+  display was absent, so true detach-state behavior remains open.
 - During the direct probe, macOS still displayed its normal output-device HUD,
   labeled Samsung for the active audio device, after a synthetic Volume Up
   event while the monitor was active. A matching Volume Down event restored the
   prior level. This agrees with the `.listenOnly` tap configuration and the
   callback returning the original event.
-- The synthetic probe validates the event-tap boundary but is not a substitute
-  for a final physical-key smoke test on release hardware.
+- The synthetic probe validates deterministic edge cases; the separate
+  physical-key run above confirms the signed direct runtime on release
+  hardware.
 - Copied diagnostics expose only coarse preview target kind, activation,
   recorded-command and unrecorded-action counts, sink availability, transport
   kind, and active display count. They never include route names, UIDs, UUIDs,
@@ -119,12 +146,13 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 ## Decision
 
-The synthetic event-tap integration path is **viable in a local signed
-sandbox** on the tested macOS build. Physical media-key observation remains
-required before issue #3 can be closed. This is also not evidence of Mac App
-Store profile acceptance, TestFlight behavior, App Review acceptance, or
-behavior after a storefront update. Those checks remain part of later
-distribution qualification.
+The signed direct physical event-tap integration path and the synthetic local
+sandbox path are **viable on the tested macOS build**. Physical keys, holds,
+relaunches, one warm reboot, and built-in/display-audio route switching passed
+for the direct build. This is not evidence of physical-key behavior in an App
+Store-signed build, Mac App Store profile acceptance, TestFlight behavior, App
+Review acceptance, or behavior after a storefront update. Those checks remain
+part of later distribution qualification.
 
 ## Required Checks
 
@@ -141,15 +169,26 @@ distribution qualification.
   coverage for future asynchronous sinks.
 - Completed: relaunch with the same signing identity preserved permission and
   recreated observation without duplicate presses.
+- Completed: one warm host reboot followed by a same-identity rebuild retained
+  Input Monitoring and restored active observation.
+- Completed: isolated physical Volume Up, Volume Down, Mute, and Mute
+  press/release observation on the signed direct build.
+- Completed: physical Volume Up and Volume Down hold/release behavior stopped
+  without post-release growth.
+- Completed: live built-in-speaker and display-audio transitions produced
+  dormant/no-match and active/match respectively, while the built-in route kept
+  normal Mac volume handling and recorded no preview command.
 - Completed: local sandbox behavior is documented with exact build evidence.
 - Completed: dark/light appearance, Accessibility naming, keyboard activation,
   and reduced-motion source review.
 - Completed: the App Store path is classified as locally sandbox-viable but not
   distribution-qualified because no matching profile exists.
-- Remaining manual evidence: physical-key smoke and hold/release, live
-  built-in/HDMI/AirPlay route changes, display attach/detach, real sleep/wake,
-  VoiceOver judgment, increased-contrast judgment, and a fresh TCC reset/regrant
-  when interrupting the current grant is acceptable.
+- Unavailable in this environment: an AirPlay or HomePod output, so no live
+  AirPlay route claim is made.
+- Remaining manual evidence: true display detach with relay state captured
+  during the absence, real sleep/wake, VoiceOver judgment, increased-contrast
+  judgment, and a fresh TCC reset/regrant when interrupting the current grant
+  is acceptable.
 - Remaining distribution evidence: a real App Store or TestFlight-signed build
   when a matching profile exists.
 - The sleep/wake check must verify that `NSEvent.timestamp` and system-uptime
