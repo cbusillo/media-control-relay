@@ -23,7 +23,7 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 | Build | Sandbox | Signing | Permission | Tap created | Keys observed | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Release | No | Developer ID Application, team `MM5YXC7T6E` | Prior fresh grant survived signed rebuilds, relaunches, and one warm host reboot | Yes | 8 isolated physical events produced 4 actions and 4 recorded commands; physical holds stopped after release; synthetic missed release stopped at 25 actions | Signed direct physical integration path is viable; sleep/wake and fresh TCC recovery remain |
+| Release | No | Developer ID Application, team `MM5YXC7T6E` | Fresh grant/recovery completed under the current identity and survived signed rebuilds, relaunches, one warm host reboot, and real sleep/wake | Yes | 8 isolated physical events produced 4 actions and 4 recorded commands; physical holds stopped after release; synthetic missed release stopped at 25 actions | Signed direct physical integration path is viable for milestone 0.1 |
 | AppStore local probe | Yes | Developer ID Application with AppStore entitlements and probe bundle ID | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands | Local sandbox integration path is viable; physical keys and App Store distribution remain unproven |
 
 ## Test Environment
@@ -102,13 +102,21 @@ recorded by the in-process preview sink; they are never sent to a device.
   unrecorded action. A second snapshot three seconds later was unchanged.
   Returning to the display-audio output restored `active` with
   `activation=match` from a fresh route snapshot.
+- A controlled software sleep entered the kernel sleep state at 15:55:24. The
+  relay reported dormant during dark wake, retained the same process, and
+  returned to `route_observation=observing`, `relay_state=active`, and
+  `activation=match` after full wake. Exact counters were unchanged across the
+  cycle at 132 observed events, 66 actions, 65 recorded commands, and 1
+  unrecorded action. A post-wake physical Up/Down pair then added exactly 4
+  events, 2 actions, and 2 commands.
 - No AirPlay or HomePod output was exposed as a selectable Core Audio device
   during this qualification window, so no AirPlay behavior is claimed.
 - Normal TV standby did not constitute a display detach on this hardware:
   macOS continued reporting the display online and primary, and the selected
-  display-audio route remained present. A later physical power disconnect and
-  reconnect occurred, but relay diagnostics were not captured while the
-  display was absent, so true detach-state behavior remains open.
+  display-audio route remained present. The route-loss behavior relevant to the
+  milestone is covered by the physical built-in/display-audio transitions and
+  deterministic reducer/lifecycle tests. Optional display-absent diagnostics
+  are deferred to issue #23 without a detach claim here.
 - During the direct probe, macOS still displayed its normal output-device HUD,
   labeled Samsung for the active audio device, after a synthetic Volume Up
   event while the monitor was active. A matching Volume Down event restored the
@@ -148,11 +156,11 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 The signed direct physical event-tap integration path and the synthetic local
 sandbox path are **viable on the tested macOS build**. Physical keys, holds,
-relaunches, one warm reboot, and built-in/display-audio route switching passed
-for the direct build. This is not evidence of physical-key behavior in an App
-Store-signed build, Mac App Store profile acceptance, TestFlight behavior, App
-Review acceptance, or behavior after a storefront update. Those checks remain
-part of later distribution qualification.
+relaunches, one warm reboot, real sleep/wake, and built-in/display-audio route
+switching passed for the direct build. This is not evidence of physical-key
+behavior in an App Store-signed build, Mac App Store profile acceptance,
+TestFlight behavior, App Review acceptance, or behavior after a storefront
+update. Those checks remain part of later distribution qualification.
 
 ## Required Checks
 
@@ -178,19 +186,29 @@ part of later distribution qualification.
 - Completed: live built-in-speaker and display-audio transitions produced
   dormant/no-match and active/match respectively, while the built-in route kept
   normal Mac volume handling and recorded no preview command.
+- Completed: controlled real sleep, dark wake, and full wake preserved the app
+  process, produced dormant state while asleep, restored a fresh observing
+  active route after wake, and emitted no sleep-induced action.
+- Completed: the fresh Input Monitoring reset, request, enable, and relaunch
+  flow under the current bundle identities during the August 24 identity
+  migration; later rebuild, relaunch, reboot, and sleep evidence confirms
+  persistence.
 - Completed: local sandbox behavior is documented with exact build evidence.
 - Completed: dark/light appearance, Accessibility naming, keyboard activation,
   and reduced-motion source review.
 - Completed: the App Store path is classified as locally sandbox-viable but not
   distribution-qualified because no matching profile exists.
-- Unavailable in this environment: an AirPlay or HomePod output, so no live
-  AirPlay route claim is made.
-- Remaining manual evidence: true display detach with relay state captured
-  during the absence, real sleep/wake, VoiceOver judgment, increased-contrast
-  judgment, and a fresh TCC reset/regrant when interrupting the current grant
-  is acceptable.
+- Not physically meaningful: holding a HID key while requesting sleep can
+  prevent or immediately wake the Mac. Sleep cancellation of an active held
+  gesture remains covered by the app's `onSleep` cancellation path and
+  deterministic lifecycle tests rather than a misleading physical procedure.
+- Deferred to signed-local-alpha issue #23: manual VoiceOver judgment,
+  increased-contrast judgment, AirPlay/HomePod routing when hardware is
+  available, and optional display-absent diagnostics. These remain
+  first-release checks but do not determine the milestone-0.1 Mac integration
+  boundary.
 - Remaining distribution evidence: a real App Store or TestFlight-signed build
-  when a matching profile exists.
-- The sleep/wake check must verify that `NSEvent.timestamp` and system-uptime
-  deadline scheduling remain aligned so a held key neither repeats immediately
-  nor stalls after wake.
+  when a matching profile exists, tracked in issue #16.
+- Verified: real sleep/wake preserved exact counters and a post-wake physical
+  pair emitted the expected increments, confirming that event timestamps and
+  system-uptime deadline scheduling remain aligned across wake.

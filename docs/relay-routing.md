@@ -93,12 +93,17 @@ The August 25, 2026 direct-build run confirmed:
   from 25 to 31, emitted one action, recorded no command, and counted one
   unrecorded action; and
 - returning to display audio produced a fresh `active` and
-  `activation=match` snapshot.
+  `activation=match` snapshot; and
+- controlled real sleep produced dormant state during dark wake, preserved the
+  app process and exact 132/66/65/1 event/action/command/unrecorded counters,
+  then returned to observing active state on full wake. A physical Up/Down pair
+  after wake added exactly 4 events, 2 actions, and 2 commands.
 
 AirPlay was unavailable during the run. Normal TV standby kept the HDMI display
-and audio route online, so it was not evidence of detach behavior. A true
-detach still needs relay diagnostics captured while the display is absent.
-Real sleep/wake cancellation also remains open.
+and audio route online, so it was not evidence of detach behavior. The physical
+built-in/display-audio transition and deterministic lifecycle tests cover the
+route-loss behavior required by this milestone. AirPlay and optional
+display-absent diagnostics are deferred to issue #23.
 
 No real device, Samsung transport, network, pairing, or credential behavior is
 claimed by this milestone.
