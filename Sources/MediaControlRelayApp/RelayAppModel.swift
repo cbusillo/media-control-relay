@@ -1,7 +1,7 @@
 import AppKit
 import CoreGraphics
-import Observation
 import MediaControlCore
+import Observation
 
 @MainActor
 @Observable
@@ -16,51 +16,79 @@ final class RelayAppModel {
     var lastObservedVolumeAction: VolumeAction?
     var routeSnapshot = RouteSnapshot(audioOutput: nil, displays: [])
     var routeObservationState: RouteObservationState = .stopped
+    var activationMatches = false
+    var commandsRecorded = 0
+    var commandsSuppressed = 0
+    var targetConfiguration: RelayConfiguration?
 
     let productStatus: LocalizedStringResource = "Preview build"
-    let configuredDeviceName: LocalizedStringResource = "No media target selected"
 
     private let volumeKeyMonitor = EventTapVolumeKeyMonitor()
-    private let volumeKeyGestureMonitor = VolumeKeyGestureMonitor()
+    private let volumeKeyGestureMonitor: VolumeKeyGestureMonitor
     private let routeObserver: any RouteObserving
+    private let configurationStore: RelayConfigurationStore
+    private let coordinator: RelayCoordinator
     private var volumeKeyTask: Task<Void, Never>?
     private var volumeActionTask: Task<Void, Never>?
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
 
-    init(routeObserver: any RouteObserving = SystemRouteObserver()) {
+    init(
+        routeObserver: any RouteObserving = SystemRouteObserver(),
+        configurationStore: RelayConfigurationStore = RelayConfigurationStore()
+    ) {
+        let gestureMonitor = VolumeKeyGestureMonitor()
+        self.volumeKeyGestureMonitor = gestureMonitor
         self.routeObserver = routeObserver
+        self.configurationStore = configurationStore
+        self.coordinator = RelayCoordinator(
+            configuration: configurationStore.load(),
+            cancelHeldGesture: {
+                gestureMonitor.cancel()
+            }
+        )
+        targetConfiguration = coordinator.configuration
+        relayState = coordinator.relayState
 
         let events = volumeKeyMonitor.events
         volumeKeyTask = Task { @MainActor [weak self] in
             for await event in events {
-                guard !Task.isCancelled else {
+                guard !Task.isCancelled, let self else {
                     return
                 }
-                self?.record(event)
+                self.record(event)
             }
         }
 
         let actions = volumeKeyGestureMonitor.actions
         volumeActionTask = Task { @MainActor [weak self] in
             for await action in actions {
-                guard !Task.isCancelled else {
+                guard !Task.isCancelled, let self else {
                     return
                 }
-                self?.record(action)
+                self.record(action)
             }
         }
         routeObserver.onSnapshot = { [weak self] snapshot in
-            self?.routeSnapshot = snapshot
+            guard let self else {
+                return
+            }
+            routeSnapshot = snapshot
+            apply(.routeSnapshot(snapshot))
         }
         routeObserver.onStateChange = { [weak self] state in
-            self?.routeObservationState = state
+            guard let self else {
+                return
+            }
+            routeObservationState = state
+            apply(.routeObservationState(state))
         }
         routeObserver.onSleep = { [weak self] in
             self?.volumeKeyGestureMonitor.cancel()
         }
         routeObserver.start()
         refreshInputMonitoring()
+        apply(.transportReachability(.reachable))
     }
 
     var buildDescription: String {
@@ -71,6 +99,35 @@ final class RelayAppModel {
             forInfoDictionaryKey: "CFBundleVersion"
         ) as? String ?? "Unknown"
         return "\(version) (\(build))"
+    }
+
+    var statusCopy: RelayStatusCopy {
+        RelayStatusCopyCatalog.copy(
+            for: relayState,
+            targetKind: targetConfiguration?.target.kind
+        )
+    }
+
+    var configuredDeviceName: String {
+        targetConfiguration?.target.name ?? "No preview target selected"
+    }
+
+    var selectedPreviewRouteDescription: String {
+        guard let configuration = targetConfiguration else {
+            return "No preview route selected"
+        }
+        let displayRequirement = configuration.activationRule.requiresDisplay
+            ? "display required"
+            : "audio-only matching"
+        return "Audio: \(configuration.activationRule.audioOutputMatch) (\(displayRequirement))"
+    }
+
+    var canCreatePreviewTarget: Bool {
+        RelayConfigurationFactory.preview(for: routeSnapshot) != nil
+    }
+
+    var previewTargetExplanation: LocalizedStringResource {
+        "The preview target is an in-process recording sink. It does not connect to or control a TV or other media device, and it does not intercept or suppress normal Mac volume handling."
     }
 
     var diagnosticsSummary: String {
@@ -84,10 +141,18 @@ final class RelayAppModel {
             "input_monitoring": inputMonitoringDiagnosticName,
             "macos_version": ProcessInfo.processInfo.operatingSystemVersionString,
             "product_status": "preview",
-            "setup_complete": "no",
-            "target_connection": "not-available",
+            "setup_complete": targetConfiguration == nil ? "no" : "yes",
+            "target_kind": targetConfiguration?.target.kind.rawValue ?? "unconfigured",
+            "activation": targetConfiguration == nil
+                ? "unconfigured"
+                : activationMatches ? "match" : "no-match",
+            "commands_recorded": commandsRecorded.formatted(),
+            "actions_not_recorded": commandsSuppressed.formatted(),
             "volume_actions_emitted": observedVolumeActionCount.formatted(),
             "volume_events_observed": observedVolumeKeyEventCount.formatted(),
+            "target_connection": targetConfiguration == nil
+                ? "not-available"
+                : "preview-sink",
         ].merging(routeDiagnostics) { current, _ in current }
         let allowedFieldNames: Set<String> = [
             "app_version",
@@ -96,9 +161,13 @@ final class RelayAppModel {
             "macos_version",
             "product_status",
             "setup_complete",
-            "target_connection",
+            "target_kind",
+            "activation",
+            "commands_recorded",
+            "actions_not_recorded",
             "volume_actions_emitted",
             "volume_events_observed",
+            "target_connection",
             "route_observation",
             "audio_transport",
             "active_displays",
@@ -117,6 +186,20 @@ final class RelayAppModel {
     func copyDiagnostics() {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(diagnosticsSummary, forType: .string)
+    }
+
+    func createPreviewTarget() {
+        guard let configuration = RelayConfigurationFactory.preview(for: routeSnapshot) else {
+            return
+        }
+        configurationStore.save(configuration)
+        apply(.configuration(configuration))
+        apply(.transportReachability(.reachable))
+    }
+
+    func removePreviewTarget() {
+        configurationStore.remove()
+        apply(.configuration(nil))
     }
 
     func requestInputMonitoring() {
@@ -147,6 +230,7 @@ final class RelayAppModel {
             ),
             requestedThisLaunch: requestedInputMonitoringThisLaunch
         )
+        apply(.inputMonitoringAuthorization(inputMonitoringAuthorization))
 
         guard inputMonitoringAuthorization == .granted else {
             volumeKeyMonitor.stop()
@@ -160,11 +244,8 @@ final class RelayAppModel {
             inputMonitoringUnavailable = false
         } catch {
             inputMonitoringUnavailable = true
+            apply(.inputMonitoringAuthorization(.denied))
         }
-    }
-
-    var activationSnapshot: ActivationSnapshot {
-        routeSnapshot.activationSnapshot
     }
 
     var inputMonitoringTitle: LocalizedStringResource {
@@ -185,13 +266,13 @@ final class RelayAppModel {
         }
         switch inputMonitoringAuthorization {
         case .notDetermined:
-            return "Allow access so Media Control Relay can detect Volume Up, Volume Down, and Mute. Typed keys are never delivered to the app."
+            return "Let Media Control Relay detect Volume Up, Volume Down, and Mute."
         case .requested:
-            return "Complete the macOS prompt, then quit and reopen Media Control Relay to apply your choice."
+            return "Quit and reopen Media Control Relay to apply your choice."
         case .denied:
-            return "Turn on Media Control Relay in Privacy & Security > Input Monitoring, then quit and reopen the app."
+            return "Turn on access in Privacy & Security, then reopen the app."
         case .granted:
-            return "Press Volume Up, Volume Down, or Mute to confirm that this Mac can detect the controls."
+            return "Volume key access is ready on this Mac."
         }
     }
 
@@ -244,6 +325,15 @@ final class RelayAppModel {
         }
     }
 
+    private func apply(_ event: RelayRoutingEvent) {
+        coordinator.apply(event)
+        relayState = coordinator.relayState
+        activationMatches = coordinator.activationMatches
+        commandsRecorded = coordinator.recordedCommandCount
+        commandsSuppressed = coordinator.suppressedCommandCount
+        targetConfiguration = coordinator.configuration
+    }
+
     private func record(_ event: VolumeKeyEvent) {
         observedVolumeKeyEventCount += 1
         if event.phase == .pressed, !event.isRepeat {
@@ -255,59 +345,18 @@ final class RelayAppModel {
     private func record(_ action: VolumeAction) {
         observedVolumeActionCount += 1
         lastObservedVolumeAction = action
+        apply(.volumeAction(action))
     }
 }
 
 extension RelayState {
-    var title: LocalizedStringResource {
-        switch self {
-        case .unconfigured: "Media target setup is coming soon"
-        case .unsupported: "This media target isn’t supported"
-        case .needsPermission: "Allow volume key access"
-        case .dormant: "Using Mac volume"
-        case .offline: "Can’t reach your media target"
-        case .active: "Controlling media volume"
-        }
-    }
-
-    var detail: LocalizedStringResource {
-        switch self {
-        case .unconfigured:
-            "This preview shows the setup flow but can’t connect to a media target yet."
-        case .unsupported:
-            "Choose another media target or check the compatibility list."
-        case .needsPermission:
-            "Allow Media Control Relay to detect your Mac’s volume and mute keys."
-        case .dormant:
-            "Your selected media target isn’t the current audio and display route, so your Mac handles the volume keys."
-        case .offline:
-            "Make sure the media target is on and connected to the same network as your Mac."
-        case .active:
-            "Your Mac’s volume and mute keys are controlling the selected media device."
-        }
-    }
-
-    var localizedTitle: String {
-        String(localized: title)
-    }
-
-    var systemImage: String {
-        switch self {
-        case .active: "speaker.wave.2.fill"
-        case .dormant: "speaker.wave.2"
-        case .offline: "wifi.exclamationmark"
-        case .needsPermission: "hand.raised.fill"
-        case .unsupported: "tv.badge.xmark"
-        case .unconfigured: "tv.badge.wifi"
-        }
-    }
-
     var diagnosticName: String {
         switch self {
         case .unconfigured: "unconfigured"
         case .unsupported: "unsupported"
         case .needsPermission: "needs-permission"
         case .dormant: "dormant"
+        case .checkingTarget: "checking-target"
         case .offline: "offline"
         case .active: "active"
         }

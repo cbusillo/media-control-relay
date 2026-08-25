@@ -8,22 +8,55 @@ struct SettingsView: View {
         TabView {
             Form {
                 Section("Media Target") {
-                    LabeledContent("Device") {
+                    LabeledContent("Preview Target") {
                         Text(model.configuredDeviceName)
                     }
                     LabeledContent("Status") {
-                        Text(model.relayState.title)
+                        Text(model.statusCopy.title)
+                    }
+                    LabeledContent(
+                        "Audio Transport",
+                        value: model.routeSnapshot.audioOutput?.transportKind.rawValue ?? "none"
+                    )
+                    LabeledContent(
+                        "Active Displays",
+                        value: model.routeSnapshot.displays.count.formatted()
+                    )
+                    LabeledContent("Selected Route") {
+                        Text(model.selectedPreviewRouteDescription)
+                    }
+                    LabeledContent(
+                        "Activation",
+                        value: model.targetConfiguration == nil
+                            ? "Unconfigured"
+                            : model.activationMatches ? "Match" : "No match"
+                    )
+                    LabeledContent("Commands Recorded", value: model.commandsRecorded.formatted())
+                    LabeledContent("Actions Not Recorded", value: model.commandsSuppressed.formatted())
+
+                    if model.targetConfiguration == nil {
+                        Button("Create Preview Target") {
+                            model.createPreviewTarget()
+                        }
+                        .disabled(!model.canCreatePreviewTarget)
+                        .accessibilityHint("Creates a local in-process recording target")
+                    } else {
+                        Button("Remove Preview Target", role: .destructive) {
+                            model.removePreviewTarget()
+                        }
+                        .accessibilityHint("Removes the local target and resets its counters")
                     }
                 }
-                Section {
-                    Text("Media target setup isn’t available in this preview.")
+                Section("Preview Boundary") {
+                    Text(model.previewTargetExplanation)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .formStyle(.grouped)
             .tabItem {
-                Label("Media Target", systemImage: "tv")
+                Label("Media Target", systemImage: "record.circle")
             }
 
             Form {
@@ -81,12 +114,12 @@ struct SettingsView: View {
                 Section("General") {
                     Toggle("Launch at login", isOn: $model.launchAtLogin)
                         .disabled(true)
-                    Text("Available after you finish setting up a media target.")
+                    Text("Launch at login is not part of this preview.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 Section("Privacy") {
-                    Text("Media Control Relay works on your local network and does not require an account.")
+                    Text("The preview target is stored locally in UserDefaults. It has no credentials and does not use the network.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -111,12 +144,25 @@ struct SettingsView: View {
                         "Active Displays",
                         value: model.routeSnapshot.displays.count.formatted()
                     )
+                    LabeledContent("Target Kind", value: model.targetConfiguration?.target.kind.rawValue ?? "unconfigured")
+                    LabeledContent(
+                        "Activation",
+                        value: model.targetConfiguration == nil
+                            ? "unconfigured"
+                            : model.activationMatches ? "match" : "no-match"
+                    )
+                    LabeledContent("Commands Recorded", value: model.commandsRecorded.formatted())
+                    LabeledContent("Actions Not Recorded", value: model.commandsSuppressed.formatted())
+                    LabeledContent(
+                        "Target Connection",
+                        value: model.targetConfiguration == nil ? "not-available" : "preview-sink"
+                    )
                     Button("Copy Diagnostics") {
                         model.copyDiagnostics()
                     }
                 }
                 Section {
-                    Text("Copied diagnostics leave out your media target address and private connection details.")
+                    Text("Diagnostics contain only coarse target, activation, command-count, route-transport, and display-count fields. Local target names and route identifiers are never copied.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -126,7 +172,7 @@ struct SettingsView: View {
                 Label("Diagnostics", systemImage: "stethoscope")
             }
         }
-        .frame(width: 560, height: 380)
+        .frame(width: 600, height: 500)
         .onReceive(
             NotificationCenter.default.publisher(
                 for: NSApplication.didBecomeActiveNotification

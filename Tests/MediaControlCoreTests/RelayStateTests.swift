@@ -5,19 +5,19 @@ import Testing
 struct RelayStateTests {
     @Test("Every public state is reachable")
     func everyStateIsReachable() {
-        #expect(resolve(credentials: false) == .unconfigured)
+        #expect(resolve(targetConfigured: false) == .unconfigured)
         #expect(resolve(supported: false) == .unsupported)
         #expect(resolve(permission: false) == .needsPermission)
         #expect(resolve(matches: false) == .dormant)
+        #expect(resolve(reachability: .unknown) == .checkingTarget)
         #expect(resolve(reachability: .unreachable) == .offline)
-        #expect(resolve(reachability: .unknown) == .offline)
         #expect(resolve(reachability: .reachable) == .active)
     }
 
     @Test("Earlier recovery conditions take precedence")
     func precedence() {
         let inputs = RelayStateInputs(
-            credentialsConfigured: false,
+            targetConfigured: false,
             deviceSupported: false,
             inputMonitoringGranted: false,
             activationMatches: false,
@@ -27,7 +27,7 @@ struct RelayStateTests {
     }
 
     private func resolve(
-        credentials: Bool = true,
+        targetConfigured: Bool = true,
         supported: Bool = true,
         permission: Bool = true,
         matches: Bool = true,
@@ -35,7 +35,7 @@ struct RelayStateTests {
     ) -> RelayState {
         RelayStateResolver.resolve(
             RelayStateInputs(
-                credentialsConfigured: credentials,
+                targetConfigured: targetConfigured,
                 deviceSupported: supported,
                 inputMonitoringGranted: permission,
                 activationMatches: matches,

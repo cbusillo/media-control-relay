@@ -17,7 +17,7 @@ public struct ActivationSnapshot: Equatable, Sendable {
     }
 }
 
-public struct ActivationRule: Equatable, Sendable {
+public struct ActivationRule: Codable, Equatable, Sendable {
     public var audioOutputMatch: String
     public var displayMatch: String?
     public var requiresDisplay: Bool

@@ -9,12 +9,12 @@ struct MenuBarStatusView: View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 3) {
                 Label {
-                    Text(model.relayState.title)
+                    Text(model.statusCopy.title)
                 } icon: {
-                    Image(systemName: model.relayState.systemImage)
+                    Image(systemName: model.statusCopy.systemImage)
                 }
                     .font(.headline)
-                Text(model.relayState.detail)
+                Text(model.statusCopy.detail)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -19,9 +19,9 @@ struct RelayApp: App {
         MenuBarExtra {
             MenuBarStatusView(model: model)
         } label: {
-            Image(systemName: model.relayState.systemImage)
+            Image(systemName: model.statusCopy.systemImage)
                 .accessibilityLabel(
-                    "Media Control Relay, \(model.relayState.localizedTitle)"
+                    "Media Control Relay, \(model.statusCopy.title)"
                 )
         }
         .menuBarExtraStyle(.window)

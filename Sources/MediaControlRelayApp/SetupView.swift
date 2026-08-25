@@ -8,7 +8,7 @@ struct SetupView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
             HStack(alignment: .top, spacing: 16) {
-                Image(systemName: "tv.and.mediabox")
+                Image(systemName: "record.circle")
                     .font(.system(size: 42, weight: .medium))
                     .foregroundStyle(.tint)
                     .accessibilityHidden(true)
@@ -16,7 +16,7 @@ struct SetupView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Media Control Relay")
                         .font(.largeTitle.weight(.semibold))
-                    Text("Connect controls from your Mac to supported media devices")
+                    Text("Preview local volume routing without connecting to a media device")
                         .foregroundStyle(.secondary)
                     Label {
                         Text(model.productStatus)
@@ -36,8 +36,8 @@ struct SetupView: View {
 
                 SetupStepRow(
                     number: 1,
-                    title: "Choose a media target",
-                    detail: "Find a supported media device on your network or add it manually."
+                    title: "Create a preview target",
+                    detail: "Record routed volume actions in-process without controlling a TV or interfering with normal Mac volume behavior."
                 )
                 SetupStepRow(
                     number: 2,
@@ -50,16 +50,17 @@ struct SetupView: View {
                 .buttonStyle(.link)
                 SetupStepRow(
                     number: 3,
-                    title: "Test your controls",
-                    detail: "Confirm that your Mac controls only the selected media target."
+                    title: "Review recorded commands",
+                    detail: "Use Settings to see activation matching and recorded or unrecorded preview actions."
                 )
             }
 
             Spacer()
 
-            Text("Media target setup isn’t available in this preview.")
+            Text(model.previewTargetExplanation)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(28)
         .onReceive(
@@ -77,17 +78,18 @@ private struct StatusCard: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            Image(systemName: model.relayState.systemImage)
+            Image(systemName: model.statusCopy.systemImage)
                 .font(.title2)
                 .foregroundStyle(.secondary)
                 .frame(width: 34)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
-                Text(model.relayState.title)
+                Text(model.statusCopy.title)
                     .font(.headline)
-                Text(model.relayState.detail)
+                Text(model.statusCopy.detail)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
         }
@@ -116,7 +118,9 @@ private struct SetupStepRow: View {
                 Text(detail)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
     }

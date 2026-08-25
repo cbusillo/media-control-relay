@@ -3,9 +3,9 @@
 ## Product Boundary
 
 Media Control Relay maps actions from local control surfaces to supported media
-targets. The first target family forwards discrete Volume Up, Volume Down, and
-Mute actions to a configured Samsung TV only when its activation rule matches
-the current macOS audio and display state.
+targets. Milestone 0.1 proves the routing boundary with an explicitly labeled
+in-process preview target. The preview records eligible Volume Up, Volume Down,
+and Mute actions but does not connect to or control a TV or other media device.
 
 The app is intentionally not a universal remote, smart-home hub, media
 dashboard, streaming service, or cloud relay.
@@ -18,9 +18,12 @@ Pure Swift logic with a Foundation-only dependency:
 
 - relay-state precedence;
 - audio/display activation matching;
+- Codable local target configuration and route-derived preview setup;
 - route snapshot normalization, duplicate suppression, and observer lifecycle;
 - volume action semantics;
 - repeat, deduplication, debounce, batch, and queue policy;
+- deterministic routing reduction and bounded preview command recording;
+- target-aware status copy;
 - diagnostics redaction.
 
 This module must remain testable on public CI without AppKit, IOKit, Network,
@@ -31,27 +34,33 @@ Keychain, credentials, or TV hardware.
 The native macOS shell owns:
 
 - menu-bar, setup, and settings scenes;
-- permission and local-network presentation;
+- permission presentation;
 - read-only Core Audio default-output and active-display observation;
 - sleep/wake observer registration and volume-gesture cancellation;
-- future Keychain credential storage;
+- local preview configuration in UserDefaults; the preview has no secrets;
+- the thin main-actor coordinator that applies reducer outputs;
 - launch-at-login registration;
-- coordination between input monitoring and protocol adapters.
+- future coordination between input monitoring and protocol adapters.
 
 Future control-surface and target adapters remain optional boundaries around
 the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
 integration must not make the core app depend on that device.
 
-The current foundation UI reports only facts that are implemented. It does not
-simulate discovery, pairing, connectivity, or successful volume control.
+The current foundation UI reports only facts that are implemented. It records
+preview commands locally, clearly identifies the sink as a preview, and states
+that no media device is connected or controlled and normal Mac volume behavior
+is preserved. It does not simulate discovery, pairing, network connectivity, or
+hardware control.
 
 ### Route Observation
 
 `SystemRouteObserver` reads the current default Core Audio output and active
 `NSScreen` displays. Platform values are converted into normalized
 `RouteSnapshot` values before they reach `RelayAppModel`. The snapshot bridges to
-the existing `ActivationSnapshot`, but route observation does not change
-`relayState` and does not emit target commands.
+the existing `ActivationSnapshot`. The `RelayRoutingReducer` invalidates cached
+matching whenever observation is not `observing`, so suspended or stopped
+observation cannot continue recording. The app coordinator sends eligible
+reducer commands to the in-process preview sink only.
 
 The core coalescer publishes the first snapshot immediately, suppresses
 unchanged snapshots, and retains at most one pending change during its bounded
@@ -74,20 +83,23 @@ State precedence is deterministic:
 2. `unsupported`
 3. `needsPermission`
 4. `dormant`
-5. `offline`
-6. `active`
+5. `checkingTarget`
+6. `offline`
+7. `active`
 
 Configuration precedes permission so the app does not request global input
 access before the user has a media target to configure. Dormant precedes
 transport health because an inactive route should not alarm the user about an
-unreachable media target.
+unreachable media target. Unknown reachability is `checkingTarget`, never
+`offline`; offline requires an explicit unreachable observation.
 
 ## Activation Rule
 
 The first activation rule matches:
 
 - a case- and diacritic-insensitive substring of the default audio output; and
-- by default, a corresponding attached display name.
+- for display transports, a corresponding attached display name when its name
+  is related to the audio output; otherwise audio-only matching is used.
 
 No regular expressions, per-app routing, schedules, or automation rules are in
 the initial scope.

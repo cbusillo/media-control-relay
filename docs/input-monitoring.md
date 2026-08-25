@@ -1,10 +1,12 @@
 # Input Monitoring Probe
 
-Last updated: August 24, 2026.
+Last updated: August 25, 2026.
 
 This probe determines whether Media Control Relay can passively observe Volume
-Up, Volume Down, and Mute in both direct and sandboxed macOS builds. It does not
-send target commands or suppress normal macOS behavior.
+Up, Volume Down, and Mute in both direct and sandboxed macOS builds. The
+listen-only monitor does not suppress normal macOS behavior. When the explicit
+preview target is configured and active, the resulting internal actions are
+recorded by the in-process preview sink; they are never sent to a device.
 
 ## Implementation Boundary
 
@@ -82,9 +84,10 @@ send target commands or suppress normal macOS behavior.
   callback returning the original event.
 - The synthetic probe validates the event-tap boundary but is not a substitute
   for a final physical-key smoke test on release hardware.
-- Copied diagnostics from the full renamed press/release probe preserved only
-  the aggregate `volume_events_observed=6` and `volume_actions_emitted=3`
-  counters; neither field was redacted or exposed raw event data.
+- Copied diagnostics expose only coarse preview target kind, activation,
+  recorded-command and unrecorded-action counts, sink availability, transport
+  kind, and active display count. They never include route names, UIDs, UUIDs,
+  target labels, or raw events.
 - Duplicate suppression applies to repeated press events without an intervening
   release. A complete second press/release pair is treated as a deliberate
   rapid press rather than discarded.
@@ -107,9 +110,10 @@ distribution qualification.
   settling, queue backpressure, and missed-release bounds.
 - Completed: the live app adapter feeds decoded events through the bounded
   gesture tracker before emitting internal `VolumeAction` values.
-- Runtime note: the missed-release repeat limit is live. Command-queue
-  backpressure remains unit-tested with synthetic pending counts until issue #5
-  provides the real queue depth.
+- Runtime note: the missed-release repeat limit is live. Preview recording is
+  local and synchronous, so the app sink completes each command immediately
+  and does not accumulate pending depth; synthetic tests retain queue-policy
+  coverage for future asynchronous sinks.
 - Completed: relaunch with the same signing identity preserved permission and
   recreated observation without duplicate presses.
 - Completed: local sandbox behavior is documented with exact build evidence.
