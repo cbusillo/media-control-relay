@@ -11,6 +11,10 @@ public struct ActivationSnapshot: Equatable, Sendable {
         self.defaultAudioOutputName = defaultAudioOutputName
         self.displayNames = displayNames
     }
+
+    public init(routeSnapshot: RouteSnapshot) {
+        self = routeSnapshot.activationSnapshot
+    }
 }
 
 public struct ActivationRule: Equatable, Sendable {
