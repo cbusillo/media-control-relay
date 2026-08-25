@@ -1,6 +1,6 @@
 # Product Identity
 
-Decision date: August 24, 2026.
+Decision date: August 25, 2026.
 
 ## Product Name
 
