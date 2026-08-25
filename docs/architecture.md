@@ -71,6 +71,22 @@ preserved. The reconciler plans state changes but does not own a second queue.
 Stable media-target identity stays in core while addresses, control URLs,
 friendly names, and other ephemeral locator data remain private to adapters.
 
+### UPnPMediaTarget
+
+The separate UPnP transport module is intentionally narrow and outbound-only:
+
+- HTTP-only endpoint validation for local IPv4 literals;
+- bounded device-description parsing with DTD/entity rejection;
+- stable UDN extraction and exact RenderingControl control-URL resolution.
+
+Both the SSDP `LOCATION` used to fetch a description and any declared
+`URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
+description location, and a present but malformed base fails closed.
+
+The module does not open sockets, issue SOAP requests, touch AppKit, or talk
+to real devices in the first slice. Endpoint and descriptor safety stay in this
+module so the core contract remains transport-neutral.
+
 ### Route Observation
 
 `SystemRouteObserver` reads the current default Core Audio output and active
