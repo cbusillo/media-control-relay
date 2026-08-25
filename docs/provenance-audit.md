@@ -15,6 +15,7 @@ until an explicit decision is made.
 | Legacy pairing Go port | `McKael/smartcrypto` | `29ede3511f7fd37b318ebbf9f8d47b838af4bd3a` | Declares MIT | Quarantined because it identifies itself as a port of the AGPL implementation below |
 | Original SmartView2 pairing proof of concept | `sectroyer/SmartCrypto` | `ed33e622b9230267052aab160724a6b398c725be` | AGPL-3.0 | Must not be copied into this MIT project |
 | Pairing key constants in `McKael/smartcrypto/keys.go` | Origin not established by the reviewed repository | Not applicable | Unclear | Hard block: do not publish or ship |
+| Planned original UPnP MediaRenderer volume transport | Published UPnP Device Architecture and RenderingControl specifications | Exact editions will be recorded with the transport PR | Specification reference | Allowed only as an independently authored implementation; no third-party source code imported |
 
 ## Prototype Assessment
 
@@ -27,6 +28,15 @@ The prototype is evidence that the product can work, not a source tree to copy
 wholesale. Host-pinned installers, private configuration paths, LaunchAgent
 files, the Go helper process, and the Loupedeck profile mutator remain outside
 this repository.
+
+The pure-core media-target contract added in issue #18 is original Swift code.
+It introduces no Samsung framing, SOAP, XML, SSDP, or network transport code,
+and no third-party-derived protocol source was used to define the contract,
+rail model, or reconciliation behavior.
+
+`THIRD-PARTY-NOTICES.md` is required only if a compatible external source
+implementation is copied or adapted. Reading published protocol specifications
+does not by itself introduce third-party source code into the repository.
 
 ## Decisions
 

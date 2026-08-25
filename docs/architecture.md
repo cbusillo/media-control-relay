@@ -16,6 +16,8 @@ dashboard, streaming service, or cloud relay.
 
 Pure Swift logic with a Foundation-only dependency:
 
+- transport-neutral media-target identity, absolute-volume operations, and
+  reconciliation contracts;
 - relay-state precedence;
 - audio/display activation matching;
 - Codable local target configuration and route-derived preview setup;
@@ -23,11 +25,13 @@ Pure Swift logic with a Foundation-only dependency:
 - volume action semantics;
 - repeat, deduplication, debounce, batch, and queue policy;
 - deterministic routing reduction and bounded preview command recording;
+- deterministic absolute-volume planning, optional bounded reread input, and
+  transport-neutral failure taxonomy;
 - target-aware status copy;
 - diagnostics redaction.
 
 This module must remain testable on public CI without AppKit, IOKit, Network,
-Keychain, credentials, or TV hardware.
+URLSession, URL, SOAP, XML, SSDP, Keychain, credentials, or TV hardware.
 
 ### MediaControlRelayApp
 
@@ -52,6 +56,21 @@ that no media device is connected or controlled and normal Mac volume behavior
 is preserved. It does not simulate discovery, pairing, network connectivity, or
 hardware control.
 
+The asynchronous `MediaVolumeTarget` contract reads current volume/mute state
+and applies exactly one absolute-volume or mute operation. Apply returns the
+confirmed state, so transport success alone is not command success. Read-back
+must match the requested dimension; unrelated volume or mute changes may reflect
+a physical remote or another controller and remain valid refreshed state. The
+pure reconciler maps relative actions onto clamped operations, emits an explicit
+no-change result at a rail, and can use one caller-supplied refreshed state when
+a cache is stale or a prior read-back mismatched. Held repeats remain bounded by
+`VolumeCommandQueuePolicy`; adjacent same-direction steps may be coalesced only
+up to its batch limit, while discrete action order and mute toggles are
+preserved. The reconciler plans state changes but does not own a second queue.
+
+Stable media-target identity stays in core while addresses, control URLs,
+friendly names, and other ephemeral locator data remain private to adapters.
+
 ### Route Observation
 
 `SystemRouteObserver` reads the current default Core Audio output and active
@@ -73,7 +92,25 @@ They are not included in diagnostics or logs.
 
 Protocol code will live behind a narrow adapter interface and enter only after
 its provenance gate is complete. Legacy H/J and modern Tizen transports must be
-separate implementations with explicit compatibility descriptions.
+separate implementations with explicit compatibility descriptions. The current
+pure-core media-target contract is original Swift code and does not import or
+require Samsung framing, SOAP, XML, SSDP, URLSession, or other transport
+implementations. Transport-specific faults map onto the neutral core failure
+taxonomy instead of leaking protocol vocabulary into routing or UI state.
+
+The first UPnP adapter is outbound-only and limited to RenderingControl volume
+and mute. It has no GENA listener, pairing flow, credential storage, encrypted
+fallback, power action, or general device-browser surface. Discovery may retain
+stable identity, but addresses and control URLs are ephemeral and must be
+re-resolved after interface or endpoint changes.
+
+Adapter requests must use validated local HTTP endpoints discovered from the
+matched target, reject redirects and unsafe schemes or hosts, cap response
+sizes, and fail closed on malformed XML. XML parsing must reject DTDs and
+external entities. A transport write is successful only after matching state
+read-back; permission, discovery, offline, capability, timeout, malformed
+response, protocol-fault, read-back-mismatch, and cancellation outcomes map to
+the transport-neutral core failure taxonomy.
 
 ## State Resolution
 

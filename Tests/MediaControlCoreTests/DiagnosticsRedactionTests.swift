@@ -33,11 +33,15 @@ struct DiagnosticsRedactionTests {
         let redacted = DiagnosticsRedaction.redact(fields: [
             "TVIPAddress": "192.0.2.2",
             "clientId": "client",
+            "control_url": "http://192.0.2.2/control",
             "ghost_count": "2",
+            "model_string": "test-model",
             "observer_count": "3",
             "pairingResponse": "response",
             "pairing_key": "secret-key",
             "samsung_session_id": "session",
+            "ssdp_payload": "private-payload",
+            "transport_locator": "private-locator",
             "tv_device_uuid": "device",
             "tv_host": "tv.example",
             "tv_ip": "192.0.2.1",
@@ -48,11 +52,15 @@ struct DiagnosticsRedactionTests {
 
         #expect(redacted["TVIPAddress"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["clientId"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["control_url"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["ghost_count"] == "2")
+        #expect(redacted["model_string"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["observer_count"] == "3")
         #expect(redacted["pairingResponse"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["pairing_key"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["samsung_session_id"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["ssdp_payload"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["transport_locator"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_device_uuid"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_host"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_ip"] == DiagnosticsRedaction.redactedValue)
