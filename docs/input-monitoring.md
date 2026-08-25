@@ -23,12 +23,12 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 | Build | Sandbox | Signing | Permission | Tap created | Keys observed | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| Release | No | Developer ID Application, team `MM5YXC7T6E` | Fresh reset, request, enable, relaunch | Yes | Synthetic Volume Up, Volume Down, and Mute press/release pairs | Synthetic integration path is viable; physical-key confirmation remains |
-| AppStore local probe | Yes | Developer ID Application with AppStore entitlements and probe bundle ID | Fresh reset, request, enable, relaunch | Yes | Synthetic Volume Up, Volume Down, and Mute press/release pairs | Local sandbox integration path is viable; physical keys and App Store distribution remain unproven |
+| Release | No | Developer ID Application, team `MM5YXC7T6E` | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands; missed release stopped at 25 actions | Signed direct integration path is viable; physical-key confirmation remains |
+| AppStore local probe | Yes | Developer ID Application with AppStore entitlements and probe bundle ID | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands | Local sandbox integration path is viable; physical keys and App Store distribution remain unproven |
 
 ## Test Environment
 
-- Date: August 24, 2026.
+- Date: August 25, 2026.
 - Host: Apple silicon Mac running macOS 27.0 build `26A5421a`.
 - Toolchain: Xcode 27.0 build `27A5194q`.
 - Direct bundle: `com.shinycomputers.media-control-relay`, signed with Developer
@@ -41,6 +41,8 @@ recorded by the in-process preview sink; they are never sent to a device.
   `com.apple.security.app-sandbox` and
   `com.apple.security.network.client`; neither bundle had
   `com.apple.security.get-task-allow`.
+- Both bundles used hardened runtime and passed local Gatekeeper assessment as
+  Developer ID applications.
 
 ## Product Identity Migration
 
@@ -63,20 +65,24 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 ## Runtime Findings
 
-- `tccutil reset ListenEvent` produced a fresh permission flow for each bundle
-  identifier. The app showed not-set-up guidance before the request and
-  request-pending guidance after the request. A denied request is distinguished
-  after relaunch, when the public preflight API still reports no grant.
+- In the August 24 identity-migration probe, `tccutil reset ListenEvent`
+  produced a fresh permission flow for each bundle identifier. The app showed
+  not-set-up guidance before the request and request-pending guidance after the
+  request. A denied request is distinguished after relaunch, when the public
+  preflight API still reports no grant.
 - Input Monitoring became effective after the app was quit and reopened, as
   required by the macOS permission UI. Both builds then reported that volume
   key access was ready, which also proves that the listen-only event tap was
   created successfully.
 - A synthetic integration probe posted system-defined press/release pairs for
-  Volume Up, Volume Down, and Mute. Both installed builds reported three
-  detected presses and Mute as the final action.
+  Volume Up, Volume Down, Mute, and a second Mute that restored the prior mute
+  state. Both installed builds reported 8 observed events, 4 emitted actions,
+  and 4 recorded preview commands with no unrecorded actions.
 - A separate synthetic missed-release probe posted one Volume Up press without
   a release. The final direct build emitted 25 bounded actions (the initial
-  action plus 24 policy repeats) and then stopped without further input.
+  action plus 24 policy repeats) and then stopped without further input. A
+  release and one balancing Volume Down pair restored the synthetic volume
+  step.
 - During the direct probe, macOS still displayed its normal output-device HUD,
   labeled Samsung for the active audio device, after a synthetic Volume Up
   event while the monitor was active. A matching Volume Down event restored the
@@ -91,6 +97,25 @@ recorded by the in-process preview sink; they are never sent to a device.
 - Duplicate suppression applies to repeated press events without an intervening
   release. A complete second press/release pair is treated as a deliberate
   rapid press rather than discarded.
+- Setup and Settings remained unclipped in native dark and light appearances.
+  The Accessibility tree preserved visible button names and supplemental hints.
+- With full keyboard navigation enabled temporarily, Tab reached the setup link
+  and the Settings preview-target button; Space activated both controls. The
+  original global keyboard-navigation setting was restored afterward.
+- The app has no custom animation or transition APIs, so reduced-motion mode has
+  no app-authored motion to suppress in this milestone.
+
+## App Store Feasibility
+
+- A local `AppStore` archive completed under automatic signing, but Xcode signed
+  it with an Apple Development identity and embedded no provisioning profile.
+- No installed provisioning profile matches
+  `com.shinycomputers.media-control-relay`.
+- Exporting that archive with method `app-store-connect` failed reproducibly
+  with `No profiles for 'com.shinycomputers.media-control-relay' were found`.
+- Decision: the local sandbox path is viable, but a real Mac App Store or
+  TestFlight build remains blocked on provisioning and subsequent Apple review.
+  This does not block the Developer ID product path.
 
 ## Decision
 
@@ -117,8 +142,16 @@ distribution qualification.
 - Completed: relaunch with the same signing identity preserved permission and
   recreated observation without duplicate presses.
 - Completed: local sandbox behavior is documented with exact build evidence.
-- Remaining distribution evidence: physical-key smoke test, sleep/wake, and a
-  real App Store or TestFlight-signed build when a matching profile exists.
+- Completed: dark/light appearance, Accessibility naming, keyboard activation,
+  and reduced-motion source review.
+- Completed: the App Store path is classified as locally sandbox-viable but not
+  distribution-qualified because no matching profile exists.
+- Remaining manual evidence: physical-key smoke and hold/release, live
+  built-in/HDMI/AirPlay route changes, display attach/detach, real sleep/wake,
+  VoiceOver judgment, increased-contrast judgment, and a fresh TCC reset/regrant
+  when interrupting the current grant is acceptable.
+- Remaining distribution evidence: a real App Store or TestFlight-signed build
+  when a matching profile exists.
 - The sleep/wake check must verify that `NSEvent.timestamp` and system-uptime
   deadline scheduling remain aligned so a held key neither repeats immediately
   nor stalls after wake.
