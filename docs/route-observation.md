@@ -56,7 +56,13 @@ display-audio to built-in-audio fallback and return: the relay changed from
 active/match to dormant/no-match, preserved normal Mac volume handling on the
 built-in route, and returned to active/match from a fresh snapshot.
 
+A controlled software sleep physically confirmed the lifecycle boundary. The
+relay was dormant during dark wake, retained the same process, returned to
+observing and active after full wake, and preserved exact counters with no
+sleep-induced action. A post-wake physical Up/Down pair produced the expected
+event, action, and command increments.
+
 No AirPlay/HomePod output was available. TV standby kept the HDMI display
-online and primary, so it did not constitute a detach. True display
-attach/detach with relay diagnostics captured during the absent state and real
-sleep/wake behavior remain manual qualification work.
+online and primary, so it did not constitute a detach. AirPlay and optional
+display-absent diagnostics are deferred to issue #23 without claims for those
+environments in milestone 0.1.
