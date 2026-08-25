@@ -1,6 +1,6 @@
 import AppKit
 import CoreGraphics
-import VolumeBridgeCore
+import MediaControlCore
 
 private let systemDefinedEventTypeRawValue: UInt32 = 14
 

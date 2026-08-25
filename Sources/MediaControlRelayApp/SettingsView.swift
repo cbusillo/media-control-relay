@@ -2,28 +2,28 @@ import AppKit
 import SwiftUI
 
 struct SettingsView: View {
-    @Bindable var model: BridgeAppModel
+    @Bindable var model: RelayAppModel
 
     var body: some View {
         TabView {
             Form {
-                Section("TV") {
+                Section("Media Target") {
                     LabeledContent("Device") {
                         Text(model.configuredDeviceName)
                     }
                     LabeledContent("Status") {
-                        Text(model.bridgeState.title)
+                        Text(model.relayState.title)
                     }
                 }
                 Section {
-                    Text("TV setup isn’t available in this preview.")
+                    Text("Media target setup isn’t available in this preview.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
             }
             .formStyle(.grouped)
             .tabItem {
-                Label("TV", systemImage: "tv")
+                Label("Media Target", systemImage: "tv")
             }
 
             Form {
@@ -71,7 +71,7 @@ struct SettingsView: View {
                                 model.quitApplication()
                             }
                         case .granted:
-                            Button("Quit and Reopen TV Volume Bridge") {
+                            Button("Quit and Reopen Media Control Relay") {
                                 model.quitApplication()
                             }
                         }
@@ -81,12 +81,12 @@ struct SettingsView: View {
                 Section("General") {
                     Toggle("Launch at login", isOn: $model.launchAtLogin)
                         .disabled(true)
-                    Text("Available after you finish setting up a TV.")
+                    Text("Available after you finish setting up a media target.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
                 Section("Privacy") {
-                    Text("TV Volume Bridge works on your local network and does not require an account.")
+                    Text("Media Control Relay works on your local network and does not require an account.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -104,7 +104,7 @@ struct SettingsView: View {
                     }
                 }
                 Section {
-                    Text("Copied diagnostics leave out your TV address and private connection details.")
+                    Text("Copied diagnostics leave out your media target address and private connection details.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }

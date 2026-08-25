@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleDisplayName</key>
-	<string>TV Volume Bridge</string>
+	<string>Media Control Relay</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -27,7 +27,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>TV Volume Bridge connects to a compatible TV on your local network to send volume and mute commands.</string>
+	<string>Media Control Relay uses your local network to send volume, mute, and other control commands to the media target you select.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

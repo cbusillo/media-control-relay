@@ -1,5 +1,5 @@
 import Foundation
-import VolumeBridgeCore
+import MediaControlCore
 
 @MainActor
 final class VolumeKeyGestureMonitor {

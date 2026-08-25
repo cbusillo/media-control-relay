@@ -6,7 +6,7 @@ public enum TransportReachability: Equatable, Sendable {
     case unreachable
 }
 
-public enum BridgeState: Equatable, Sendable {
+public enum RelayState: Equatable, Sendable {
     case unconfigured
     case unsupported
     case needsPermission
@@ -15,7 +15,7 @@ public enum BridgeState: Equatable, Sendable {
     case active
 }
 
-public struct BridgeStateInputs: Equatable, Sendable {
+public struct RelayStateInputs: Equatable, Sendable {
     public var credentialsConfigured: Bool
     public var deviceSupported: Bool
     public var inputMonitoringGranted: Bool
@@ -37,8 +37,8 @@ public struct BridgeStateInputs: Equatable, Sendable {
     }
 }
 
-public enum BridgeStateResolver {
-    public static func resolve(_ inputs: BridgeStateInputs) -> BridgeState {
+public enum RelayStateResolver {
+    public static func resolve(_ inputs: RelayStateInputs) -> RelayState {
         guard inputs.credentialsConfigured else {
             return .unconfigured
         }

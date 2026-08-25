@@ -1,17 +1,20 @@
-# TV Volume Bridge Agent Notes
+# Media Control Relay Agent Notes
 
 ## Product Shape
 
-TV Volume Bridge is a focused native macOS menu-bar app for network volume and
-mute control of compatible Samsung TVs. It is not a general-purpose remote.
+Media Control Relay is a focused native macOS menu-bar app that routes actions
+from local control surfaces to supported media devices. Compatible Samsung TVs
+are the first target family; the product is not a universal remote or a
+general-purpose smart-home hub.
 
 ## Engineering Defaults
 
 - Prefer Swift 6, SwiftUI, Swift Package Manager, and XcodeGen.
-- Keep `VolumeBridgeCore` pure and testable without AppKit, IOKit, Network, or
+- Keep `MediaControlCore` pure and testable without AppKit, IOKit, Network, or
   real TV hardware.
-- Keep protocol families behind adapters. Do not let Samsung-specific framing
-  leak into routing or UI state.
+- Keep control surfaces and media-target protocol families behind adapters. Do
+  not let Samsung-, Apple-, or device-specific framing leak into routing or UI
+  state.
 - Use Keychain for credentials. Never log or commit hosts, session keys,
   session IDs, device UUIDs, tokens, or raw pairing responses.
 - Model dormant, permission, unsupported, offline, and unconfigured states

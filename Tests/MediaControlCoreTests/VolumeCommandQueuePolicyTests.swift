@@ -1,5 +1,5 @@
 import Testing
-@testable import VolumeBridgeCore
+@testable import MediaControlCore
 
 @Suite("Volume command policy")
 struct VolumeCommandQueuePolicyTests {

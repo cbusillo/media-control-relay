@@ -1,12 +1,12 @@
 import SwiftUI
 
 @main
-struct TVVolumeBridgeApp: App {
+struct RelayApp: App {
     @AppStorage("hasShownWelcome") private var hasShownWelcome = false
-    @State private var model = BridgeAppModel()
+    @State private var model = RelayAppModel()
 
     var body: some Scene {
-        Window("TV Volume Bridge Setup", id: "setup") {
+        Window("Media Control Relay Setup", id: "setup") {
             SetupView(model: model)
                 .onAppear {
                     hasShownWelcome = true
@@ -19,9 +19,9 @@ struct TVVolumeBridgeApp: App {
         MenuBarExtra {
             MenuBarStatusView(model: model)
         } label: {
-            Image(systemName: model.bridgeState.systemImage)
+            Image(systemName: model.relayState.systemImage)
                 .accessibilityLabel(
-                    "TV Volume Bridge, \(model.bridgeState.localizedTitle)"
+                    "Media Control Relay, \(model.relayState.localizedTitle)"
                 )
         }
         .menuBarExtraStyle(.window)

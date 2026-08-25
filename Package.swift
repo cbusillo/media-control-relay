@@ -3,21 +3,21 @@
 import PackageDescription
 
 let package = Package(
-    name: "TVVolumeBridge",
+    name: "MediaControlRelay",
     platforms: [
         .macOS(.v15),
     ],
     products: [
         .library(
-            name: "VolumeBridgeCore",
-            targets: ["VolumeBridgeCore"]
+            name: "MediaControlCore",
+            targets: ["MediaControlCore"]
         ),
     ],
     targets: [
-        .target(name: "VolumeBridgeCore"),
+        .target(name: "MediaControlCore"),
         .testTarget(
-            name: "VolumeBridgeCoreTests",
-            dependencies: ["VolumeBridgeCore"]
+            name: "MediaControlCoreTests",
+            dependencies: ["MediaControlCore"]
         ),
     ]
 )
