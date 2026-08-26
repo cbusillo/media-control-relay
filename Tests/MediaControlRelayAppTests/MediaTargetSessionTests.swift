@@ -16,12 +16,11 @@ struct MediaTargetSessionTests {
         #expect(await session.probe() == .reachable)
     }
 
-    @Test("Transport and target permission failures remain unreachable")
+    @Test("Generic transport and target failures remain unreachable")
     func failedProbe() async {
         for failure in [
             MediaTargetFailure.offline,
             .timeout,
-            .permissionDenied,
             .capabilityUnavailable,
             .discoveryUnavailable,
             .malformedResponse,
@@ -35,6 +34,17 @@ struct MediaTargetSessionTests {
 
             #expect(await session.probe() == .unreachable)
         }
+    }
+
+    @Test("Target authentication rejection remains distinct")
+    func authenticationRejectedProbe() async {
+        let target = SessionTargetStub(result: .failure(.authenticationRejected))
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+
+        #expect(await session.probe() == .authenticationRejected)
     }
 
     @Test("Cancelled probes return unknown")
@@ -66,6 +76,23 @@ struct MediaTargetSessionTests {
 
         #expect(await probe.value == nil)
         #expect(await recorder.reasons == [.routeContextChanged])
+    }
+
+    @Test("Older invalidation requests cannot supersede newer network context")
+    func staleInvalidationRequestIsIgnored() async {
+        let target = SessionTargetStub(result: .success(makeState()))
+        let recorder = InvalidationRecorder()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { signal in
+                await recorder.record(signal)
+            }
+        )
+
+        await session.invalidate(.networkContextChanged, requestID: 2)
+        await session.invalidate(.routeContextChanged, requestID: 1)
+
+        #expect(await recorder.reasons == [.networkContextChanged])
     }
 
     @Test("Factory rejects blank stable identities")
@@ -102,7 +129,6 @@ struct MediaTargetSessionTests {
         for failure in [
             MediaTargetFailure.offline,
             .timeout,
-            .permissionDenied,
             .capabilityUnavailable,
             .discoveryUnavailable,
             .malformedResponse,
@@ -124,6 +150,17 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
         #expect(await cancelledSession.execute(.mute) == nil)
+    }
+
+    @Test("Command authentication rejection remains distinct")
+    func authenticationRejectedCommand() async {
+        let target = SessionCommandFailureTarget(failure: .authenticationRejected)
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+
+        #expect(await session.execute(.mute) == .authenticationRejected)
     }
 
     @Test("Invalidation discards stale command success")

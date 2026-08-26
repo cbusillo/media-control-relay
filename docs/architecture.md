@@ -118,8 +118,17 @@ create a network session. Activation-relevant route changes cancel probe
 publication, while equivalent snapshots preserve established health. Sleep and
 wake invalidate the resolver lifecycle generation before the next eligible
 probe, and an offline target retries when the app next refreshes permission
-state. Device authentication rejection remains a generic unreachable target
-signal and is not presented as macOS Local Network denial.
+state. A `NWPathMonitor` observer invalidates resolver and command generations
+when the available network path or active interface kinds change. Only the
+system path reason `localNetworkDenied` produces Local Network recovery state;
+empty discovery and generic transport failure remain inconclusive. Device
+authentication rejection has separate target-recovery copy and is never
+presented as macOS Local Network denial.
+
+Whether the default macOS path monitor reports `localNetworkDenied` for this
+raw multicast discovery path remains a signed-device qualification item. If the
+system does not provide that evidence, the app stays on generic offline or empty
+recovery copy rather than guessing.
 
 Eligible UPnP volume actions use the existing core queue decision and then enter
 a single-consumer app command pump. The pump executes one action at a time
@@ -128,8 +137,9 @@ neutral, and completes pending capacity only after the physical target returns.
 Route mismatch, configuration removal, permission changes, sleep, wake, and
 session replacement cancel the pump and invalidate its generation. A stale or
 cancelled completion publishes no health; confirmed success remains reachable,
-and every other command failure becomes only a coarse unreachable signal.
-Diagnostics expose bounded dispatch/failure counts and the generic
+and authentication rejection remains distinct from generic unreachable state.
+Diagnostics expose bounded dispatch/failure/recovery counts, coarse network
+path state and transition count, and the generic
 `local-network` connection kind without target identity, address, URL, model,
 failure detail, or protocol payload.
 

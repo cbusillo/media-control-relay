@@ -115,9 +115,21 @@ struct RelayRoutingReducerTests {
     func localNetworkPermissionTransition() {
         var reducer = activeReducer(targetKind: .upnpMediaRenderer)
 
-        let output = reducer.reduce(.transportReachability(.permissionDenied))
+        let output = reducer.reduce(.transportReachability(.localNetworkDenied))
 
         #expect(output.resolvedState == .needsLocalNetworkPermission)
+        #expect(output.cancelHeldGesture)
+        #expect(output.cancelPendingCommand)
+        #expect(reducer.reduce(.volumeAction(.up)).command == nil)
+    }
+
+    @Test("Target authentication rejection has distinct recovery state")
+    func targetAuthenticationTransition() {
+        var reducer = activeReducer(targetKind: .upnpMediaRenderer)
+
+        let output = reducer.reduce(.transportReachability(.authenticationRejected))
+
+        #expect(output.resolvedState == .targetAuthenticationRejected)
         #expect(output.cancelHeldGesture)
         #expect(output.cancelPendingCommand)
         #expect(reducer.reduce(.volumeAction(.up)).command == nil)

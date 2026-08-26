@@ -1,6 +1,6 @@
 # Route Observation
 
-Last updated: August 25, 2026.
+Last updated: August 26, 2026.
 
 Issue #4 adds the observation slice used by the routing coordinator for the
 current macOS route. It provides an honest, deterministic activation input
@@ -23,6 +23,11 @@ lifecycle, and sink state are eligible; no device commands are sent.
 stable-identifier-aware equality, bounded coalescing, lifecycle transitions,
 coarse diagnostics, and `ActivationSnapshot` bridging.
 
+`MediaControlRelayApp/NetworkPathObserver.swift` separately observes coarse
+Network framework path status and active interface kinds. It never reads or
+publishes interface names or endpoint addresses. Path changes invalidate UPnP
+resolver and command generations without changing route matching.
+
 ## Lifecycle
 
 The observer starts once during model initialization. Repeated `start` and
@@ -41,6 +46,10 @@ identifiers never enter diagnostics or logs. Copied diagnostics expose only:
 - route observation state (`stopped`, `observing`, or `suspended`);
 - coarse audio transport kind;
 - active display count.
+
+The network observer adds only coarse path state and a transition count to the
+copied app diagnostics. Interface kinds are used only for in-memory change
+detection and are not copied.
 
 The latest snapshot is available to `RelayAppModel` and is routed through the
 pure `RelayRoutingReducer`. Suspended and stopped observation invalidate the

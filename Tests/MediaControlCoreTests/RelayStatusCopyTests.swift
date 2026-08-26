@@ -34,7 +34,7 @@ struct RelayStatusCopyTests {
     func unconfiguredSetupCopy() {
         let copy = RelayStatusCopyCatalog.copy(for: .unconfigured, targetKind: nil)
 
-        #expect(copy.title == "No preview target selected")
+        #expect(copy.title == "No media target selected")
         #expect(copy.detail.localizedCaseInsensitiveContains("create"))
         #expect(copy.detail.localizedCaseInsensitiveContains("Settings"))
         #expect(!copy.detail.localizedCaseInsensitiveContains("coming soon"))
@@ -50,5 +50,17 @@ struct RelayStatusCopyTests {
         #expect(copy.title.localizedCaseInsensitiveContains("local network"))
         #expect(!copy.title.localizedCaseInsensitiveContains("volume key"))
         #expect(copy.systemImage == "network.badge.shield.half.filled")
+    }
+
+    @Test("Target authentication rejection does not claim macOS permission denial")
+    func targetAuthenticationCopy() {
+        let copy = RelayStatusCopyCatalog.copy(
+            for: .targetAuthenticationRejected,
+            targetKind: .upnpMediaRenderer
+        )
+
+        #expect(copy.title.localizedCaseInsensitiveContains("rejected"))
+        #expect(!copy.detail.localizedCaseInsensitiveContains("privacy & security"))
+        #expect(!copy.detail.localizedCaseInsensitiveContains("local network"))
     }
 }

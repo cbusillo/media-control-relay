@@ -34,11 +34,11 @@ struct MediaTargetCommandExecutorTests {
     func propagatesFailure() async {
         let target = ExecutorTargetStub(
             initialState: state(volume: 5, muted: false),
-            readFailure: .permissionDenied
+            readFailure: .authenticationRejected
         )
         let executor = MediaTargetCommandExecutor(target: target)
 
-        await #expect(throws: MediaTargetFailure.permissionDenied) {
+        await #expect(throws: MediaTargetFailure.authenticationRejected) {
             _ = try await executor.execute(.mute)
         }
     }

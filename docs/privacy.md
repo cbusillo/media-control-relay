@@ -18,7 +18,7 @@ Media Control Relay is designed to operate locally.
   future credentialed adapter must store secrets in Keychain.
 - Diagnostics will redact target addresses, credentials, session identifiers,
   device identifiers, control URLs, SSDP payloads, model strings, transport
-  locators, and raw pairing responses.
+  locators, network interface names, and raw pairing responses.
 - The app does not require an account, analytics service, advertising SDK, or
   cloud relay.
 
@@ -30,6 +30,12 @@ pairing-free volume commands to an explicitly selected target. Discovery shows
 generic ordinal labels only. The app persists the selected stable identity and
 route rule, but never persists or displays the target address, control URL,
 model string, SSDP payload, or SOAP payload.
+
+Network recovery stores only a coarse path state and transition count. Interface
+types may be compared in memory to detect a path change, but interface names,
+addresses, gateways, endpoints, and path descriptions are never copied to
+diagnostics. Empty discovery is not treated as evidence that macOS denied Local
+Network access.
 
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.
