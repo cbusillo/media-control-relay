@@ -93,6 +93,16 @@ requested `LOCATION`. The resolver actor caches one descriptor per discovery
 generation, skips duplicate or mismatched candidates, and discards the cache on
 interface or lifecycle invalidation before searching again by stable identity.
 
+The target-execution actor conforms to the transport-neutral
+`MediaVolumeTarget` contract and explicitly serializes operations across async
+transport calls. Reads combine generic `ui2` volume and mute state. Writes send
+one absolute Volume or Mute operation and return only after full state read-back
+matches the requested dimension. An offline or timed-out endpoint triggers at
+most one resolver invalidation and fresh descriptor resolution; the retry
+rebuilds the RenderingControl transport from the newly resolved control URL.
+Adapter errors map to the neutral core failure taxonomy without exposing URLs,
+payloads, device identifiers, or fault descriptions.
+
 Both the SSDP `LOCATION` used to fetch a description and any declared
 `URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
 description location, and a present but malformed base fails closed.

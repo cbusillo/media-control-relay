@@ -63,6 +63,34 @@ struct UPnPMediaTargetSafetyTests {
             )
         }
 
+        for labels in [
+            ["10", "-0", "0", "1"],
+            ["192", "168", "+1", "1"],
+        ] {
+            var components = URLComponents()
+            components.scheme = "http"
+            components.host = labels.joined(separator: ".")
+            components.path = "/description.xml"
+            #expect(throws: UPnPMediaTargetError.unsafeHost) {
+                try UPnPMediaTargetEndpointPolicy.validate(components.url!)
+            }
+        }
+
+        var encodedHostComponents = URLComponents()
+        encodedHostComponents.scheme = "http"
+        encodedHostComponents.percentEncodedHost = ["192", "168", "1", "1"]
+            .joined(separator: "%2E")
+        encodedHostComponents.path = "/description.xml"
+        let canonicalized = try? UPnPMediaTargetEndpointPolicy.validate(
+            encodedHostComponents.url!
+        )
+        #expect(canonicalized?.host == ["192", "168", "1", "1"].joined(separator: "."))
+        #expect(
+            canonicalized.flatMap {
+                URLComponents(url: $0, resolvingAgainstBaseURL: false)?.percentEncodedHost
+            } == ["192", "168", "1", "1"].joined(separator: ".")
+        )
+
         let oversizedPath = "/" + String(repeating: "a", count: UPnPMediaTargetEndpointPolicy.maximumPathBytes + 1)
         #expect(throws: UPnPMediaTargetError.oversizedURL) {
             try UPnPMediaTargetEndpointPolicy.validate(
