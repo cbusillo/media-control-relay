@@ -39,6 +39,12 @@ public enum RelayStatusCopyCatalog {
                     detail: "The in-process preview target does not require local-network access.",
                     systemImage: "exclamationmark.triangle"
                 )
+            case .targetAuthenticationRejected:
+                return RelayStatusCopy(
+                    title: "Preview target rejected control",
+                    detail: "The in-process preview target does not authenticate with a media device.",
+                    systemImage: "exclamationmark.triangle"
+                )
             case .dormant:
                 return RelayStatusCopy(
                     title: "Preview target is dormant",
@@ -69,8 +75,8 @@ public enum RelayStatusCopyCatalog {
         switch state {
         case .unconfigured:
             return RelayStatusCopy(
-                title: "No preview target selected",
-                detail: "Create an in-process preview target in Settings to record routed volume actions.",
+                title: "No media target selected",
+                detail: "Open Settings to create a preview target or find a compatible media renderer.",
                 systemImage: "record.circle"
             )
         case .unsupported:
@@ -88,8 +94,14 @@ public enum RelayStatusCopyCatalog {
         case .needsLocalNetworkPermission:
             return RelayStatusCopy(
                 title: "Allow local network access",
-                detail: "Allow Media Control Relay to find and control your selected media target on this network.",
+                detail: "Enable Media Control Relay in Privacy & Security > Local Network, then check access again.",
                 systemImage: "network.badge.shield.half.filled"
+            )
+        case .targetAuthenticationRejected:
+            return RelayStatusCopy(
+                title: "Media target rejected control",
+                detail: "The selected target rejected pairing-free volume control. Check its settings or choose another target.",
+                systemImage: "lock.trianglebadge.exclamationmark"
             )
         case .dormant:
             return RelayStatusCopy(

@@ -227,7 +227,7 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
     private static func map(_ error: UPnPMediaTargetError) -> MediaTargetFailure {
         switch error {
         case .authenticationRejected:
-            return .permissionDenied
+            return .authenticationRejected
         case .discoveryUnavailable:
             return .discoveryUnavailable
         case .offline:

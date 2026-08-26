@@ -26,6 +26,153 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Network transitions invalidate target work and recover on a usable path")
+    func networkTransitionsInvalidateAndRecover() async {
+        let target = AppModelTargetStub()
+        let recorder = AppModelInvalidationRecorder()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { reason in
+                await recorder.record(reason)
+            }
+        )
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            initialNetworkSnapshot: availableNetworkSnapshot()
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.networkPathObserver.publish(
+            NetworkPathSnapshot(status: .unavailable)
+        )
+        await waitUntil { harness.model.relayState == .offline }
+        await waitUntilAsync {
+            await recorder.reasons.contains(.networkContextChanged)
+        }
+
+        harness.networkPathObserver.publish(availableNetworkSnapshot())
+        await waitUntil { harness.model.relayState == .active }
+
+        #expect(harness.model.networkTransitionCount == 2)
+        #expect(await target.readCount == 2)
+        harness.cleanup()
+    }
+
+    @Test("Local-network denial is OS evidence and does not probe until recovery")
+    func localNetworkDenialRecovery() async {
+        let target = AppModelTargetStub()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            initialNetworkSnapshot: availableNetworkSnapshot()
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.networkPathObserver.publish(
+            NetworkPathSnapshot(status: .localNetworkDenied)
+        )
+        await waitUntil {
+            harness.model.relayState == .needsLocalNetworkPermission
+        }
+        harness.model.retryTargetConnection()
+        await Task.yield()
+
+        #expect(await target.readCount == 1)
+        #expect(harness.model.targetRecoveryAttempts == 1)
+        #expect(harness.model.diagnosticsSummary.contains(
+            "network_path=local-network-denied"
+        ))
+
+        harness.networkPathObserver.setCurrentSnapshotWithoutPublishing(
+            availableNetworkSnapshot()
+        )
+        harness.model.retryTargetConnection()
+        await waitUntil { harness.model.relayState == .active }
+
+        #expect(await target.readCount == 2)
+        #expect(harness.model.targetRecoveryAttempts == 2)
+        harness.cleanup()
+    }
+
+    @Test("App activation refreshes network denial before retrying a probe")
+    func activationRefreshesNetworkFirst() async {
+        let target = AppModelTargetStub()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            initialNetworkSnapshot: availableNetworkSnapshot()
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.networkPathObserver.setCurrentSnapshotWithoutPublishing(
+            NetworkPathSnapshot(status: .localNetworkDenied)
+        )
+        harness.applicationNotificationCenter.post(
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        await waitUntil {
+            harness.model.relayState == .needsLocalNetworkPermission
+        }
+
+        #expect(await target.readCount == 1)
+        harness.cleanup()
+    }
+
+    @Test("Target authentication rejection never claims local-network denial")
+    func targetAuthenticationRejection() async {
+        let target = AuthenticationRejectedAppModelTarget()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            initialNetworkSnapshot: availableNetworkSnapshot()
+        )
+
+        await waitUntil {
+            harness.model.relayState == .targetAuthenticationRejected
+        }
+
+        #expect(!harness.model.statusCopy.detail.localizedCaseInsensitiveContains(
+            "local network"
+        ))
+        #expect(harness.model.diagnosticsSummary.contains(
+            "relay_state=target-authentication-rejected"
+        ))
+        harness.cleanup()
+    }
+
+    @Test("Preview routing remains active across network transitions")
+    func previewIgnoresNetworkTransitions() async {
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil,
+            initialNetworkSnapshot: availableNetworkSnapshot()
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.networkPathObserver.publish(
+            NetworkPathSnapshot(status: .localNetworkDenied)
+        )
+        await Task.yield()
+
+        #expect(harness.model.relayState == .active)
+        #expect(harness.model.networkTransitionCount == 1)
+        harness.cleanup()
+    }
+
     @Test("Repeated permission refresh does not restart an in-flight probe")
     func permissionRefreshDoesNotRestartProbe() async {
         let target = BlockingAppModelTarget()
@@ -494,6 +641,7 @@ struct RelayAppModelTests {
 private struct AppModelHarness {
     let model: RelayAppModel
     let routeObserver: AppModelRouteObserver
+    let networkPathObserver: AppModelNetworkPathObserver
     let applicationNotificationCenter: NotificationCenter
     let defaults: UserDefaults
     let suiteName: String
@@ -508,7 +656,8 @@ private func makeHarness(
     configuration: RelayConfiguration?,
     session: MediaTargetSession?,
     volumeKeyMonitor: any VolumeKeyMonitoring = InactiveVolumeKeyMonitor(),
-    discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel()
+    discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
+    initialNetworkSnapshot: NetworkPathSnapshot? = nil
 ) -> AppModelHarness {
     let suiteName = "com.shinycomputers.media-control-relay.app-model-tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
@@ -517,9 +666,13 @@ private func makeHarness(
         configurationStore.save(configuration)
     }
     let routeObserver = AppModelRouteObserver(initialSnapshot: makeRoute())
+    let networkPathObserver = AppModelNetworkPathObserver(
+        initialSnapshot: initialNetworkSnapshot
+    )
     let applicationNotificationCenter = NotificationCenter()
     let model = RelayAppModel(
         routeObserver: routeObserver,
+        networkPathObserver: networkPathObserver,
         configurationStore: configurationStore,
         volumeKeyMonitor: volumeKeyMonitor,
         inputMonitoringAccess: InputMonitoringAccessClient(
@@ -533,10 +686,52 @@ private func makeHarness(
     return AppModelHarness(
         model: model,
         routeObserver: routeObserver,
+        networkPathObserver: networkPathObserver,
         applicationNotificationCenter: applicationNotificationCenter,
         defaults: defaults,
         suiteName: suiteName
     )
+}
+
+@MainActor
+private final class AppModelNetworkPathObserver: NetworkPathObserving {
+    var onSnapshot: ((NetworkPathSnapshot) -> Void)?
+
+    private let initialSnapshot: NetworkPathSnapshot?
+    private(set) var currentSnapshot: NetworkPathSnapshot?
+
+    init(initialSnapshot: NetworkPathSnapshot?) {
+        self.initialSnapshot = initialSnapshot
+        currentSnapshot = initialSnapshot
+    }
+
+    func start() {
+        if let initialSnapshot {
+            onSnapshot?(initialSnapshot)
+        }
+    }
+
+    func stop() {}
+
+    func refresh() -> NetworkPathSnapshot? {
+        guard let currentSnapshot else {
+            return nil
+        }
+        onSnapshot?(currentSnapshot)
+        return currentSnapshot
+    }
+
+    func publish(_ snapshot: NetworkPathSnapshot) {
+        guard snapshot != currentSnapshot else {
+            return
+        }
+        currentSnapshot = snapshot
+        onSnapshot?(snapshot)
+    }
+
+    func setCurrentSnapshotWithoutPublishing(_ snapshot: NetworkPathSnapshot) {
+        currentSnapshot = snapshot
+    }
 }
 
 @MainActor
@@ -674,6 +869,20 @@ private actor FailingCommandTarget: MediaVolumeTarget {
     }
 }
 
+private actor AuthenticationRejectedAppModelTarget: MediaVolumeTarget {
+    nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
+
+    func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        throw .authenticationRejected
+    }
+
+    func apply(
+        _ operation: MediaTargetVolumeOperation
+    ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        throw .authenticationRejected
+    }
+}
+
 private actor RetryingAppModelTarget: MediaVolumeTarget {
     nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
 
@@ -771,6 +980,14 @@ private func makeRoute(name: String = "Fixture Output") -> RouteSnapshot {
             transportKind: .display
         ),
         displays: []
+    )
+}
+
+private func availableNetworkSnapshot() -> NetworkPathSnapshot {
+    NetworkPathSnapshot(
+        status: .available,
+        interfaceKinds: [.wifi],
+        supportsIPv4: true
     )
 }
 

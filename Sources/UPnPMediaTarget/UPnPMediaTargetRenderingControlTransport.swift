@@ -253,7 +253,12 @@ private final class SessionDelegate: NSObject, URLSessionDataDelegate, URLSessio
         didReceive challenge: URLAuthenticationChallenge,
         completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
     ) {
-        markError(.authenticationRejected, for: task)
+        markError(
+            challenge.protectionSpace.isProxy()
+                ? .protocolFault
+                : .authenticationRejected,
+            for: task
+        )
         completionHandler(.cancelAuthenticationChallenge, nil)
     }
 

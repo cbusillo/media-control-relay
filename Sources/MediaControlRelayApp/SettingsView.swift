@@ -54,6 +54,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
+                recoveryControls
             }
             .formStyle(.grouped)
             .tabItem {
@@ -158,12 +159,24 @@ struct SettingsView: View {
                         "Target Connection",
                         value: model.targetConnectionDiagnosticName
                     )
+                    LabeledContent(
+                        "Network Path",
+                        value: model.networkPathSnapshot.status.rawValue
+                    )
+                    LabeledContent(
+                        "Network Changes",
+                        value: model.networkTransitionCount.formatted()
+                    )
+                    LabeledContent(
+                        "Recovery Attempts",
+                        value: model.targetRecoveryAttempts.formatted()
+                    )
                     Button("Copy Diagnostics") {
                         model.copyDiagnostics()
                     }
                 }
                 Section {
-                    Text("Diagnostics contain only coarse target, activation, command-count, route-transport, and display-count fields. Local target names and route identifiers are never copied.")
+                    Text("Diagnostics contain only coarse target, activation, command-count, network-state, route-transport, and display-count fields. Local target names, network interface names, and route identifiers are never copied.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -215,6 +228,51 @@ struct SettingsView: View {
             Button("Search Again") {
                 model.discovery.startScan()
             }
+        }
+    }
+
+    @ViewBuilder
+    private var recoveryControls: some View {
+        switch model.relayState {
+        case .needsLocalNetworkPermission:
+            Section("Local Network Recovery") {
+                Text(model.statusCopy.detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Open Privacy & Security") {
+                    model.openLocalNetworkSettings()
+                }
+                Button("Check Access Again") {
+                    model.retryTargetConnection()
+                }
+            }
+        case .targetAuthenticationRejected:
+            Section("Target Recovery") {
+                Text(model.statusCopy.detail)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Try Reaching Target Again") {
+                    model.retryTargetConnection()
+                }
+            }
+        case .offline:
+            if model.targetConfiguration?.target.kind == .upnpMediaRenderer {
+                Section("Target Recovery") {
+                    Text(model.statusCopy.detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Button("Try Reaching Target Again") {
+                        model.retryTargetConnection()
+                    }
+                }
+            }
+        case .unconfigured,
+             .unsupported,
+             .needsPermission,
+             .dormant,
+             .checkingTarget,
+             .active:
+            EmptyView()
         }
     }
 

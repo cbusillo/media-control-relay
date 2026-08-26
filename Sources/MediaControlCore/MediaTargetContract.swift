@@ -49,7 +49,7 @@ public enum MediaTargetVolumePlan: Equatable, Sendable {
 }
 
 public enum MediaTargetFailure: Error, Equatable, Sendable {
-    case permissionDenied
+    case authenticationRejected
     case discoveryUnavailable
     case offline
     case capabilityUnavailable

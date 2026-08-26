@@ -5,6 +5,7 @@ import UPnPMediaTarget
 enum MediaTargetSessionInvalidation: Equatable, Sendable {
     case authorizationChanged
     case routeContextChanged
+    case networkContextChanged
     case lifecycleChanged
     case sessionReplaced
 }
@@ -16,6 +17,7 @@ actor MediaTargetSession {
     private let executor: MediaTargetCommandExecutor
     private let invalidateResolution: ResolutionInvalidator
     private var generation: UInt64 = 0
+    private var latestInvalidationRequestID: UInt64 = 0
 
     init(
         target: any MediaVolumeTarget,
@@ -34,6 +36,8 @@ actor MediaTargetSession {
             reachability = .reachable
         } catch .cancelled {
             reachability = .unknown
+        } catch .authenticationRejected {
+            reachability = .authenticationRejected
         } catch {
             reachability = .unreachable
         }
@@ -55,6 +59,8 @@ actor MediaTargetSession {
             reachability = .reachable
         } catch .cancelled {
             reachability = nil
+        } catch .authenticationRejected {
+            reachability = .authenticationRejected
         } catch {
             reachability = .unreachable
         }
@@ -65,7 +71,16 @@ actor MediaTargetSession {
         return reachability
     }
 
-    func invalidate(_ reason: MediaTargetSessionInvalidation) async {
+    func invalidate(
+        _ reason: MediaTargetSessionInvalidation,
+        requestID: UInt64? = nil
+    ) async {
+        if let requestID {
+            guard requestID >= latestInvalidationRequestID else {
+                return
+            }
+            latestInvalidationRequestID = requestID
+        }
         generation &+= 1
         await invalidateResolution(reason)
     }
@@ -99,6 +114,8 @@ enum MediaTargetSessionFactory {
                 case .authorizationChanged:
                     return
                 case .routeContextChanged:
+                    await resolver.invalidate(for: .interfaceChanged)
+                case .networkContextChanged:
                     await resolver.invalidate(for: .interfaceChanged)
                 case .lifecycleChanged:
                     await resolver.invalidate(for: .lifecycleChanged)

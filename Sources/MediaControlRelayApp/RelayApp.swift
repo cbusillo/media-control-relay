@@ -48,6 +48,7 @@ struct RelayApp: App {
         defaults.removePersistentDomain(forName: suiteName)
         return RelayAppModel(
             routeObserver: InactiveRouteObserver(),
+            networkPathObserver: InactiveNetworkPathObserver(),
             configurationStore: RelayConfigurationStore(defaults: defaults),
             volumeKeyMonitor: InactiveVolumeKeyMonitor(),
             inputMonitoringAccess: .denied

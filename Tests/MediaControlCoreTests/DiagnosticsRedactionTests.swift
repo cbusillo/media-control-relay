@@ -34,7 +34,10 @@ struct DiagnosticsRedactionTests {
             "TVIPAddress": "192.0.2.2",
             "clientId": "client",
             "control_url": "http://192.0.2.2/control",
+            "gateway": "private-gateway",
             "ghost_count": "2",
+            "interface_name": "private-interface",
+            "location": "private-location",
             "model_string": "test-model",
             "observer_count": "3",
             "pairingResponse": "response",
@@ -42,6 +45,8 @@ struct DiagnosticsRedactionTests {
             "samsung_session_id": "session",
             "ssdp_payload": "private-payload",
             "transport_locator": "private-locator",
+            "udn": "private-udn",
+            "usn": "private-usn",
             "tv_device_uuid": "device",
             "tv_host": "tv.example",
             "tv_ip": "192.0.2.1",
@@ -53,7 +58,10 @@ struct DiagnosticsRedactionTests {
         #expect(redacted["TVIPAddress"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["clientId"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["control_url"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["gateway"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["ghost_count"] == "2")
+        #expect(redacted["interface_name"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["location"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["model_string"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["observer_count"] == "3")
         #expect(redacted["pairingResponse"] == DiagnosticsRedaction.redactedValue)
@@ -61,6 +69,8 @@ struct DiagnosticsRedactionTests {
         #expect(redacted["samsung_session_id"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["ssdp_payload"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["transport_locator"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["udn"] == DiagnosticsRedaction.redactedValue)
+        #expect(redacted["usn"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_device_uuid"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_host"] == DiagnosticsRedaction.redactedValue)
         #expect(redacted["tv_ip"] == DiagnosticsRedaction.redactedValue)

@@ -54,10 +54,12 @@ without waiting for a timer. Suspended and stopped observation invalidate the
 cached activation match. The reducer is timer-free; gesture timing remains in
 the existing bounded gesture monitor.
 
-State precedence is `unconfigured`, `unsupported`, `needsPermission`,
-`dormant`, `checkingTarget`, `offline`, then `active`. Unknown reachability is
-`checkingTarget`, never `offline`; offline requires an explicit unreachable
-observation.
+State precedence is `unconfigured`, `unsupported`, `needsPermission`, route
+matching, then target reachability. Target reachability distinguishes
+`needsLocalNetworkPermission`, `targetAuthenticationRejected`,
+`checkingTarget`, `offline`, and `active`. Unknown reachability is
+`checkingTarget`, never `offline`; Local Network denial requires an explicit
+system path reason and is never inferred from an empty discovery result.
 
 ## Status And Diagnostics
 
@@ -67,10 +69,11 @@ device is connected or controlled, and that the Mac continues handling volume
 normally. The checking-target state has distinct copy and an icon.
 
 Diagnostics are allowlisted to coarse fields: `target_kind`, `activation`,
-`commands_recorded`, `actions_not_recorded`, and `target_connection`, plus the
-existing build, permission, route observation, transport kind, and active
-display count fields. They never include route names, audio/display UIDs or
-UUIDs, target labels, credentials, or raw events. Preview connection status is
+command and recovery counts, `target_connection`, `network_path`, and
+`network_transitions`, plus the existing build, permission, route observation,
+transport kind, and active display count fields. They never include route names,
+audio/display UIDs or UUIDs, target labels, interface names, addresses,
+credentials, errors, or raw events. Preview connection status is
 `preview-sink`; without a configured target it is `not-available`.
 
 ## Manual Qualification Boundary

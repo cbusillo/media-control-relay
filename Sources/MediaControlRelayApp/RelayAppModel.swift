@@ -38,6 +38,9 @@ final class RelayAppModel {
     var commandsSuppressed = 0
     var targetCommandsDispatched = 0
     var targetCommandsFailed = 0
+    var targetRecoveryAttempts = 0
+    var networkTransitionCount = 0
+    var networkPathSnapshot = NetworkPathSnapshot.unknown
     var targetConfiguration: RelayConfiguration?
 
     let productStatus: LocalizedStringResource = "Preview build"
@@ -46,6 +49,7 @@ final class RelayAppModel {
     private let volumeKeyMonitor: any VolumeKeyMonitoring
     private let volumeKeyGestureMonitor: VolumeKeyGestureMonitor
     private let routeObserver: any RouteObserving
+    private let networkPathObserver: any NetworkPathObserving
     private let configurationStore: RelayConfigurationStore
     private let inputMonitoringAccess: InputMonitoringAccessClient
     private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
@@ -61,11 +65,13 @@ final class RelayAppModel {
     private var commandPumpTask: Task<Void, Never>?
     private var commandGeneration: UInt64 = 0
     private var awaitingWakeCompletion = false
+    private var hasReceivedNetworkPathSnapshot = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
 
     init(
         routeObserver: any RouteObserving = SystemRouteObserver(),
+        networkPathObserver: any NetworkPathObserving = SystemNetworkPathObserver(),
         configurationStore: RelayConfigurationStore = RelayConfigurationStore(),
         volumeKeyMonitor: any VolumeKeyMonitoring = EventTapVolumeKeyMonitor(),
         inputMonitoringAccess: InputMonitoringAccessClient = .live,
@@ -79,6 +85,7 @@ final class RelayAppModel {
         let configuration = configurationStore.load()
         self.volumeKeyGestureMonitor = gestureMonitor
         self.routeObserver = routeObserver
+        self.networkPathObserver = networkPathObserver
         self.configurationStore = configurationStore
         self.volumeKeyMonitor = volumeKeyMonitor
         self.inputMonitoringAccess = inputMonitoringAccess
@@ -153,16 +160,21 @@ final class RelayAppModel {
             awaitingWakeCompletion = false
             refreshTargetSession(invalidation: .lifecycleChanged)
         }
+        networkPathObserver.onSnapshot = { [weak self] snapshot in
+            self?.handleNetworkPathSnapshot(snapshot)
+        }
         applicationActivationToken = applicationNotificationCenter.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
+                self?.networkPathObserver.refresh()
                 self?.refreshInputMonitoring()
             }
         }
         routeObserver.start()
+        networkPathObserver.start()
         refreshInputMonitoring()
         refreshTransportState()
     }
@@ -222,9 +234,12 @@ final class RelayAppModel {
             "actions_not_recorded": commandsSuppressed.formatted(),
             "target_commands_dispatched": targetCommandsDispatched.formatted(),
             "target_commands_failed": targetCommandsFailed.formatted(),
+            "target_recovery_attempts": targetRecoveryAttempts.formatted(),
             "volume_actions_emitted": observedVolumeActionCount.formatted(),
             "volume_events_observed": observedVolumeKeyEventCount.formatted(),
             "target_connection": targetConnectionDiagnosticName,
+            "network_path": networkPathSnapshot.status.rawValue,
+            "network_transitions": networkTransitionCount.formatted(),
         ].merging(routeDiagnostics) { current, _ in current }
         let allowedFieldNames: Set<String> = [
             "app_version",
@@ -239,9 +254,12 @@ final class RelayAppModel {
             "actions_not_recorded",
             "target_commands_dispatched",
             "target_commands_failed",
+            "target_recovery_attempts",
             "volume_actions_emitted",
             "volume_events_observed",
             "target_connection",
+            "network_path",
+            "network_transitions",
             "route_observation",
             "audio_transport",
             "active_displays",
@@ -317,12 +335,41 @@ final class RelayAppModel {
     }
 
     func openInputMonitoringSettings() {
-        guard let url = URL(
-            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
-        ) else {
+        openSystemSettings(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+        )
+    }
+
+    func openLocalNetworkSettings() {
+        openSystemSettings(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork",
+            fallback: "x-apple.systempreferences:com.apple.preference.security"
+        )
+    }
+
+    func retryTargetConnection() {
+        guard targetConfiguration?.target.kind == .upnpMediaRenderer else {
             return
         }
-        NSWorkspace.shared.open(url)
+        targetRecoveryAttempts += 1
+        let previousSnapshot = networkPathSnapshot
+        networkPathObserver.refresh()
+        if networkPathSnapshot == previousSnapshot {
+            refreshTargetSession(invalidation: .networkContextChanged)
+        }
+    }
+
+    private func openSystemSettings(
+        _ primary: String,
+        fallback: String? = nil
+    ) {
+        if let url = URL(string: primary), NSWorkspace.shared.open(url) {
+            return
+        }
+        if let fallback,
+           let url = URL(string: fallback) {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     func refreshInputMonitoring() {
@@ -445,6 +492,33 @@ final class RelayAppModel {
         }
     }
 
+    private func handleNetworkPathSnapshot(_ snapshot: NetworkPathSnapshot) {
+        guard snapshot != networkPathSnapshot else {
+            return
+        }
+
+        let isInitialSnapshot = !hasReceivedNetworkPathSnapshot
+        networkPathSnapshot = snapshot
+        hasReceivedNetworkPathSnapshot = true
+        if !isInitialSnapshot {
+            networkTransitionCount += 1
+            discovery.cancelScan()
+        }
+
+        guard targetConfiguration?.target.kind == .upnpMediaRenderer else {
+            return
+        }
+        guard !isInitialSnapshot || snapshot.status == .unavailable ||
+            snapshot.status == .localNetworkDenied else {
+            return
+        }
+        guard !awaitingWakeCompletion,
+              routeObservationState == .observing else {
+            return
+        }
+        refreshTargetSession(invalidation: .networkContextChanged)
+    }
+
     @discardableResult
     private func apply(_ event: RelayRoutingEvent) -> RelayCommand? {
         let command = coordinator.apply(event)
@@ -468,8 +542,15 @@ final class RelayAppModel {
             if mediaTargetSession == nil {
                 apply(.transportReachability(.unreachable))
             } else {
-                apply(.transportReachability(.unknown))
-                startTargetProbeIfNeeded()
+                switch networkPathSnapshot.status {
+                case .localNetworkDenied:
+                    apply(.transportReachability(.localNetworkDenied))
+                case .unavailable:
+                    apply(.transportReachability(.unreachable))
+                case .unknown, .available:
+                    apply(.transportReachability(.unknown))
+                    startTargetProbeIfNeeded()
+                }
             }
         case nil:
             apply(.transportReachability(.unknown))
@@ -489,16 +570,27 @@ final class RelayAppModel {
             return
         }
 
-        apply(.transportReachability(.unknown))
-        startTargetProbe(
-            mediaTargetSession,
-            invalidation: invalidation
-        )
+        switch networkPathSnapshot.status {
+        case .localNetworkDenied:
+            apply(.transportReachability(.localNetworkDenied))
+            startTargetInvalidation(mediaTargetSession, invalidation: invalidation)
+        case .unavailable:
+            apply(.transportReachability(.unreachable))
+            startTargetInvalidation(mediaTargetSession, invalidation: invalidation)
+        case .unknown, .available:
+            apply(.transportReachability(.unknown))
+            startTargetProbe(
+                mediaTargetSession,
+                invalidation: invalidation
+            )
+        }
     }
 
     private func startTargetProbeIfNeeded() {
         guard targetProbeTask == nil,
               targetConfiguration?.target.kind == .upnpMediaRenderer,
+              networkPathSnapshot.status == .unknown ||
+                networkPathSnapshot.status == .available,
               relayState == .checkingTarget || relayState == .offline else {
             return
         }
@@ -528,7 +620,10 @@ final class RelayAppModel {
                 guard !Task.isCancelled else {
                     return
                 }
-                await mediaTargetSession.invalidate(invalidation)
+                await mediaTargetSession.invalidate(
+                    invalidation,
+                    requestID: generation
+                )
             }
             guard let self,
                   !Task.isCancelled,
@@ -549,6 +644,26 @@ final class RelayAppModel {
                 cancelCommandDispatch()
             }
             apply(.transportReachability(reachability))
+        }
+    }
+
+    private func startTargetInvalidation(
+        _ mediaTargetSession: MediaTargetSession,
+        invalidation: MediaTargetSessionInvalidation
+    ) {
+        targetProbeGeneration &+= 1
+        let generation = targetProbeGeneration
+        targetProbeTask = Task { @MainActor [weak self, mediaTargetSession] in
+            await mediaTargetSession.invalidate(
+                invalidation,
+                requestID: generation
+            )
+            guard let self,
+                  targetProbeGeneration == generation,
+                  self.mediaTargetSession === mediaTargetSession else {
+                return
+            }
+            targetProbeTask = nil
         }
     }
 
@@ -593,7 +708,7 @@ final class RelayAppModel {
                 guard let reachability else {
                     continue
                 }
-                if reachability == .unreachable {
+                if reachability != .reachable {
                     targetCommandsFailed += 1
                 }
                 apply(.transportReachability(reachability))
@@ -669,6 +784,7 @@ extension RelayState {
         case .unsupported: "unsupported"
         case .needsPermission: "needs-permission"
         case .needsLocalNetworkPermission: "needs-local-network-permission"
+        case .targetAuthenticationRejected: "target-authentication-rejected"
         case .dormant: "dormant"
         case .checkingTarget: "checking-target"
         case .offline: "offline"
