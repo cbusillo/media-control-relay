@@ -33,6 +33,12 @@ public enum RelayStatusCopyCatalog {
                     detail: "Allow Media Control Relay to detect your Mac’s volume and mute keys.",
                     systemImage: "hand.raised.fill"
                 )
+            case .needsLocalNetworkPermission:
+                return RelayStatusCopy(
+                    title: "Preview target cannot use the network",
+                    detail: "The in-process preview target does not require local-network access.",
+                    systemImage: "exclamationmark.triangle"
+                )
             case .dormant:
                 return RelayStatusCopy(
                     title: "Preview target is dormant",
@@ -78,6 +84,12 @@ public enum RelayStatusCopyCatalog {
                 title: "Allow volume key access",
                 detail: "Allow Media Control Relay to detect your Mac’s volume and mute keys.",
                 systemImage: "hand.raised.fill"
+            )
+        case .needsLocalNetworkPermission:
+            return RelayStatusCopy(
+                title: "Allow local network access",
+                detail: "Allow Media Control Relay to find and control your selected media target on this network.",
+                systemImage: "network.badge.shield.half.filled"
             )
         case .dormant:
             return RelayStatusCopy(

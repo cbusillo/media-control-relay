@@ -153,7 +153,12 @@ public struct RelayRoutingReducer: Sendable {
         RelayStateResolver.resolve(
             RelayStateInputs(
                 targetConfigured: configuration != nil,
-                deviceSupported: configuration?.target.kind == .preview,
+                deviceSupported: configuration.map {
+                    switch $0.target.kind {
+                    case .preview, .upnpMediaRenderer:
+                        return true
+                    }
+                } ?? false,
                 inputMonitoringGranted: inputMonitoringAuthorization == .granted,
                 activationMatches: activationMatches,
                 transportReachability: transportReachability

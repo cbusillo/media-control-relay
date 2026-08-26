@@ -111,6 +111,18 @@ struct RelayRoutingReducerTests {
         #expect(output.cancelPendingCommand)
     }
 
+    @Test("Local-network denial has a distinct recovery state")
+    func localNetworkPermissionTransition() {
+        var reducer = activeReducer(targetKind: .upnpMediaRenderer)
+
+        let output = reducer.reduce(.transportReachability(.permissionDenied))
+
+        #expect(output.resolvedState == .needsLocalNetworkPermission)
+        #expect(output.cancelHeldGesture)
+        #expect(output.cancelPendingCommand)
+        #expect(reducer.reduce(.volumeAction(.up)).command == nil)
+    }
+
     @Test("Stopped observation does not reuse a cached match")
     func stoppedObservation() {
         var reducer = activeReducer()
@@ -147,11 +159,18 @@ struct RelayRoutingReducerTests {
     }
 
     private func activeReducer(
-        policy: VolumeCommandQueuePolicy = .default
+        policy: VolumeCommandQueuePolicy = .default,
+        targetKind: RelayTargetKind = .preview
     ) -> RelayRoutingReducer {
         let route = matchingRoute()
         let configuration = RelayConfiguration(
-            target: RelayTargetMetadata(kind: .preview, name: "Preview Output"),
+            target: RelayTargetMetadata(
+                kind: targetKind,
+                name: "Preview Output",
+                stableIdentifier: targetKind == .upnpMediaRenderer
+                    ? "uuid:fixture-target"
+                    : nil
+            ),
             activationRule: ActivationRule(
                 audioOutputMatch: "Preview Output",
                 displayMatch: "Preview Display",

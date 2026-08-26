@@ -4,12 +4,14 @@ public enum TransportReachability: Equatable, Sendable {
     case unknown
     case reachable
     case unreachable
+    case permissionDenied
 }
 
 public enum RelayState: Equatable, Sendable {
     case unconfigured
     case unsupported
     case needsPermission
+    case needsLocalNetworkPermission
     case dormant
     case checkingTarget
     case offline
@@ -59,6 +61,8 @@ public enum RelayStateResolver {
             return .checkingTarget
         case .unreachable:
             return .offline
+        case .permissionDenied:
+            return .needsLocalNetworkPermission
         }
     }
 }
