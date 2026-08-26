@@ -12,6 +12,7 @@ actor MediaTargetSession {
     typealias ResolutionInvalidator = @Sendable (MediaTargetSessionInvalidation) async -> Void
 
     private let target: any MediaVolumeTarget
+    private let executor: MediaTargetCommandExecutor
     private let invalidateResolution: ResolutionInvalidator
     private var generation: UInt64 = 0
 
@@ -20,6 +21,7 @@ actor MediaTargetSession {
         invalidateResolution: @escaping ResolutionInvalidator
     ) {
         self.target = target
+        self.executor = MediaTargetCommandExecutor(target: target)
         self.invalidateResolution = invalidateResolution
     }
 
@@ -31,6 +33,27 @@ actor MediaTargetSession {
             reachability = .reachable
         } catch .cancelled {
             reachability = .unknown
+        } catch {
+            reachability = .unreachable
+        }
+
+        guard generation == requestedGeneration else {
+            return nil
+        }
+        return reachability
+    }
+
+    func execute(_ action: VolumeAction) async -> TransportReachability? {
+        guard !Task.isCancelled else {
+            return nil
+        }
+        let requestedGeneration = generation
+        let reachability: TransportReachability?
+        do {
+            _ = try await executor.execute(action)
+            reachability = .reachable
+        } catch .cancelled {
+            reachability = nil
         } catch {
             reachability = .unreachable
         }

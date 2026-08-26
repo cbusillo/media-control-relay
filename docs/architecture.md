@@ -121,6 +121,18 @@ probe, and an offline target retries when the app next refreshes permission
 state. Device authentication rejection remains a generic unreachable target
 signal and is not presented as macOS Local Network denial.
 
+Eligible UPnP volume actions use the existing core queue decision and then enter
+a single-consumer app command pump. The pump executes one action at a time
+through `MediaTargetCommandExecutor`, keeps the core coordinator transport
+neutral, and completes pending capacity only after the physical target returns.
+Route mismatch, configuration removal, permission changes, sleep, wake, and
+session replacement cancel the pump and invalidate its generation. A stale or
+cancelled completion publishes no health; confirmed success remains reachable,
+and every other command failure becomes only a coarse unreachable signal.
+Diagnostics expose bounded dispatch/failure counts and the generic
+`local-network` connection kind without target identity, address, URL, model,
+failure detail, or protocol payload.
+
 Both the SSDP `LOCATION` used to fetch a description and any declared
 `URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
 description location, and a present but malformed base fails closed.

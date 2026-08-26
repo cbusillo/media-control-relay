@@ -36,6 +36,8 @@ final class RelayAppModel {
     var activationMatches = false
     var commandsRecorded = 0
     var commandsSuppressed = 0
+    var targetCommandsDispatched = 0
+    var targetCommandsFailed = 0
     var targetConfiguration: RelayConfiguration?
 
     let productStatus: LocalizedStringResource = "Preview build"
@@ -53,6 +55,9 @@ final class RelayAppModel {
     private var volumeActionTask: Task<Void, Never>?
     private var targetProbeTask: Task<Void, Never>?
     private var targetProbeGeneration: UInt64 = 0
+    private var commandContinuation: AsyncStream<RelayCommand>.Continuation?
+    private var commandPumpTask: Task<Void, Never>?
+    private var commandGeneration: UInt64 = 0
     private var awaitingWakeCompletion = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
@@ -101,7 +106,7 @@ final class RelayAppModel {
                 guard !Task.isCancelled, let self else {
                     return
                 }
-                self.record(action)
+                self.handleVolumeAction(action)
             }
         }
         routeObserver.onSnapshot = { [weak self] snapshot in
@@ -210,11 +215,11 @@ final class RelayAppModel {
                 : activationMatches ? "match" : "no-match",
             "commands_recorded": commandsRecorded.formatted(),
             "actions_not_recorded": commandsSuppressed.formatted(),
+            "target_commands_dispatched": targetCommandsDispatched.formatted(),
+            "target_commands_failed": targetCommandsFailed.formatted(),
             "volume_actions_emitted": observedVolumeActionCount.formatted(),
             "volume_events_observed": observedVolumeKeyEventCount.formatted(),
-            "target_connection": targetConfiguration == nil
-                ? "not-available"
-                : "preview-sink",
+            "target_connection": targetConnectionDiagnosticName,
         ].merging(routeDiagnostics) { current, _ in current }
         let allowedFieldNames: Set<String> = [
             "app_version",
@@ -227,6 +232,8 @@ final class RelayAppModel {
             "activation",
             "commands_recorded",
             "actions_not_recorded",
+            "target_commands_dispatched",
+            "target_commands_failed",
             "volume_actions_emitted",
             "volume_events_observed",
             "target_connection",
@@ -316,7 +323,10 @@ final class RelayAppModel {
             inputMonitoringUnavailable = false
         } catch {
             inputMonitoringUnavailable = true
+            inputMonitoringAuthorization = .denied
             apply(.inputMonitoringAuthorization(.denied))
+            cancelTargetProbe()
+            refreshTransportState()
         }
     }
 
@@ -397,8 +407,22 @@ final class RelayAppModel {
         }
     }
 
-    private func apply(_ event: RelayRoutingEvent) {
-        coordinator.apply(event)
+    private var targetConnectionDiagnosticName: String {
+        switch targetConfiguration?.target.kind {
+        case .preview: "preview-sink"
+        case .upnpMediaRenderer: "local-network"
+        case nil: "not-available"
+        }
+    }
+
+    @discardableResult
+    private func apply(_ event: RelayRoutingEvent) -> RelayCommand? {
+        let command = coordinator.apply(event)
+        syncCoordinatorState()
+        return command
+    }
+
+    private func syncCoordinatorState() {
         relayState = coordinator.relayState
         activationMatches = coordinator.activationMatches
         commandsRecorded = coordinator.recordedCommandCount
@@ -489,6 +513,11 @@ final class RelayAppModel {
                   self.mediaTargetSession === mediaTargetSession else {
                 return
             }
+            if reachability == .reachable {
+                startCommandDispatch(for: mediaTargetSession)
+            } else {
+                cancelCommandDispatch()
+            }
             apply(.transportReachability(reachability))
         }
     }
@@ -497,6 +526,63 @@ final class RelayAppModel {
         targetProbeGeneration &+= 1
         targetProbeTask?.cancel()
         targetProbeTask = nil
+        cancelCommandDispatch()
+    }
+
+    private func startCommandDispatch(for mediaTargetSession: MediaTargetSession) {
+        cancelCommandDispatch()
+        let stream = AsyncStream<RelayCommand>.makeStream()
+        commandGeneration &+= 1
+        let generation = commandGeneration
+        commandContinuation = stream.continuation
+        commandPumpTask = Task { @MainActor [weak self, mediaTargetSession] in
+            defer {
+                if let self, self.commandGeneration == generation {
+                    self.commandContinuation = nil
+                    self.commandPumpTask = nil
+                }
+            }
+
+            for await command in stream.stream {
+                guard let self,
+                      !Task.isCancelled,
+                      commandGeneration == generation,
+                      self.mediaTargetSession === mediaTargetSession else {
+                    return
+                }
+                targetCommandsDispatched += 1
+                let reachability = await mediaTargetSession.execute(command.action)
+                guard !Task.isCancelled,
+                      commandGeneration == generation,
+                      self.mediaTargetSession === mediaTargetSession else {
+                    return
+                }
+
+                coordinator.completeCommand()
+                syncCoordinatorState()
+                guard let reachability else {
+                    continue
+                }
+                if reachability == .unreachable {
+                    targetCommandsFailed += 1
+                }
+                apply(.transportReachability(reachability))
+                if reachability != .reachable {
+                    cancelCommandDispatch()
+                    return
+                }
+            }
+        }
+    }
+
+    private func cancelCommandDispatch() {
+        commandGeneration &+= 1
+        commandContinuation?.finish()
+        commandContinuation = nil
+        commandPumpTask?.cancel()
+        commandPumpTask = nil
+        coordinator.cancelPendingCommands()
+        syncCoordinatorState()
     }
 
     private func record(_ event: VolumeKeyEvent) {
@@ -507,10 +593,42 @@ final class RelayAppModel {
         volumeKeyGestureMonitor.ingest(event)
     }
 
-    private func record(_ action: VolumeAction) {
+    func handleVolumeAction(_ action: VolumeAction) {
         observedVolumeActionCount += 1
         lastObservedVolumeAction = action
-        apply(.volumeAction(action))
+        guard let command = apply(.volumeAction(action)) else {
+            return
+        }
+
+        switch targetConfiguration?.target.kind {
+        case .preview:
+            coordinator.completeCommand()
+            syncCoordinatorState()
+        case .upnpMediaRenderer:
+            guard let commandContinuation else {
+                coordinator.completeCommand()
+                syncCoordinatorState()
+                apply(.transportReachability(.unreachable))
+                return
+            }
+            switch commandContinuation.yield(command) {
+            case .enqueued:
+                break
+            case .dropped, .terminated:
+                coordinator.completeCommand()
+                syncCoordinatorState()
+                apply(.transportReachability(.unreachable))
+                cancelCommandDispatch()
+            @unknown default:
+                coordinator.completeCommand()
+                syncCoordinatorState()
+                apply(.transportReachability(.unreachable))
+                cancelCommandDispatch()
+            }
+        case nil:
+            coordinator.completeCommand()
+            syncCoordinatorState()
+        }
     }
 }
 

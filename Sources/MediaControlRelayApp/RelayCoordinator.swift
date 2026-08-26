@@ -26,7 +26,8 @@ final class RelayCoordinator {
         self.cancelHeldGesture = cancelHeldGesture
     }
 
-    func apply(_ event: RelayRoutingEvent) {
+    @discardableResult
+    func apply(_ event: RelayRoutingEvent) -> RelayCommand? {
         if case .configuration = event {
             previewSink.reset()
         }
@@ -41,17 +42,43 @@ final class RelayCoordinator {
         if output.cancelPendingCommand {
             previewSink.cancelPending()
         }
+        let recordedCommand: RelayCommand?
         if let command = output.command {
-            if previewSink.send(command) == .recorded {
-                previewSink.completePendingCommand()
+            switch previewSink.send(command) {
+            case .recorded:
+                recordedCommand = command
+            case .suppressed:
+                recordedCommand = nil
             }
         } else if case .volumeAction = event {
             previewSink.recordSuppressedCommand()
+            recordedCommand = nil
+        } else {
+            recordedCommand = nil
         }
 
+        publish(output)
+        return recordedCommand
+    }
+
+    func completeCommand() {
+        previewSink.completePendingCommand()
+        publishCounters()
+    }
+
+    func cancelPendingCommands() {
+        previewSink.cancelPending()
+        publishCounters()
+    }
+
+    private func publish(_ output: RelayRoutingOutput) {
         configuration = reducer.configuration
         relayState = output.resolvedState
         activationMatches = output.activationMatches
+        publishCounters()
+    }
+
+    private func publishCounters() {
         recordedCommands = previewSink.recordedCommands
         recordedCommandCount = previewSink.recordedCommandCount
         suppressedCommandCount = previewSink.suppressedCommandCount
