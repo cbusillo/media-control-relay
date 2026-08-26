@@ -1,6 +1,6 @@
 # Protocol Provenance Audit
 
-Last verified: August 24, 2026.
+Last verified: August 26, 2026.
 
 This is an engineering provenance assessment, not legal advice. Its purpose is
 to keep code with incompatible or unclear origins out of the public repository
@@ -15,7 +15,7 @@ until an explicit decision is made.
 | Legacy pairing Go port | `McKael/smartcrypto` | `29ede3511f7fd37b318ebbf9f8d47b838af4bd3a` | Declares MIT | Quarantined because it identifies itself as a port of the AGPL implementation below |
 | Original SmartView2 pairing proof of concept | `sectroyer/SmartCrypto` | `ed33e622b9230267052aab160724a6b398c725be` | AGPL-3.0 | Must not be copied into this MIT project |
 | Pairing key constants in `McKael/smartcrypto/keys.go` | Origin not established by the reviewed repository | Not applicable | Unclear | Hard block: do not publish or ship |
-| Planned original UPnP MediaRenderer volume transport | Published UPnP Device Architecture and RenderingControl specifications | Exact editions will be recorded with the transport PR | Specification reference | Allowed only as an independently authored implementation; no third-party source code imported |
+| Original UPnP MediaRenderer volume transport | UPnP Forum / Open Connectivity Foundation | UPnP Device Architecture 1.0, revision April 24, 2008; RenderingControl:1 Service Template Version 1.01, June 25, 2002 | Specification reference | Independently authored; no third-party source code imported |
 
 ## Prototype Assessment
 
@@ -34,9 +34,10 @@ It introduces no Samsung framing, SOAP, XML, SSDP, or network transport code,
 and no third-party-derived protocol source was used to define the contract,
 rail model, or reconciliation behavior.
 
-The initial UPnP MediaRenderer transport slice is also original Swift code.
-It implements endpoint safety and bounded device-description parsing without
-copying third-party source, protocol framing, or device-specific control code.
+The UPnP MediaRenderer transport is original Swift code written from the
+published specifications above. It implements endpoint safety, bounded XML,
+device-description parsing, and the four RenderingControl volume/mute actions
+without copying third-party source or device-specific control code.
 
 `THIRD-PARTY-NOTICES.md` is required only if a compatible external source
 implementation is copied or adapted. Reading published protocol specifications

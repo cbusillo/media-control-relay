@@ -77,15 +77,21 @@ The separate UPnP transport module is intentionally narrow and outbound-only:
 
 - HTTP-only endpoint validation for local IPv4 literals;
 - bounded device-description parsing with DTD/entity rejection;
-- stable UDN extraction and exact RenderingControl control-URL resolution.
+- stable UDN extraction and exact RenderingControl control-URL resolution;
+- exact RenderingControl:1 SOAP request/response coding for Volume and Mute;
+- ephemeral, credential-free URLSession requests with redirect rejection,
+  bounded timeouts, cancellation, one connection per host, and streamed
+  response-size enforcement.
 
 Both the SSDP `LOCATION` used to fetch a description and any declared
 `URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
 description location, and a present but malformed base fails closed.
 
-The module does not open sockets, issue SOAP requests, touch AppKit, or talk
-to real devices in the first slice. Endpoint and descriptor safety stay in this
-module so the core contract remains transport-neutral.
+The module does not perform SSDP discovery, touch AppKit, or talk to real
+devices in public tests. Endpoint, descriptor, SOAP, and HTTP safety stay in
+this module so the core contract remains transport-neutral. Fault descriptions
+and response payloads are never surfaced; only bounded numeric fault codes are
+available inside the adapter.
 
 ### Route Observation
 
