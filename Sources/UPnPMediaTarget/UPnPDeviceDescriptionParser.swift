@@ -23,9 +23,10 @@ public enum UPnPMediaTargetDeviceDescriptionParser {
             throw delegate.error ?? .malformedXML
         }
 
-        guard let stableIdentifier = delegate.stableIdentifier?.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        ), !stableIdentifier.isEmpty else {
+        guard let stableIdentifier = delegate.stableIdentifier,
+              let identity = UPnPMediaTargetIdentityParser.parse(
+                  stableIdentifier
+              ) else {
             throw .missingStableIdentity
         }
 
@@ -58,7 +59,7 @@ public enum UPnPMediaTargetDeviceDescriptionParser {
         )
 
         return UPnPMediaTargetDescriptor(
-            identity: MediaTargetIdentity(stableIdentifier: stableIdentifier),
+            identity: identity,
             renderingControlURL: renderingControlURL
         )
     }
