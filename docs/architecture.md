@@ -83,14 +83,24 @@ The separate UPnP transport module is intentionally narrow and outbound-only:
   bounded timeouts, cancellation, one connection per host, and streamed
   response-size enforcement.
 
+The discovery slice adds a strict, case-insensitive SSDP response parser that
+retains only validated `LOCATION`, `USN`, and derived stable identity values;
+an injectable search protocol; and a macOS-supported IPv4 UDP M-SEARCH
+implementation bounded by response size, candidate count, cancellation, and
+elapsed time. A descriptor fetcher uses the existing bounded HTTP transport,
+requires HTTP 200, and rejects any response URL that is not exactly the
+requested `LOCATION`. The resolver actor caches one descriptor per discovery
+generation, skips duplicate or mismatched candidates, and discards the cache on
+interface or lifecycle invalidation before searching again by stable identity.
+
 Both the SSDP `LOCATION` used to fetch a description and any declared
 `URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
 description location, and a present but malformed base fails closed.
 
-The module does not perform SSDP discovery, touch AppKit, or talk to real
-devices in public tests. Endpoint, descriptor, SOAP, and HTTP safety stay in
-this module so the core contract remains transport-neutral. Fault descriptions
-and response payloads are never surfaced; only bounded numeric fault codes are
+The module does not touch AppKit or talk to real devices in public tests.
+Endpoint, descriptor, SSDP, SOAP, and HTTP safety stay in this module so the
+core contract remains transport-neutral. Fault descriptions, response payloads,
+and raw SSDP packets are never surfaced; only bounded structured values are
 available inside the adapter.
 
 ### Route Observation

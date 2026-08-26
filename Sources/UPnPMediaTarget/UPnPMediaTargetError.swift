@@ -20,8 +20,10 @@ public enum UPnPMediaTargetError: Error, Equatable, Sendable {
     case offline
     case timeout
     case cancelled
+    case discoveryUnavailable
     case missingStableIdentity
     case missingRenderingControlService
     case missingRenderingControlControlURL
     case invalidControlURL
+    case malformedSSDPResponse
 }
