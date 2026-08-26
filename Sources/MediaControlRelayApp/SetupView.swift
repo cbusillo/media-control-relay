@@ -63,13 +63,6 @@ struct SetupView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(28)
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: NSApplication.didBecomeActiveNotification
-            )
-        ) { _ in
-            model.refreshInputMonitoring()
-        }
     }
 }
 

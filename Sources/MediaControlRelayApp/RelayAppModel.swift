@@ -3,6 +3,23 @@ import CoreGraphics
 import MediaControlCore
 import Observation
 
+struct InputMonitoringAccessClient: Sendable {
+    let preflight: @Sendable () -> Bool
+    let request: @Sendable () -> Void
+
+    static let live = InputMonitoringAccessClient(
+        preflight: CGPreflightListenEventAccess,
+        request: {
+            _ = CGRequestListenEventAccess()
+        }
+    )
+
+    static let denied = InputMonitoringAccessClient(
+        preflight: { false },
+        request: {}
+    )
+}
+
 @MainActor
 @Observable
 final class RelayAppModel {
@@ -23,30 +40,48 @@ final class RelayAppModel {
 
     let productStatus: LocalizedStringResource = "Preview build"
 
-    private let volumeKeyMonitor = EventTapVolumeKeyMonitor()
+    private let volumeKeyMonitor: any VolumeKeyMonitoring
     private let volumeKeyGestureMonitor: VolumeKeyGestureMonitor
     private let routeObserver: any RouteObserving
     private let configurationStore: RelayConfigurationStore
+    private let inputMonitoringAccess: InputMonitoringAccessClient
     private let coordinator: RelayCoordinator
+    private let preferences: UserDefaults
+    private var mediaTargetSession: MediaTargetSession?
+    private var applicationActivationToken: NSObjectProtocol?
     private var volumeKeyTask: Task<Void, Never>?
     private var volumeActionTask: Task<Void, Never>?
+    private var targetProbeTask: Task<Void, Never>?
+    private var targetProbeGeneration: UInt64 = 0
+    private var awaitingWakeCompletion = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
 
     init(
         routeObserver: any RouteObserving = SystemRouteObserver(),
-        configurationStore: RelayConfigurationStore = RelayConfigurationStore()
+        configurationStore: RelayConfigurationStore = RelayConfigurationStore(),
+        volumeKeyMonitor: any VolumeKeyMonitoring = EventTapVolumeKeyMonitor(),
+        inputMonitoringAccess: InputMonitoringAccessClient = .live,
+        applicationNotificationCenter: NotificationCenter = .default,
+        mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
+            MediaTargetSessionFactory.make(configuration: $0)
+        }
     ) {
         let gestureMonitor = VolumeKeyGestureMonitor()
+        let configuration = configurationStore.load()
         self.volumeKeyGestureMonitor = gestureMonitor
         self.routeObserver = routeObserver
         self.configurationStore = configurationStore
+        self.volumeKeyMonitor = volumeKeyMonitor
+        self.inputMonitoringAccess = inputMonitoringAccess
+        self.preferences = configurationStore.defaults
         self.coordinator = RelayCoordinator(
-            configuration: configurationStore.load(),
+            configuration: configuration,
             cancelHeldGesture: {
                 gestureMonitor.cancel()
             }
         )
+        self.mediaTargetSession = mediaTargetSessionFactory(configuration)
         targetConfiguration = coordinator.configuration
         relayState = coordinator.relayState
 
@@ -73,22 +108,49 @@ final class RelayAppModel {
             guard let self else {
                 return
             }
+            let previousActivationMatches = activationMatches
             routeSnapshot = snapshot
             apply(.routeSnapshot(snapshot))
+            guard !awaitingWakeCompletion else {
+                return
+            }
+            if activationMatches != previousActivationMatches {
+                refreshTargetSession(invalidation: .routeContextChanged)
+            } else {
+                startTargetProbeIfNeeded()
+            }
         }
         routeObserver.onStateChange = { [weak self] state in
             guard let self else {
                 return
             }
+            awaitingWakeCompletion = routeObservationState == .suspended && state == .observing
+            cancelTargetProbe()
             routeObservationState = state
             apply(.routeObservationState(state))
         }
         routeObserver.onSleep = { [weak self] in
-            self?.volumeKeyGestureMonitor.cancel()
+            guard let self else { return }
+            volumeKeyGestureMonitor.cancel()
+            refreshTargetSession(invalidation: .lifecycleChanged)
+        }
+        routeObserver.onWake = { [weak self] in
+            guard let self else { return }
+            awaitingWakeCompletion = false
+            refreshTargetSession(invalidation: .lifecycleChanged)
+        }
+        applicationActivationToken = applicationNotificationCenter.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshInputMonitoring()
+            }
         }
         routeObserver.start()
         refreshInputMonitoring()
-        apply(.transportReachability(.reachable))
+        refreshTransportState()
     }
 
     var buildDescription: String {
@@ -193,19 +255,23 @@ final class RelayAppModel {
             return
         }
         configurationStore.save(configuration)
+        cancelTargetProbe()
+        mediaTargetSession = nil
         apply(.configuration(configuration))
         apply(.transportReachability(.reachable))
     }
 
     func removePreviewTarget() {
         configurationStore.remove()
+        cancelTargetProbe()
+        mediaTargetSession = nil
         apply(.configuration(nil))
     }
 
     func requestInputMonitoring() {
-        UserDefaults.standard.set(true, forKey: inputMonitoringRequestedKey)
+        preferences.set(true, forKey: inputMonitoringRequestedKey)
         requestedInputMonitoringThisLaunch = true
-        _ = CGRequestListenEventAccess()
+        inputMonitoringAccess.request()
         refreshInputMonitoring()
     }
 
@@ -223,14 +289,20 @@ final class RelayAppModel {
     }
 
     func refreshInputMonitoring() {
+        let previousAuthorization = inputMonitoringAuthorization
         inputMonitoringAuthorization = InputMonitoringDecision.resolve(
-            preflightGranted: CGPreflightListenEventAccess(),
-            hasRequestedAccess: UserDefaults.standard.bool(
+            preflightGranted: inputMonitoringAccess.preflight(),
+            hasRequestedAccess: preferences.bool(
                 forKey: inputMonitoringRequestedKey
             ),
             requestedThisLaunch: requestedInputMonitoringThisLaunch
         )
         apply(.inputMonitoringAuthorization(inputMonitoringAuthorization))
+        if inputMonitoringAuthorization != previousAuthorization {
+            refreshTargetSession(invalidation: .authorizationChanged)
+        } else {
+            startTargetProbeIfNeeded()
+        }
 
         guard inputMonitoringAuthorization == .granted else {
             volumeKeyMonitor.stop()
@@ -332,6 +404,99 @@ final class RelayAppModel {
         commandsRecorded = coordinator.recordedCommandCount
         commandsSuppressed = coordinator.suppressedCommandCount
         targetConfiguration = coordinator.configuration
+    }
+
+    private func refreshTransportState() {
+        switch targetConfiguration?.target.kind {
+        case .preview:
+            apply(.transportReachability(.reachable))
+        case .upnpMediaRenderer:
+            if mediaTargetSession == nil {
+                apply(.transportReachability(.unreachable))
+            } else {
+                apply(.transportReachability(.unknown))
+                startTargetProbeIfNeeded()
+            }
+        case nil:
+            apply(.transportReachability(.unknown))
+        }
+    }
+
+    private func refreshTargetSession(
+        invalidation: MediaTargetSessionInvalidation
+    ) {
+        cancelTargetProbe()
+
+        guard targetConfiguration?.target.kind == .upnpMediaRenderer else {
+            return
+        }
+        guard let mediaTargetSession else {
+            apply(.transportReachability(.unreachable))
+            return
+        }
+
+        apply(.transportReachability(.unknown))
+        startTargetProbe(
+            mediaTargetSession,
+            invalidation: invalidation
+        )
+    }
+
+    private func startTargetProbeIfNeeded() {
+        guard targetProbeTask == nil,
+              targetConfiguration?.target.kind == .upnpMediaRenderer,
+              relayState == .checkingTarget || relayState == .offline else {
+            return
+        }
+        guard let mediaTargetSession else {
+            apply(.transportReachability(.unreachable))
+            return
+        }
+
+        apply(.transportReachability(.unknown))
+        startTargetProbe(mediaTargetSession, invalidation: nil)
+    }
+
+    private func startTargetProbe(
+        _ mediaTargetSession: MediaTargetSession,
+        invalidation: MediaTargetSessionInvalidation?
+    ) {
+        targetProbeGeneration &+= 1
+        let generation = targetProbeGeneration
+        targetProbeTask = Task { @MainActor [weak self, mediaTargetSession] in
+            defer {
+                if let self, self.targetProbeGeneration == generation {
+                    self.targetProbeTask = nil
+                }
+            }
+
+            if let invalidation {
+                guard !Task.isCancelled else {
+                    return
+                }
+                await mediaTargetSession.invalidate(invalidation)
+            }
+            guard let self,
+                  !Task.isCancelled,
+                  targetProbeGeneration == generation,
+                  self.mediaTargetSession === mediaTargetSession,
+                  relayState == .checkingTarget else {
+                return
+            }
+            guard let reachability = await mediaTargetSession.probe(),
+                  !Task.isCancelled,
+                  targetProbeGeneration == generation,
+                  self.mediaTargetSession === mediaTargetSession else {
+                return
+            }
+            apply(.transportReachability(reachability))
+        }
+    }
+
+    private func cancelTargetProbe() {
+        targetProbeGeneration &+= 1
+        targetProbeTask?.cancel()
+        targetProbeTask = nil
     }
 
     private func record(_ event: VolumeKeyEvent) {

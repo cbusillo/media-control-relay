@@ -1,0 +1,85 @@
+import Foundation
+import MediaControlCore
+import UPnPMediaTarget
+
+enum MediaTargetSessionInvalidation: Equatable, Sendable {
+    case authorizationChanged
+    case routeContextChanged
+    case lifecycleChanged
+}
+
+actor MediaTargetSession {
+    typealias ResolutionInvalidator = @Sendable (MediaTargetSessionInvalidation) async -> Void
+
+    private let target: any MediaVolumeTarget
+    private let invalidateResolution: ResolutionInvalidator
+    private var generation: UInt64 = 0
+
+    init(
+        target: any MediaVolumeTarget,
+        invalidateResolution: @escaping ResolutionInvalidator
+    ) {
+        self.target = target
+        self.invalidateResolution = invalidateResolution
+    }
+
+    func probe() async -> TransportReachability? {
+        let requestedGeneration = generation
+        let reachability: TransportReachability
+        do {
+            _ = try await target.readState()
+            reachability = .reachable
+        } catch .cancelled {
+            reachability = .unknown
+        } catch {
+            reachability = .unreachable
+        }
+
+        guard generation == requestedGeneration else {
+            return nil
+        }
+        return reachability
+    }
+
+    func invalidate(_ reason: MediaTargetSessionInvalidation) async {
+        generation &+= 1
+        await invalidateResolution(reason)
+    }
+}
+
+enum MediaTargetSessionFactory {
+    static func make(
+        configuration: RelayConfiguration?
+    ) -> MediaTargetSession? {
+        guard configuration?.target.kind == .upnpMediaRenderer,
+              let stableIdentifier = configuration?.target.stableIdentifier?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+              !stableIdentifier.isEmpty else {
+            return nil
+        }
+
+        let identity = MediaTargetIdentity(stableIdentifier: stableIdentifier)
+        let resolver = UPnPMediaTargetResolver(
+            identity: identity,
+            searcher: UPnPMediaTargetIPv4SSDPSearcher(),
+            descriptorFetcher: UPnPMediaTargetURLSessionDescriptorFetcher()
+        )
+        let target = UPnPMediaVolumeTarget(
+            identity: identity,
+            resolver: resolver
+        )
+        return MediaTargetSession(
+            target: target,
+            invalidateResolution: { reason in
+                switch reason {
+                case .authorizationChanged:
+                    return
+                case .routeContextChanged:
+                    await resolver.invalidate(for: .interfaceChanged)
+                case .lifecycleChanged:
+                    await resolver.invalidate(for: .lifecycleChanged)
+                }
+            }
+        )
+    }
+}

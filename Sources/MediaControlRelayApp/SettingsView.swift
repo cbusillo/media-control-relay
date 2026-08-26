@@ -173,12 +173,5 @@ struct SettingsView: View {
             }
         }
         .frame(width: 600, height: 500)
-        .onReceive(
-            NotificationCenter.default.publisher(
-                for: NSApplication.didBecomeActiveNotification
-            )
-        ) { _ in
-            model.refreshInputMonitoring()
-        }
     }
 }

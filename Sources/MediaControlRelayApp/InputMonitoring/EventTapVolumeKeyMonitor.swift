@@ -9,6 +9,14 @@ enum VolumeKeyMonitorError: Error {
     case runLoopSourceUnavailable
 }
 
+@MainActor
+protocol VolumeKeyMonitoring: AnyObject {
+    var events: AsyncStream<VolumeKeyEvent> { get }
+
+    func start() throws
+    func stop()
+}
+
 private final class VolumeKeyEventTapContext {
     let continuation: AsyncStream<VolumeKeyEvent>.Continuation
     var eventTap: CFMachPort?
@@ -19,7 +27,7 @@ private final class VolumeKeyEventTapContext {
 }
 
 @MainActor
-final class EventTapVolumeKeyMonitor {
+final class EventTapVolumeKeyMonitor: VolumeKeyMonitoring {
     let events: AsyncStream<VolumeKeyEvent>
 
     private let context: VolumeKeyEventTapContext
@@ -98,6 +106,17 @@ final class EventTapVolumeKeyMonitor {
         }
         retainedContext = nil
     }
+}
+
+@MainActor
+final class InactiveVolumeKeyMonitor: VolumeKeyMonitoring {
+    let events = AsyncStream<VolumeKeyEvent> { continuation in
+        continuation.finish()
+    }
+
+    func start() throws {}
+
+    func stop() {}
 }
 
 private func volumeKeyEventTapCallback(

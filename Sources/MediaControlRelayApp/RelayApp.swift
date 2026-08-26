@@ -1,9 +1,14 @@
+import Foundation
 import SwiftUI
 
 @main
 struct RelayApp: App {
     @AppStorage("hasShownWelcome") private var hasShownWelcome = false
-    @State private var model = RelayAppModel()
+    @State private var model: RelayAppModel
+
+    init() {
+        _model = State(initialValue: Self.makeModel())
+    }
 
     var body: some Scene {
         Window("Media Control Relay Setup", id: "setup") {
@@ -29,5 +34,26 @@ struct RelayApp: App {
         Settings {
             SettingsView(model: model)
         }
+    }
+
+    @MainActor
+    private static func makeModel() -> RelayAppModel {
+#if DEBUG
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil else {
+            return RelayAppModel()
+        }
+
+        let suiteName = "com.shinycomputers.media-control-relay.test-host"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.removePersistentDomain(forName: suiteName)
+        return RelayAppModel(
+            routeObserver: InactiveRouteObserver(),
+            configurationStore: RelayConfigurationStore(defaults: defaults),
+            volumeKeyMonitor: InactiveVolumeKeyMonitor(),
+            inputMonitoringAccess: .denied
+        )
+#else
+        RelayAppModel()
+#endif
     }
 }

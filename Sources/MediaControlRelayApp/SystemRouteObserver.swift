@@ -9,6 +9,7 @@ protocol RouteObserving: AnyObject {
     var onSnapshot: ((RouteSnapshot) -> Void)? { get set }
     var onStateChange: ((RouteObservationState) -> Void)? { get set }
     var onSleep: (() -> Void)? { get set }
+    var onWake: (() -> Void)? { get set }
 
     var state: RouteObservationState { get }
 
@@ -17,10 +18,25 @@ protocol RouteObserving: AnyObject {
 }
 
 @MainActor
+final class InactiveRouteObserver: RouteObserving {
+    var onSnapshot: ((RouteSnapshot) -> Void)?
+    var onStateChange: ((RouteObservationState) -> Void)?
+    var onSleep: (() -> Void)?
+    var onWake: (() -> Void)?
+
+    let state: RouteObservationState = .stopped
+
+    func start() {}
+
+    func stop() {}
+}
+
+@MainActor
 final class SystemRouteObserver: RouteObserving {
     var onSnapshot: ((RouteSnapshot) -> Void)?
     var onStateChange: ((RouteObservationState) -> Void)?
     var onSleep: (() -> Void)?
+    var onWake: (() -> Void)?
 
     private var lifecycle = RouteObservationLifecycle()
     private var coalescer = RouteObservationCoalescer()
@@ -29,6 +45,7 @@ final class SystemRouteObserver: RouteObserving {
     private var audioPropertyListener: AudioObjectPropertyListenerBlock?
     private var pendingRefreshTask: Task<Void, Never>?
     private var pendingFlushTask: Task<Void, Never>?
+    private let workspaceNotificationCenter: NotificationCenter
 
     private var defaultOutputAddress = AudioObjectPropertyAddress(
         mSelector: kAudioHardwarePropertyDefaultOutputDevice,
@@ -38,6 +55,12 @@ final class SystemRouteObserver: RouteObserving {
 
     var state: RouteObservationState {
         lifecycle.state
+    }
+
+    init(
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
+    ) {
+        self.workspaceNotificationCenter = workspaceNotificationCenter
     }
 
     func start() {
@@ -77,6 +100,7 @@ final class SystemRouteObserver: RouteObserving {
         onStateChange?(lifecycle.state)
         registerRouteObservers()
         resetAndPublishFreshSnapshot()
+        onWake?()
     }
 
     private func registerRouteObservers() {
@@ -105,7 +129,7 @@ final class SystemRouteObserver: RouteObserving {
 
     private func unregisterWorkspaceObservers() {
         for token in workspaceNotificationTokens {
-            NSWorkspace.shared.notificationCenter.removeObserver(token)
+            workspaceNotificationCenter.removeObserver(token)
         }
         workspaceNotificationTokens.removeAll()
     }
@@ -139,7 +163,7 @@ final class SystemRouteObserver: RouteObserving {
         guard workspaceNotificationTokens.isEmpty else {
             return
         }
-        let center = NSWorkspace.shared.notificationCenter
+        let center = workspaceNotificationCenter
         workspaceNotificationTokens = [
             center.addObserver(
                 forName: NSWorkspace.willSleepNotification,
