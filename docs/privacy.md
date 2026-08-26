@@ -25,9 +25,11 @@ Media Control Relay is designed to operate locally.
 ## Current Preview
 
 The current source can observe supported volume keys after the user grants Input
-Monitoring access. It does not discover devices, store credentials, or send
-network commands. Its native UI accurately reports the unconfigured target
-state.
+Monitoring access, discover compatible local media renderers, and send
+pairing-free volume commands to an explicitly selected target. Discovery shows
+generic ordinal labels only. The app persists the selected stable identity and
+route rule, but never persists or displays the target address, control URL,
+model string, SSDP payload, or SOAP payload.
 
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.

@@ -8,7 +8,7 @@ struct SettingsView: View {
         TabView {
             Form {
                 Section("Media Target") {
-                    LabeledContent("Preview Target") {
+                    LabeledContent("Configured Target") {
                         Text(model.configuredDeviceName)
                     }
                     LabeledContent("Status") {
@@ -40,15 +40,16 @@ struct SettingsView: View {
                         }
                         .disabled(!model.canCreatePreviewTarget)
                         .accessibilityHint("Creates a local in-process recording target")
+                        discoveryControls
                     } else {
-                        Button("Remove Preview Target", role: .destructive) {
-                            model.removePreviewTarget()
+                        Button("Remove Configured Target", role: .destructive) {
+                            model.removeConfiguredTarget()
                         }
-                        .accessibilityHint("Removes the local target and resets its counters")
+                        .accessibilityHint("Removes the configured target and resets its counters")
                     }
                 }
-                Section("Preview Boundary") {
-                    Text(model.previewTargetExplanation)
+                Section("Privacy Boundary") {
+                    Text("Discovery shows generic media-renderer labels only. Device addresses, identifiers, model names, and control URLs are never displayed or copied to diagnostics.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -119,7 +120,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
                 Section("Privacy") {
-                    Text("The preview target is stored locally in UserDefaults. It has no credentials and does not use the network.")
+                    Text("Configuration is stored locally without credentials. A selected media renderer is contacted only on the local network for discovery and volume control.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -155,7 +156,7 @@ struct SettingsView: View {
                     LabeledContent("Actions Not Recorded", value: model.commandsSuppressed.formatted())
                     LabeledContent(
                         "Target Connection",
-                        value: model.targetConfiguration == nil ? "not-available" : "preview-sink"
+                        value: model.targetConnectionDiagnosticName
                     )
                     Button("Copy Diagnostics") {
                         model.copyDiagnostics()
@@ -173,5 +174,62 @@ struct SettingsView: View {
             }
         }
         .frame(width: 600, height: 500)
+    }
+
+    @ViewBuilder
+    private var discoveryControls: some View {
+        switch model.discovery.state {
+        case .idle:
+            Button("Find Media Renderers") {
+                model.discovery.startScan()
+            }
+            Text("Searches this network without displaying or storing device addresses.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        case .scanning:
+            ProgressView("Looking for media renderers on this network…")
+            Button("Stop") {
+                model.discovery.cancelScan()
+            }
+        case let .results(choices):
+            discoveryChoices(choices)
+        case .empty:
+            Text("No compatible media renderers responded.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("Search Again") {
+                model.discovery.startScan()
+            }
+        case .failed:
+            Text("Couldn’t search this network.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("Search Again") {
+                model.discovery.startScan()
+            }
+        case let .routeUnavailable(choices):
+            Text("Switch your Mac to the audio output you want to control, then choose a target below.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            discoveryChoices(choices)
+            Button("Search Again") {
+                model.discovery.startScan()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func discoveryChoices(_ choices: [MediaTargetDiscoveryChoice]) -> some View {
+        ForEach(choices) { choice in
+            HStack {
+                Text(choice.label)
+                Spacer()
+                Button("Use This Target") {
+                    model.selectDiscoveredTarget(choice)
+                }
+                .accessibilityLabel("Use \(choice.label)")
+                .accessibilityHint("Selects this media renderer and captures the current audio route")
+            }
+        }
     }
 }

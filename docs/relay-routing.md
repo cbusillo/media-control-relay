@@ -3,10 +3,11 @@
 ## Milestone Boundary
 
 Issue #5 adds the first honest routing proof surface: an explicitly labeled
-in-process preview target. It receives eligible `VolumeAction` values and
-records ordered `RelayCommand` values with sequence numbers and counters. It
-does not discover, pair with, connect to, or control a TV or any other media
-device. It does not interfere with normal Mac volume behavior.
+in-process preview target. The current signed app also supports explicit
+pairing-free UPnP media-renderer discovery and volume routing. Discovery never
+auto-selects a target; the activation rule is captured from the current route
+when the user chooses a generic renderer label. Normal Mac volume behavior is
+not intercepted or suppressed.
 
 The preview target is removable and resettable from Settings. Its configuration
 is stored locally in `UserDefaults` because it contains no credentials or other

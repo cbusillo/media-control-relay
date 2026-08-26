@@ -16,7 +16,7 @@ struct SetupView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Media Control Relay")
                         .font(.largeTitle.weight(.semibold))
-                    Text("Preview local volume routing without connecting to a media device")
+                    Text("Route Mac volume controls to a preview target or compatible local media renderer")
                         .foregroundStyle(.secondary)
                     Label {
                         Text(model.productStatus)
@@ -36,8 +36,8 @@ struct SetupView: View {
 
                 SetupStepRow(
                     number: 1,
-                    title: "Create a preview target",
-                    detail: "Record routed volume actions in-process without controlling a TV or interfering with normal Mac volume behavior."
+                    title: "Choose a media target",
+                    detail: "Open Settings to create an in-process preview target or explicitly select a compatible renderer discovered on your local network."
                 )
                 SetupStepRow(
                     number: 2,
@@ -50,14 +50,14 @@ struct SetupView: View {
                 .buttonStyle(.link)
                 SetupStepRow(
                     number: 3,
-                    title: "Review recorded commands",
-                    detail: "Use Settings to see activation matching and recorded or unrecorded preview actions."
+                    title: "Verify volume routing",
+                    detail: "Use Settings to review activation matching, command counts, and the selected target's connection status."
                 )
             }
 
             Spacer()
 
-            Text(model.previewTargetExplanation)
+            Text("Configuration stays on this Mac. Local-network discovery shows generic renderer labels only, and Media Control Relay contacts only the renderer you explicitly select for volume control.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
