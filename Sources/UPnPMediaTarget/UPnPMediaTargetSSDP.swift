@@ -230,7 +230,7 @@ public final class UPnPMediaTargetIPv4SSDPSearcher: UPnPMediaTargetSSDPSearching
 private final class SearchOperation: @unchecked Sendable {
     private let bounds: UPnPMediaTargetSSDPSearchBounds
     private let lock = NSLock()
-    private var continuation: CheckedContinuation<[UPnPMediaTargetSSDPResponse], UPnPMediaTargetError>?
+    private var continuation: CheckedContinuation<[UPnPMediaTargetSSDPResponse], any Error>?
     private var socketFD: Int32 = -1
     private var candidates: [UPnPMediaTargetSSDPResponse] = []
     private var candidatesByKey = Set<String>()
@@ -242,19 +242,25 @@ private final class SearchOperation: @unchecked Sendable {
     }
 
     func run() async throws(UPnPMediaTargetError) -> [UPnPMediaTargetSSDPResponse] {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[UPnPMediaTargetSSDPResponse], UPnPMediaTargetError>) in
-            lock.lock()
-            if finished {
+        do {
+            return try await withCheckedThrowingContinuation { continuation in
+                lock.lock()
+                if finished {
+                    lock.unlock()
+                    continuation.resume(throwing: UPnPMediaTargetError.cancelled)
+                    return
+                }
+                self.continuation = continuation
                 lock.unlock()
-                continuation.resume(throwing: .cancelled)
-                return
-            }
-            self.continuation = continuation
-            lock.unlock()
 
-            DispatchQueue.global(qos: .utility).async { [weak self] in
-                self?.performSearch()
+                DispatchQueue.global(qos: .utility).async { [weak self] in
+                    self?.performSearch()
+                }
             }
+        } catch let error as UPnPMediaTargetError {
+            throw error
+        } catch {
+            throw .offline
         }
     }
 
@@ -511,6 +517,11 @@ private final class SearchOperation: @unchecked Sendable {
         self.continuation = nil
         lock.unlock()
 
-        continuation?.resume(with: result)
+        switch result {
+        case let .success(candidates):
+            continuation?.resume(returning: candidates)
+        case let .failure(error):
+            continuation?.resume(throwing: error)
+        }
     }
 }
