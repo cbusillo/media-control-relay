@@ -41,12 +41,14 @@ final class RelayAppModel {
     var targetConfiguration: RelayConfiguration?
 
     let productStatus: LocalizedStringResource = "Preview build"
+    let discovery: MediaTargetDiscoveryModel
 
     private let volumeKeyMonitor: any VolumeKeyMonitoring
     private let volumeKeyGestureMonitor: VolumeKeyGestureMonitor
     private let routeObserver: any RouteObserving
     private let configurationStore: RelayConfigurationStore
     private let inputMonitoringAccess: InputMonitoringAccessClient
+    private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
     private let coordinator: RelayCoordinator
     private let preferences: UserDefaults
     private var mediaTargetSession: MediaTargetSession?
@@ -68,6 +70,7 @@ final class RelayAppModel {
         volumeKeyMonitor: any VolumeKeyMonitoring = EventTapVolumeKeyMonitor(),
         inputMonitoringAccess: InputMonitoringAccessClient = .live,
         applicationNotificationCenter: NotificationCenter = .default,
+        discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
         mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
             MediaTargetSessionFactory.make(configuration: $0)
         }
@@ -79,6 +82,8 @@ final class RelayAppModel {
         self.configurationStore = configurationStore
         self.volumeKeyMonitor = volumeKeyMonitor
         self.inputMonitoringAccess = inputMonitoringAccess
+        self.discovery = discovery
+        self.mediaTargetSessionFactory = mediaTargetSessionFactory
         self.preferences = configurationStore.defaults
         self.coordinator = RelayCoordinator(
             configuration: configuration,
@@ -116,6 +121,9 @@ final class RelayAppModel {
             let previousActivationMatches = activationMatches
             routeSnapshot = snapshot
             apply(.routeSnapshot(snapshot))
+            if RelayConfigurationFactory.preview(for: snapshot) != nil {
+                discovery.reportRouteAvailable()
+            }
             guard !awaitingWakeCompletion else {
                 return
             }
@@ -137,6 +145,7 @@ final class RelayAppModel {
         routeObserver.onSleep = { [weak self] in
             guard let self else { return }
             volumeKeyGestureMonitor.cancel()
+            discovery.cancelScan()
             refreshTargetSession(invalidation: .lifecycleChanged)
         }
         routeObserver.onWake = { [weak self] in
@@ -176,12 +185,12 @@ final class RelayAppModel {
     }
 
     var configuredDeviceName: String {
-        targetConfiguration?.target.name ?? "No preview target selected"
+        targetConfiguration?.target.name ?? "No target selected"
     }
 
     var selectedPreviewRouteDescription: String {
         guard let configuration = targetConfiguration else {
-            return "No preview route selected"
+            return "No route selected"
         }
         let displayRequirement = configuration.activationRule.requiresDisplay
             ? "display required"
@@ -191,10 +200,6 @@ final class RelayAppModel {
 
     var canCreatePreviewTarget: Bool {
         RelayConfigurationFactory.preview(for: routeSnapshot) != nil
-    }
-
-    var previewTargetExplanation: LocalizedStringResource {
-        "The preview target is an in-process recording sink. It does not connect to or control a TV or other media device, and it does not intercept or suppress normal Mac volume handling."
     }
 
     var diagnosticsSummary: String {
@@ -263,16 +268,41 @@ final class RelayAppModel {
         }
         configurationStore.save(configuration)
         cancelTargetProbe()
-        mediaTargetSession = nil
+        let previousSession = mediaTargetSession
+        mediaTargetSession = mediaTargetSessionFactory(configuration)
         apply(.configuration(configuration))
         apply(.transportReachability(.reachable))
+        Task { await previousSession?.invalidate(.sessionReplaced) }
     }
 
-    func removePreviewTarget() {
+    func selectDiscoveredTarget(_ choice: MediaTargetDiscoveryChoice) {
+        let identity = MediaTargetIdentity(stableIdentifier: choice.id)
+        guard let configuration = RelayConfigurationFactory.upnpMediaRenderer(
+            identity: identity,
+            for: routeSnapshot
+        ) else {
+            discovery.reportRouteUnavailable()
+            return
+        }
+
+        configurationStore.save(configuration)
+        let previousSession = mediaTargetSession
+        cancelTargetProbe()
+        mediaTargetSession = mediaTargetSessionFactory(configuration)
+        apply(.configuration(configuration))
+        refreshTransportState()
+        discovery.cancelScan()
+        Task { await previousSession?.invalidate(.sessionReplaced) }
+    }
+
+    func removeConfiguredTarget() {
         configurationStore.remove()
+        let previousSession = mediaTargetSession
         cancelTargetProbe()
         mediaTargetSession = nil
         apply(.configuration(nil))
+        discovery.cancelScan()
+        Task { await previousSession?.invalidate(.sessionReplaced) }
     }
 
     func requestInputMonitoring() {
@@ -407,7 +437,7 @@ final class RelayAppModel {
         }
     }
 
-    private var targetConnectionDiagnosticName: String {
+    var targetConnectionDiagnosticName: String {
         switch targetConfiguration?.target.kind {
         case .preview: "preview-sink"
         case .upnpMediaRenderer: "local-network"

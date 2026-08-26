@@ -2,6 +2,7 @@ import AppKit
 import Foundation
 import MediaControlCore
 import Testing
+import UPnPMediaTarget
 @testable import Media_Control_Relay
 
 @Suite("Relay app target health", .serialized)
@@ -429,6 +430,64 @@ struct RelayAppModelTests {
         #expect(harness.model.targetCommandsDispatched == 0)
         harness.cleanup()
     }
+
+    @Test("Explicit discovery selection persists only generic target metadata")
+    func discoverySelectionPersistsConfiguration() {
+        let harness = makeHarness(configuration: nil, session: nil)
+        let choice = MediaTargetDiscoveryChoice(
+            id: "fixture-private-id",
+            label: "Media Renderer 1"
+        )
+
+        harness.model.selectDiscoveredTarget(choice)
+
+        let stored = RelayConfigurationStore(defaults: harness.defaults).load()
+        #expect(stored?.target.kind == .upnpMediaRenderer)
+        #expect(stored?.target.name == "UPnP Media Target")
+        #expect(stored?.target.stableIdentifier == "fixture-private-id")
+        #expect(stored?.activationRule.audioOutputMatch == "Fixture Output")
+        #expect(!harness.model.diagnosticsSummary.contains("fixture-private-id"))
+        harness.cleanup()
+    }
+
+    @Test("Discovery selection preserves choices until the route is usable")
+    func discoverySelectionRequiresRoute() async {
+        let choice = MediaTargetDiscoveryChoice(
+            id: "fixture-private-id",
+            label: "Media Renderer 1"
+        )
+        let discovery = MediaTargetDiscoveryModel {
+            [
+                UPnPMediaTargetDiscoveryCandidate(
+                    identity: MediaTargetIdentity(stableIdentifier: choice.id),
+                    ordinal: 1
+                ),
+            ]
+        }
+        let harness = makeHarness(
+            configuration: nil,
+            session: nil,
+            discovery: discovery
+        )
+        discovery.startScan()
+        await waitUntil {
+            if case .results = discovery.state { return true }
+            return false
+        }
+        harness.routeObserver.publish(RouteSnapshot(audioOutput: nil, displays: []))
+
+        harness.model.selectDiscoveredTarget(choice)
+
+        #expect(RelayConfigurationStore(defaults: harness.defaults).load() == nil)
+        #expect(harness.model.discovery.state == .routeUnavailable([choice]))
+
+        harness.routeObserver.publish(makeRoute())
+        #expect(harness.model.discovery.state == .results([choice]))
+
+        harness.model.selectDiscoveredTarget(choice)
+        #expect(RelayConfigurationStore(defaults: harness.defaults).load() != nil)
+        harness.cleanup()
+    }
 }
 
 @MainActor
@@ -446,14 +505,17 @@ private struct AppModelHarness {
 
 @MainActor
 private func makeHarness(
-    configuration: RelayConfiguration,
+    configuration: RelayConfiguration?,
     session: MediaTargetSession?,
-    volumeKeyMonitor: any VolumeKeyMonitoring = InactiveVolumeKeyMonitor()
+    volumeKeyMonitor: any VolumeKeyMonitoring = InactiveVolumeKeyMonitor(),
+    discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel()
 ) -> AppModelHarness {
     let suiteName = "com.shinycomputers.media-control-relay.app-model-tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
     let configurationStore = RelayConfigurationStore(defaults: defaults)
-    configurationStore.save(configuration)
+    if let configuration {
+        configurationStore.save(configuration)
+    }
     let routeObserver = AppModelRouteObserver(initialSnapshot: makeRoute())
     let applicationNotificationCenter = NotificationCenter()
     let model = RelayAppModel(
@@ -465,6 +527,7 @@ private func makeHarness(
             request: {}
         ),
         applicationNotificationCenter: applicationNotificationCenter,
+        discovery: discovery,
         mediaTargetSessionFactory: { _ in session }
     )
     return AppModelHarness(

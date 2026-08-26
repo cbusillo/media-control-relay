@@ -133,6 +133,14 @@ Diagnostics expose bounded dispatch/failure counts and the generic
 `local-network` connection kind without target identity, address, URL, model,
 failure detail, or protocol payload.
 
+Signed-app discovery wraps SSDP search and descriptor confirmation in the UPnP
+module. The app receives only a stable identity plus a deterministic ordinal,
+renders generic `Media Renderer N` choices, and requires an explicit selection.
+Selection captures the current route, persists only the generic label and
+stable identity, replaces the live session without relaunch, and invalidates
+the previous resolver generation. Hosts, control URLs, model strings, and raw
+discovery failures never cross the adapter boundary.
+
 Both the SSDP `LOCATION` used to fetch a description and any declared
 `URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
 description location, and a present but malformed base fails closed.

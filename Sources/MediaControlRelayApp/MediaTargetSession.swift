@@ -6,6 +6,7 @@ enum MediaTargetSessionInvalidation: Equatable, Sendable {
     case authorizationChanged
     case routeContextChanged
     case lifecycleChanged
+    case sessionReplaced
 }
 
 actor MediaTargetSession {
@@ -100,6 +101,8 @@ enum MediaTargetSessionFactory {
                 case .routeContextChanged:
                     await resolver.invalidate(for: .interfaceChanged)
                 case .lifecycleChanged:
+                    await resolver.invalidate(for: .lifecycleChanged)
+                case .sessionReplaced:
                     await resolver.invalidate(for: .lifecycleChanged)
                 }
             }
