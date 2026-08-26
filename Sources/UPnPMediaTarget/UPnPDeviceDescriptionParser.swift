@@ -142,7 +142,9 @@ private final class DeviceDescriptionDelegate: NSObject, XMLParserDelegate {
     }
 
     func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {
-        error = .malformedXML
+        if error == nil {
+            error = .malformedXML
+        }
     }
 
     func parser(

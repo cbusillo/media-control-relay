@@ -10,7 +10,7 @@ public enum UPnPMediaTargetEndpointPolicy {
         guard url.absoluteString.utf8.count <= maximumURLBytes else {
             throw .oversizedURL
         }
-        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+        guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
             throw .invalidControlURL
         }
 
@@ -32,9 +32,12 @@ public enum UPnPMediaTargetEndpointPolicy {
             }
         }
 
-        guard let host = components.host, isAllowedHost(host) else {
+        guard let host = components.host,
+              let octets = IPv4AddressParser.octets(from: host),
+              isAllowedIPv4Octets(octets) else {
             throw .unsafeHost
         }
+        components.host = octets.map(String.init).joined(separator: ".")
 
         guard let canonicalURL = components.url else {
             throw .invalidControlURL
@@ -120,6 +123,9 @@ private enum IPv4AddressParser {
 
         for part in parts {
             guard !part.isEmpty, part.count <= 3 else {
+                return nil
+            }
+            guard part.utf8.allSatisfy({ (48...57).contains($0) }) else {
                 return nil
             }
             guard part.count == 1 || part.first != "0" else {
