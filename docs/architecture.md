@@ -70,6 +70,13 @@ preserved. The reconciler plans state changes but does not own a second queue.
 
 Stable media-target identity stays in core while addresses, control URLs,
 friendly names, and other ephemeral locator data remain private to adapters.
+Relay configuration can represent a generic UPnP MediaRenderer using only that
+stable identity and a non-identifying display label. Local-network denial is a
+distinct relay state from Input Monitoring denial, and the reducer still
+requires a fresh matching route plus reachable transport before emitting target
+work. `MediaTargetCommandExecutor` turns one routed relative action into one
+current-state read and at most one absolute target write without owning another
+queue or transport cache.
 
 ### UPnPMediaTarget
 

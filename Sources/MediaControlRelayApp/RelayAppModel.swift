@@ -355,6 +355,7 @@ extension RelayState {
         case .unconfigured: "unconfigured"
         case .unsupported: "unsupported"
         case .needsPermission: "needs-permission"
+        case .needsLocalNetworkPermission: "needs-local-network-permission"
         case .dormant: "dormant"
         case .checkingTarget: "checking-target"
         case .offline: "offline"

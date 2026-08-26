@@ -2,15 +2,22 @@ import Foundation
 
 public enum RelayTargetKind: String, Codable, Equatable, Sendable {
     case preview
+    case upnpMediaRenderer
 }
 
 public struct RelayTargetMetadata: Codable, Equatable, Sendable {
     public let kind: RelayTargetKind
     public let name: String
+    public let stableIdentifier: String?
 
-    public init(kind: RelayTargetKind, name: String) {
+    public init(
+        kind: RelayTargetKind,
+        name: String,
+        stableIdentifier: String? = nil
+    ) {
         self.kind = kind
         self.name = name
+        self.stableIdentifier = stableIdentifier
     }
 }
 
@@ -29,6 +36,36 @@ public struct RelayConfiguration: Codable, Equatable, Sendable {
 
 public enum RelayConfigurationFactory {
     public static func preview(for route: RouteSnapshot) -> RelayConfiguration? {
+        guard let activationRule = activationRule(for: route) else {
+            return nil
+        }
+        return RelayConfiguration(
+            target: RelayTargetMetadata(
+                kind: .preview,
+                name: activationRule.audioOutputMatch
+            ),
+            activationRule: activationRule
+        )
+    }
+
+    public static func upnpMediaRenderer(
+        identity: MediaTargetIdentity,
+        for route: RouteSnapshot
+    ) -> RelayConfiguration? {
+        guard let activationRule = activationRule(for: route) else {
+            return nil
+        }
+        return RelayConfiguration(
+            target: RelayTargetMetadata(
+                kind: .upnpMediaRenderer,
+                name: "UPnP Media Target",
+                stableIdentifier: identity.stableIdentifier
+            ),
+            activationRule: activationRule
+        )
+    }
+
+    private static func activationRule(for route: RouteSnapshot) -> ActivationRule? {
         guard let audioOutputName = usableText(route.audioOutput?.name) else {
             return nil
         }
@@ -48,16 +85,10 @@ public enum RelayConfigurationFactory {
             requiresDisplay = false
         }
 
-        return RelayConfiguration(
-            target: RelayTargetMetadata(
-                kind: .preview,
-                name: audioOutputName
-            ),
-            activationRule: ActivationRule(
-                audioOutputMatch: audioOutputName,
-                displayMatch: displayName,
-                requiresDisplay: requiresDisplay
-            )
+        return ActivationRule(
+            audioOutputMatch: audioOutputName,
+            displayMatch: displayName,
+            requiresDisplay: requiresDisplay
         )
     }
 

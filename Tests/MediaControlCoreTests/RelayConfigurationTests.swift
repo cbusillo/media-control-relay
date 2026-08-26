@@ -94,4 +94,48 @@ struct RelayConfigurationTests {
         let decoded = try JSONDecoder().decode(RelayConfiguration.self, from: data)
         #expect(decoded == configuration)
     }
+
+    @Test("UPnP configuration stores only stable identity and a generic name")
+    func upnpConfiguration() throws {
+        let route = RouteSnapshot(
+            audioOutput: AudioOutputSnapshot(name: "Fixture Audio", transportKind: .display),
+            displays: [DisplaySnapshot(name: "Fixture Audio")]
+        )
+        let identity = MediaTargetIdentity(stableIdentifier: "uuid:fixture-target")
+
+        let configuration = try #require(
+            RelayConfigurationFactory.upnpMediaRenderer(
+                identity: identity,
+                for: route
+            )
+        )
+
+        #expect(configuration.target.kind == .upnpMediaRenderer)
+        #expect(configuration.target.name == "UPnP Media Target")
+        #expect(configuration.target.stableIdentifier == identity.stableIdentifier)
+        #expect(configuration.activationRule.matches(route.activationSnapshot))
+    }
+
+    @Test("Existing preview configuration decodes without a stable identity field")
+    func legacyPreviewConfigurationDecodes() throws {
+        let data = Data(
+            """
+            {
+              "target": {"kind": "preview", "name": "Preview Route"},
+              "activationRule": {
+                "audioOutputMatch": "Preview Route",
+                "requiresDisplay": false
+              }
+            }
+            """.utf8
+        )
+
+        let configuration = try JSONDecoder().decode(
+            RelayConfiguration.self,
+            from: data
+        )
+
+        #expect(configuration.target.kind == .preview)
+        #expect(configuration.target.stableIdentifier == nil)
+    }
 }

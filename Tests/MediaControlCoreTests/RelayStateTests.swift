@@ -9,6 +9,7 @@ struct RelayStateTests {
         #expect(resolve(supported: false) == .unsupported)
         #expect(resolve(permission: false) == .needsPermission)
         #expect(resolve(matches: false) == .dormant)
+        #expect(resolve(reachability: .permissionDenied) == .needsLocalNetworkPermission)
         #expect(resolve(reachability: .unknown) == .checkingTarget)
         #expect(resolve(reachability: .unreachable) == .offline)
         #expect(resolve(reachability: .reachable) == .active)

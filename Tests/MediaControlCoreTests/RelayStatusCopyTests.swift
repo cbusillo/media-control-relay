@@ -39,4 +39,16 @@ struct RelayStatusCopyTests {
         #expect(copy.detail.localizedCaseInsensitiveContains("Settings"))
         #expect(!copy.detail.localizedCaseInsensitiveContains("coming soon"))
     }
+
+    @Test("Local-network recovery copy is distinct from volume-key permission")
+    func localNetworkPermissionCopy() {
+        let copy = RelayStatusCopyCatalog.copy(
+            for: .needsLocalNetworkPermission,
+            targetKind: .upnpMediaRenderer
+        )
+
+        #expect(copy.title.localizedCaseInsensitiveContains("local network"))
+        #expect(!copy.title.localizedCaseInsensitiveContains("volume key"))
+        #expect(copy.systemImage == "network.badge.shield.half.filled")
+    }
 }
