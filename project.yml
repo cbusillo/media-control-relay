@@ -50,6 +50,7 @@ targets:
       - path: Sources/MediaControlRelayApp
     dependencies:
       - target: MediaControlCore
+      - target: UPnPMediaTarget
     settings:
       base:
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
@@ -90,6 +91,25 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay.upnp-tests
 
+  MediaControlRelayAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    hostApplication: MediaControlRelay
+    sources:
+      - path: Tests/MediaControlRelayAppTests
+    dependencies:
+      - target: MediaControlRelay
+      - target: MediaControlCore
+        link: false
+      - target: UPnPMediaTarget
+        link: false
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay.app-tests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Media Control Relay.app/Contents/MacOS/Media Control Relay"
+
 schemes:
   MediaControlRelay:
     build:
@@ -101,3 +121,4 @@ schemes:
       targets:
         - MediaControlCoreTests
         - UPnPMediaTargetTests
+        - MediaControlRelayAppTests

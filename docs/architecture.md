@@ -110,6 +110,17 @@ rebuilds the RenderingControl transport from the newly resolved control URL.
 Adapter errors map to the neutral core failure taxonomy without exposing URLs,
 payloads, device identifiers, or fault descriptions.
 
+The signed app links the UPnP module through a private `MediaTargetSession`
+actor. The session is created only for a configured UPnP stable identity,
+publishes reachability only after a bounded state probe, and discards probe
+results from invalidated generations. Preview and unconfigured states never
+create a network session. Activation-relevant route changes cancel probe
+publication, while equivalent snapshots preserve established health. Sleep and
+wake invalidate the resolver lifecycle generation before the next eligible
+probe, and an offline target retries when the app next refreshes permission
+state. Device authentication rejection remains a generic unreachable target
+signal and is not presented as macOS Local Network denial.
+
 Both the SSDP `LOCATION` used to fetch a description and any declared
 `URLBase` must pass endpoint validation. A safe base never legitimizes an unsafe
 description location, and a present but malformed base fails closed.
