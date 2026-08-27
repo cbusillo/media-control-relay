@@ -3,12 +3,14 @@
 ## Scope
 
 This record covers the signed pairing-free UPnP `RenderingControl:1` proof for
-milestone `0.2 — Samsung Control Proof`. It applies only to the single
-configured Samsung qualification device.
+milestone `0.2 — Samsung Control Proof`. It applies only to Samsung model
+`UN65JU670D`, a 2015 JU-series television. The model was identified on
+August 27, 2026 from the device's public UPnP `manufacturer`,
+`modelDescription`, and `modelName` fields.
 
-The exact public compatibility-family name is still pending. Until that name
-is confirmed, this evidence must not be presented as a completed family claim
-or as broad Samsung compatibility.
+This identification names the tested hardware; it does not complete the
+compatibility claim. No other Samsung model, series, firmware, or RVU feature
+is claimed as supported.
 
 Power control, navigation, apps, source selection, pairing, credentials, and
 untested Samsung models remain outside this proof.
@@ -34,8 +36,9 @@ the intended direction. The merged build remains installed.
 ## Capability And Command Evidence
 
 The run recorded only privacy-safe route state and counters. No actual target
-volume, host, address, identifier, model, endpoint, or service-description
-content was copied.
+volume, host, address, identifier, endpoint, or service-description content was
+copied. The public model name in this document was obtained separately and is
+not part of app diagnostics.
 
 - **Route gate:** Bluetooth audio produced `dormant` and
   `activation=no-match` with zero target commands. The configured display-audio
@@ -108,7 +111,7 @@ The evidence intentionally omits:
 
 - target host and network-interface names;
 - device UUID, UDN, serial number, and stable identifier;
-- model strings until a public compatibility-family claim is approved;
+- model strings beyond the single public qualification target named above;
 - control and service-description URLs;
 - raw SSDP, device-description, SCPD, SOAP, or pairing responses; and
 - actual target volume values.
@@ -119,6 +122,16 @@ Issue #37 closed after final Opus review approved the merged capability
 implementation and signed rail/read-back evidence. Repeated Gemini-family runs
 returned no output and were recorded as unavailable rather than approval.
 
-The technical failure matrix represented here passes. Milestone 0.2 remains
-open until the tested Samsung compatibility family is named safely and the
-complete issue #21 exit record receives its required final review.
+The tested model is now named safely, but milestone 0.2 remains open. The
+remaining exit evidence is:
+
+- re-run discrete mute/unmute, route mismatch with normal Mac handling, and a
+  held-key p95 sample on the current merged qualification build;
+- record local-network denial/regrant behavior and a source/input-mode sample;
+- record whether mute read-back preserves the pre-mute volume or returns zero;
+- scope the display detach/reattach criterion as unavailable on this hardware
+  unless an actual detach can be produced safely;
+- publish the complete reproducible exit record in issue #21, distinguishing
+  current-build evidence from dated supporting evidence; and
+- obtain final Opus and Gemini-family approval. Empty Gemini-family results are
+  unavailable evidence, not approval.
