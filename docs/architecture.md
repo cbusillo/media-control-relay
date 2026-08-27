@@ -84,12 +84,14 @@ queue or transport cache.
 the confirmed target state when available, and a monotonically increasing
 generation. Results from invalidated, task-cancelled, superseded, or target-
 cancelled requests are discarded. `MediaTargetPresentationModel` keeps a local
-invalidation epoch separate from session request generations and accepts a
-command outcome only for its exact pending request. Every invalidation clears
-the confirmed baseline, mute-retention value, and announcement throttle, so a
-fresh session cannot display a prior target's state. The app schedules confirmed
-presentation dismissal and posts throttled VoiceOver announcements; held-key
-release cancels queued repeat work before it can animate after release.
+invalidation epoch separate from session request generations, seeds a hidden
+baseline from fresh probes, and accepts a command outcome only for its exact
+in-flight request. Every invalidation clears the confirmed baseline,
+mute-retention value, and announcement throttle, so a fresh session cannot
+display a prior target's state. The app schedules terminal presentation dismissal
+and posts throttled changed-value VoiceOver announcements; held-key release
+cancels queued repeat work before it can animate after release while preserving
+the final already in-flight confirmation.
 
 ### UPnPMediaTarget
 

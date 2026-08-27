@@ -46,6 +46,8 @@ struct MediaTargetPresentationTests {
         let epoch = presentation.invalidationEpoch
 
         expect(presentation.receiveProbe(baseline, epoch: epoch, at: 10))
+        expect(presentation.state == .hidden)
+        expect(!presentation.shouldAnnounce(at: 10))
         expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 10.5))
         guard let confirmedState = baseline.confirmedState,
               let expectedValue = MediaTargetVolumeNormalizer.normalize(confirmedState) else {
@@ -57,6 +59,40 @@ struct MediaTargetPresentationTests {
         presentation.dismiss()
         expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 12.1))
         expect(presentation.state == .pendingCold(.up))
+    }
+
+    @Test("Rejected probes do not update mute-retention state")
+    func rejectedProbeDoesNotMutateMuteRetention() {
+        var presentation = MediaTargetPresentationModel()
+        let epoch = presentation.invalidationEpoch
+
+        expect(presentation.receiveProbe(
+            outcome(volume: 30, generation: 1, minimum: 10, maximum: 50, step: 5),
+            epoch: epoch,
+            at: 0
+        ))
+        expect(presentation.begin(action: .mute, requestID: 1, epoch: epoch, at: 1))
+        expect(!presentation.receiveProbe(
+            outcome(volume: 45, generation: 2, minimum: 10, maximum: 50, step: 5),
+            epoch: epoch,
+            at: 1.1
+        ))
+        expect(presentation.receive(
+            outcome(
+                volume: 10,
+                isMuted: true,
+                generation: 3,
+                minimum: 10,
+                maximum: 50,
+                step: 5
+            ),
+            requestID: 1,
+            epoch: epoch,
+            at: 1.2
+        ))
+
+        expect(presentation.state.value?.displayedVolume == 30)
+        expect(presentation.state.value?.confirmedVolume == 10)
     }
 
     @Test("Each begin accepts only its actual request result")
@@ -120,7 +156,7 @@ struct MediaTargetPresentationTests {
             epoch: originalEpoch,
             at: 0
         ))
-        expect(presentation.shouldAnnounce(at: 0))
+        expect(!presentation.shouldAnnounce(at: 0))
 
         presentation.invalidate(.configuration)
         let freshEpoch = presentation.invalidationEpoch
@@ -140,8 +176,16 @@ struct MediaTargetPresentationTests {
             epoch: freshEpoch,
             at: 0.4
         ))
+        expect(presentation.state == .hidden)
+        expect(presentation.begin(action: .up, requestID: 2, epoch: freshEpoch, at: 0.5))
+        expect(presentation.receive(
+            outcome(volume: 15, generation: 2),
+            requestID: 2,
+            epoch: freshEpoch,
+            at: 0.6
+        ))
         expect(presentation.state.value?.confirmedVolume == 15)
-        expect(presentation.shouldAnnounce(at: 0.4))
+        expect(presentation.shouldAnnounce(at: 0.6))
     }
 
     @Test("Rails remain visible as confirmed state")
@@ -159,7 +203,7 @@ struct MediaTargetPresentationTests {
         expect(presentation.state == .rail(.maximum, presentation.state.value!))
     }
 
-    @Test("Timing dismisses visible state and resets announcement throttling")
+    @Test("Timing preserves pending state and dismisses confirmed state")
     func timingPolicy() {
         var presentation = MediaTargetPresentationModel(
             timing: MediaTargetPresentationTiming(
@@ -169,14 +213,20 @@ struct MediaTargetPresentationTests {
         )
         let epoch = presentation.invalidationEpoch
         expect(presentation.receiveProbe(outcome(volume: 40, generation: 1), epoch: epoch, at: 0))
-        expect(presentation.shouldAnnounce(at: 0))
-        expect(!presentation.shouldAnnounce(at: 0.5))
-        expect(presentation.shouldAnnounce(at: 1))
-        expect(!presentation.advance(to: 1.9))
-        expect(presentation.advance(to: 2))
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 0.1))
+        expect(!presentation.advance(to: 3))
+        expect(presentation.state.isVisible)
+        expect(presentation.receive(
+            outcome(volume: 45, generation: 2),
+            requestID: 1,
+            epoch: epoch,
+            at: 3.1
+        ))
+        expect(presentation.shouldAnnounce(at: 3.1))
+        expect(!presentation.shouldAnnounce(at: 4.1))
+        expect(!presentation.advance(to: 5))
+        expect(presentation.advance(to: 5.2))
         expect(presentation.state == .hidden)
-        expect(presentation.receiveProbe(outcome(volume: 45, generation: 2), epoch: epoch, at: 2.1))
-        expect(presentation.shouldAnnounce(at: 2.1))
     }
 
     private func expect(_ condition: Bool) {

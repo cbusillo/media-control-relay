@@ -163,6 +163,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     private var lastNonzeroConfirmedVolume: Int?
     private var stateSince: TimeInterval?
     private var lastAnnouncementAt: TimeInterval?
+    private var lastAnnouncedValue: MediaTargetPresentationValue?
 
     public init(timing: MediaTargetPresentationTiming = MediaTargetPresentationTiming()) {
         self.timing = timing
@@ -182,17 +183,15 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         newestOutcomeGeneration = outcome.generation
         guard outcome.reachability == .reachable,
               let confirmedState = outcome.confirmedState,
+              pendingAction == nil,
               let value = makePresentationValue(for: confirmedState) else {
             return false
         }
 
-        guard pendingAction == nil else {
-            return false
-        }
         lastConfirmedValue = value
         lastConfirmedAt = timestamp
-        state = stateFor(value: value, action: nil)
-        stateSince = timestamp
+        state = .hidden
+        stateSince = nil
         return true
     }
 
@@ -293,6 +292,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         state = .hidden
         stateSince = nil
         lastAnnouncementAt = nil
+        lastAnnouncedValue = nil
         return true
     }
 
@@ -305,6 +305,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastConfirmedAt = nil
         lastNonzeroConfirmedVolume = nil
         lastAnnouncementAt = nil
+        lastAnnouncedValue = nil
         switch reason {
         case .sleep:
             state = .suspended
@@ -320,11 +321,12 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         state = .hidden
         stateSince = nil
         lastAnnouncementAt = nil
+        lastAnnouncedValue = nil
     }
 
     @discardableResult
     public mutating func advance(to timestamp: TimeInterval) -> Bool {
-        guard state.isVisible,
+        guard isDismissible,
               let stateSince,
               timestamp >= stateSince,
               timestamp - stateSince >= timing.confirmationDisplayDuration else {
@@ -336,15 +338,34 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         return true
     }
 
+    private var isDismissible: Bool {
+        switch state {
+        case .confirmed, .muted, .rail, .failed:
+            return true
+        case .hidden, .pendingCold, .pendingBaseline, .suspended, .routeLost:
+            return false
+        }
+    }
+
     public mutating func shouldAnnounce(at timestamp: TimeInterval) -> Bool {
         switch state {
-        case .confirmed, .muted, .rail:
-            break
+        case let .confirmed(value), let .muted(value), let .rail(_, value):
+            guard value != lastAnnouncedValue else {
+                return false
+            }
+            return recordAnnouncement(at: timestamp, value: value)
         case .hidden, .pendingCold, .pendingBaseline, .failed, .suspended, .routeLost:
             return false
         }
+    }
+
+    private mutating func recordAnnouncement(
+        at timestamp: TimeInterval,
+        value: MediaTargetPresentationValue
+    ) -> Bool {
         guard let lastAnnouncementAt else {
             self.lastAnnouncementAt = timestamp
+            lastAnnouncedValue = value
             return true
         }
         guard timestamp >= lastAnnouncementAt,
@@ -352,6 +373,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
             return false
         }
         self.lastAnnouncementAt = timestamp
+        lastAnnouncedValue = value
         return true
     }
 
