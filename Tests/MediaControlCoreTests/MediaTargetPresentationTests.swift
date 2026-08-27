@@ -227,6 +227,15 @@ struct MediaTargetPresentationTests {
         expect(!presentation.advance(to: 5))
         expect(presentation.advance(to: 5.2))
         expect(presentation.state == .hidden)
+        expect(presentation.receiveProbe(outcome(volume: 40, generation: 3), epoch: epoch, at: 5.3))
+        expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 5.4))
+        expect(presentation.receive(
+            outcome(volume: 40, generation: 4),
+            requestID: 2,
+            epoch: epoch,
+            at: 5.5
+        ))
+        expect(presentation.shouldAnnounce(at: 5.5))
     }
 
     private func expect(_ condition: Bool) {

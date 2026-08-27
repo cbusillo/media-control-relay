@@ -877,7 +877,7 @@ final class RelayAppModel {
     }
 
     private var presentationTimestamp: TimeInterval {
-        Date().timeIntervalSinceReferenceDate
+        ProcessInfo.processInfo.systemUptime
     }
 
     private func beginPresentation(for action: VolumeAction) -> PendingPresentationRequest {

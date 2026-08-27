@@ -335,6 +335,8 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
 
         state = .hidden
         self.stateSince = nil
+        lastAnnouncementAt = nil
+        lastAnnouncedValue = nil
         return true
     }
 
