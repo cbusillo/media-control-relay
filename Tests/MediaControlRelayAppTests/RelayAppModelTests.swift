@@ -769,6 +769,40 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Repeated rail confirmations dismiss after the latest command")
+    func repeatedRailPresentationDismisses() async {
+        let target = AppModelTargetStub(
+            initialState: MediaTargetVolumeState(
+                absoluteVolume: 100,
+                isMuted: false,
+                minimumVolume: 0,
+                maximumVolume: 100,
+                volumeStep: 1
+            )
+        )
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            targetPresentationTiming: MediaTargetPresentationTiming(
+                confirmationDisplayDuration: 0.1
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 100 }
+        try? await Task.sleep(for: .milliseconds(50))
+
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.targetCommandsDispatched == 2 }
+        try? await Task.sleep(for: .milliseconds(60))
+
+        #expect(harness.model.targetPresentationState.isVisible)
+        await waitUntil { harness.model.targetPresentationState == .hidden }
+        harness.cleanup()
+    }
+
     @Test("Route gain and wake hide presentation until a fresh probe completes")
     func routeGainAndWakeStartWithHiddenPresentation() async {
         let target = AppModelTargetStub()
