@@ -13,12 +13,14 @@ public struct MediaTargetVolumeState: Equatable, Sendable {
     public let isMuted: Bool
     public let minimumVolume: Int
     public let maximumVolume: Int
+    public let volumeStep: Int
 
     public init(
         absoluteVolume: Int,
         isMuted: Bool,
         minimumVolume: Int,
-        maximumVolume: Int
+        maximumVolume: Int,
+        volumeStep: Int = 1
     ) {
         self.minimumVolume = min(minimumVolume, maximumVolume)
         self.maximumVolume = max(minimumVolume, maximumVolume)
@@ -27,6 +29,13 @@ public struct MediaTargetVolumeState: Equatable, Sendable {
             self.maximumVolume
         )
         self.isMuted = isMuted
+        let normalizedStep = max(1, volumeStep)
+        let (span, spanOverflow) = self.maximumVolume.subtractingReportingOverflow(
+            self.minimumVolume
+        )
+        self.volumeStep = spanOverflow || span == 0
+            ? normalizedStep
+            : min(normalizedStep, span)
     }
 
     public var boundedRange: ClosedRange<Int> {
@@ -71,14 +80,11 @@ public protocol MediaVolumeTarget: Sendable {
 }
 
 public struct MediaTargetVolumeReconciler: Equatable, Sendable {
-    public let step: Int
     public let maximumCoalescedStepCount: Int
 
     public init(
-        step: Int = 1,
         maximumCoalescedStepCount: Int = VolumeCommandQueuePolicy.default.maximumBatchSize
     ) {
-        self.step = max(1, step)
         self.maximumCoalescedStepCount = max(1, maximumCoalescedStepCount)
     }
 
@@ -135,24 +141,82 @@ public struct MediaTargetVolumeReconciler: Equatable, Sendable {
             max(1, stepCount),
             maximumCoalescedStepCount
         )
-        let (magnitude, multiplicationOverflow) = step.multipliedReportingOverflow(
+        let (magnitude, multiplicationOverflow) = state.volumeStep.multipliedReportingOverflow(
             by: normalizedStepCount
         )
         guard !multiplicationOverflow else {
             return railPlan(from: state, direction: direction)
         }
 
-        let delta = direction > 0 ? magnitude : -magnitude
-        let (candidate, additionOverflow) = state.absoluteVolume.addingReportingOverflow(delta)
-        guard !additionOverflow else {
-            return railPlan(from: state, direction: direction)
-        }
-
-        let targetVolume = state.clamped(candidate)
+        let targetVolume = gridTarget(
+            from: state,
+            direction: direction,
+            magnitude: magnitude
+        )
         guard targetVolume != state.absoluteVolume else {
             return .noChange
         }
         return .apply(.setVolume(targetVolume))
+    }
+
+    private func gridTarget(
+        from state: MediaTargetVolumeState,
+        direction: Int,
+        magnitude: Int
+    ) -> Int {
+        if direction > 0 {
+            guard state.absoluteVolume < state.maximumVolume else {
+                return state.maximumVolume
+            }
+            let (offset, offsetOverflow) = state.absoluteVolume.subtractingReportingOverflow(
+                state.minimumVolume
+            )
+            guard !offsetOverflow else {
+                return state.maximumVolume
+            }
+            let remainder = offset % state.volumeStep
+            let firstDelta = remainder == 0
+                ? state.volumeStep
+                : state.volumeStep - remainder
+            let (firstTarget, firstOverflow) = state.absoluteVolume.addingReportingOverflow(firstDelta)
+            guard !firstOverflow else {
+                return state.maximumVolume
+            }
+            let additionalMagnitude = magnitude - state.volumeStep
+            let (target, overflow) = firstTarget.addingReportingOverflow(
+                additionalMagnitude
+            )
+            guard !overflow else {
+                return state.maximumVolume
+            }
+            return state.clamped(target)
+        }
+
+        guard state.absoluteVolume > state.minimumVolume else {
+            return state.minimumVolume
+        }
+        let (offset, offsetOverflow) = state.absoluteVolume.subtractingReportingOverflow(
+            state.minimumVolume
+        )
+        guard !offsetOverflow else {
+            return state.minimumVolume
+        }
+        let remainder = offset % state.volumeStep
+        let firstDelta = remainder == 0
+            ? state.volumeStep
+            : remainder
+        let (firstTarget, firstOverflow) = state.absoluteVolume.subtractingReportingOverflow(firstDelta)
+        guard !firstOverflow else {
+            return state.minimumVolume
+        }
+        let additionalMagnitude = magnitude - state.volumeStep
+        let (target, overflow) = firstTarget.subtractingReportingOverflow(
+            additionalMagnitude
+        )
+        guard !overflow else {
+            return state.minimumVolume
+        }
+        return state.clamped(target)
     }
 
     private func railPlan(

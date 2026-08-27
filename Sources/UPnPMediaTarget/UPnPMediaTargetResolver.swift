@@ -70,6 +70,7 @@ public actor UPnPMediaTargetResolver {
             }
             var attemptedLocations = Set<URL>()
             var timedOutLocationCount = 0
+            var capabilityError: UPnPMediaTargetError?
             for candidate in candidates.prefix(searchBounds.maximumCandidateCount) {
                 guard generation == requestedGeneration else {
                     break
@@ -87,8 +88,18 @@ public actor UPnPMediaTargetResolver {
                 } catch UPnPMediaTargetError.timeout {
                     timedOutLocationCount += 1
                     continue
-                } catch {
-                    continue
+                } catch let error {
+                    switch error {
+                    case .missingRenderingControlService,
+                         .missingRenderingControlControlURL,
+                         .missingRenderingControlSCPDURL,
+                         .missingVolumeCapability,
+                         .invalidVolumeCapability:
+                        capabilityError = capabilityError ?? error
+                        continue
+                    default:
+                        continue
+                    }
                 }
 
                 guard descriptor.identity == identity else {
@@ -111,6 +122,9 @@ public actor UPnPMediaTargetResolver {
             if !attemptedLocations.isEmpty,
                timedOutLocationCount == attemptedLocations.count {
                 throw .timeout
+            }
+            if let capabilityError {
+                throw capabilityError
             }
             throw .discoveryUnavailable
         }

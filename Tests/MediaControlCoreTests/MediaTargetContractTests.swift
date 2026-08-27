@@ -16,18 +16,33 @@ struct MediaTargetContractTests {
         #expect(state.maximumVolume == 10)
         #expect(state.absoluteVolume == 10)
         #expect(state.boundedRange == 0...10)
+        #expect(state.volumeStep == 1)
+    }
+
+    @Test("Volume state bounds its step to the normalized span")
+    func volumeStateBoundsStep() {
+        let state = MediaTargetVolumeState(
+            absoluteVolume: 5,
+            isMuted: false,
+            minimumVolume: 0,
+            maximumVolume: 10,
+            volumeStep: 50
+        )
+
+        #expect(state.volumeStep == 10)
     }
 
     @Test("Relative actions map to one absolute operation")
     func relativeActionsMapToAbsoluteOperations() {
-        let reconciler = MediaTargetVolumeReconciler(step: 2)
         let state = MediaTargetVolumeState(
             absoluteVolume: 6,
             isMuted: true,
             minimumVolume: 0,
-            maximumVolume: 10
+            maximumVolume: 10,
+            volumeStep: 2
         )
 
+        let reconciler = MediaTargetVolumeReconciler()
         #expect(reconciler.plan(.up, currentState: state) == .apply(.setVolume(8)))
         #expect(reconciler.plan(.down, currentState: state) == .apply(.setVolume(4)))
         #expect(reconciler.plan(.mute, currentState: state) == .apply(.setMuted(false)))
@@ -68,28 +83,74 @@ struct MediaTargetContractTests {
 
     @Test("Held repeats coalesce into one bounded operation")
     func heldRepeatsCoalesce() {
-        let reconciler = MediaTargetVolumeReconciler(step: 2)
         let state = MediaTargetVolumeState(
             absoluteVolume: 3,
             isMuted: false,
             minimumVolume: 0,
-            maximumVolume: 100
+            maximumVolume: 100,
+            volumeStep: 2
         )
 
+        let reconciler = MediaTargetVolumeReconciler()
         #expect(
             reconciler.plan(
                 .up,
                 currentState: state,
                 coalescedStepCount: 3
-            ) == .apply(.setVolume(9))
+            ) == .apply(.setVolume(8))
         )
         #expect(
             reconciler.plan(
                 .up,
                 currentState: state,
                 coalescedStepCount: .max
-            ) == .apply(.setVolume(15))
+            ) == .apply(.setVolume(14))
         )
+    }
+
+    @Test("Off-grid state advances to the next valid grid value")
+    func offGridStateUsesGrid() {
+        let reconciler = MediaTargetVolumeReconciler()
+        let state = MediaTargetVolumeState(
+            absoluteVolume: 7,
+            isMuted: false,
+            minimumVolume: 0,
+            maximumVolume: 10,
+            volumeStep: 4
+        )
+
+        #expect(reconciler.plan(.up, currentState: state) == .apply(.setVolume(8)))
+        #expect(reconciler.plan(.down, currentState: state) == .apply(.setVolume(4)))
+    }
+
+    @Test("Non-grid maximum remains a valid rail")
+    func nonGridMaximumIsRail() {
+        let reconciler = MediaTargetVolumeReconciler()
+        let state = MediaTargetVolumeState(
+            absoluteVolume: 10,
+            isMuted: false,
+            minimumVolume: 0,
+            maximumVolume: 10,
+            volumeStep: 4
+        )
+
+        #expect(reconciler.plan(.up, currentState: state) == .noChange)
+        #expect(reconciler.plan(.down, currentState: state) == .apply(.setVolume(8)))
+    }
+
+    @Test("Overflow falls back to a safe rail")
+    func overflowFallsBackToRail() {
+        let reconciler = MediaTargetVolumeReconciler()
+        let state = MediaTargetVolumeState(
+            absoluteVolume: Int.max - 1,
+            isMuted: false,
+            minimumVolume: Int.min,
+            maximumVolume: Int.max,
+            volumeStep: Int.max
+        )
+
+        #expect(reconciler.plan(.up, currentState: state) == .apply(.setVolume(Int.max)))
+        #expect(reconciler.plan(.down, currentState: state) == .apply(.setVolume(Int.min)))
     }
 
     @Test("One supplied reread replaces stale cached state")
@@ -202,14 +263,16 @@ private actor StubMediaVolumeTarget: MediaVolumeTarget {
                 absoluteVolume: volume,
                 isMuted: state.isMuted,
                 minimumVolume: state.minimumVolume,
-                maximumVolume: state.maximumVolume
+                maximumVolume: state.maximumVolume,
+                volumeStep: state.volumeStep
             )
         case let .setMuted(isMuted):
             state = MediaTargetVolumeState(
                 absoluteVolume: state.absoluteVolume,
                 isMuted: isMuted,
                 minimumVolume: state.minimumVolume,
-                maximumVolume: state.maximumVolume
+                maximumVolume: state.maximumVolume,
+                volumeStep: state.volumeStep
             )
         }
         return state

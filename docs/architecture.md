@@ -83,8 +83,11 @@ queue or transport cache.
 The separate UPnP transport module is intentionally narrow and outbound-only:
 
 - HTTP-only endpoint validation for local IPv4 literals;
-- bounded device-description parsing with DTD/entity rejection;
-- stable UDN extraction and exact RenderingControl control-URL resolution;
+- bounded device-description and RenderingControl SCPD parsing with
+  DTD/entity rejection;
+- stable UDN extraction plus exact RenderingControl control and SCPD URL
+  resolution;
+- validated RenderingControl `Volume` minimum, maximum, and step capability;
 - exact RenderingControl:1 SOAP request/response coding for Volume and Mute;
 - ephemeral, credential-free URLSession requests with redirect rejection,
   bounded timeouts, cancellation, one connection per host, and streamed
@@ -94,19 +97,28 @@ The discovery slice adds a strict, case-insensitive SSDP response parser that
 retains only validated `LOCATION`, `USN`, and derived stable identity values;
 an injectable search protocol; and a macOS-supported IPv4 UDP M-SEARCH
 implementation bounded by response size, candidate count, cancellation, and
-elapsed time. A descriptor fetcher uses the existing bounded HTTP transport,
-requires HTTP 200, and rejects any response URL that is not exactly the
-requested `LOCATION`. The resolver actor caches one descriptor per discovery
-generation, skips duplicate or mismatched candidates, and discards the cache on
-interface or lifecycle invalidation before searching again by stable identity.
+elapsed time. A descriptor fetcher performs exactly two bounded HTTP GETs: the
+device description is capped at 64 KiB and the required RenderingControl SCPD
+is capped at 128 KiB. Both require HTTP 200 and reject any response URL that is
+not exactly the requested URL. The resolver actor caches the control endpoint
+and capability together per discovery generation, skips duplicate or mismatched
+candidates, and discards both on interface or lifecycle invalidation before
+searching again by stable identity. Incomplete or contradictory capability
+metadata is an explicit capability failure, not a guessed range. The required
+vendor maximum must be present; omitted minimum and step values use the
+RenderingControl:1 fixed values of zero and one.
 
 The target-execution actor conforms to the transport-neutral
 `MediaVolumeTarget` contract and explicitly serializes operations across async
-transport calls. Reads combine generic `ui2` volume and mute state. Writes send
-one absolute Volume or Mute operation and return only after full state read-back
-matches the requested dimension. An offline or timed-out endpoint triggers at
-most one resolver invalidation and fresh descriptor resolution; the retry
-rebuilds the RenderingControl transport from the newly resolved control URL.
+transport calls. Reads combine the resolved `ui2` volume range and step with
+mute state. Relative planning advances on that target grid, handles off-grid
+read-back values, coalescing, overflow, and non-grid maximum rails, and treats a
+rail press as a confirmed no-change state. Writes validate absolute Volume
+values against the resolved range/grid, then return only after full state
+read-back matches the requested dimension. An offline or timed-out endpoint
+triggers at most one resolver invalidation and fresh descriptor resolution; the
+retry rebuilds the RenderingControl transport from the newly resolved control
+URL.
 Adapter errors map to the neutral core failure taxonomy without exposing URLs,
 payloads, device identifiers, or fault descriptions.
 

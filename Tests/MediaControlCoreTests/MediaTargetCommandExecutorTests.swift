@@ -6,7 +6,7 @@ struct MediaTargetCommandExecutorTests {
     @Test("Relative actions use one current-state read and one absolute write")
     func executesAbsoluteWrite() async throws {
         let target = ExecutorTargetStub(
-            initialState: state(volume: 5, muted: false)
+            initialState: state(volume: 5, muted: false, step: 2)
         )
         let executor = MediaTargetCommandExecutor(target: target)
 
@@ -75,13 +75,15 @@ private actor ExecutorTargetStub: MediaVolumeTarget {
             currentState = state(
                 volume: volume,
                 muted: currentState.isMuted,
-                maximum: currentState.maximumVolume
+                maximum: currentState.maximumVolume,
+                step: currentState.volumeStep
             )
         case let .setMuted(isMuted):
             currentState = state(
                 volume: currentState.absoluteVolume,
                 muted: isMuted,
-                maximum: currentState.maximumVolume
+                maximum: currentState.maximumVolume,
+                step: currentState.volumeStep
             )
         }
         return currentState
@@ -91,12 +93,14 @@ private actor ExecutorTargetStub: MediaVolumeTarget {
 private func state(
     volume: Int,
     muted: Bool,
-    maximum: Int = 10
+    maximum: Int = 10,
+    step: Int = 1
 ) -> MediaTargetVolumeState {
     MediaTargetVolumeState(
         absoluteVolume: volume,
         isMuted: muted,
         minimumVolume: 0,
-        maximumVolume: maximum
+        maximumVolume: maximum,
+        volumeStep: step
     )
 }

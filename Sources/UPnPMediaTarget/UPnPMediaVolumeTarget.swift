@@ -78,7 +78,7 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
         _ operation: MediaTargetVolumeOperation
     ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
         if case let .setVolume(volume) = operation,
-           !(0...Int(UInt16.max)).contains(volume) {
+           !(0...UPnPMediaTargetVolumeCapability.ui2Maximum).contains(volume) {
             throw .capabilityUnavailable
         }
 
@@ -115,10 +115,19 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
                 guard descriptor.identity == identity else {
                     throw UPnPMediaTargetError.discoveryUnavailable
                 }
+                if case let .apply(.setVolume(volume)) = action {
+                    guard descriptor.volumeCapability.accepts(volume) else {
+                        throw UPnPMediaTargetError.invalidRequestValue
+                    }
+                }
                 let controller = try renderingControlFactory(
                     descriptor.renderingControlURL
                 )
-                return try await Self.perform(action, using: controller)
+                return try await Self.perform(
+                    action,
+                    using: controller,
+                    capability: descriptor.volumeCapability
+                )
             } catch let error as UPnPMediaTargetError {
                 guard attempt == 0, error.isStaleEndpointRetryable else {
                     throw error
@@ -134,7 +143,8 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
 
     private static func perform(
         _ action: TargetAction,
-        using controller: any UPnPMediaTargetRenderingControlling
+        using controller: any UPnPMediaTargetRenderingControlling,
+        capability: UPnPMediaTargetVolumeCapability
     ) async throws(UPnPMediaTargetError) -> MediaTargetVolumeState {
         switch action {
         case .readState:
@@ -154,16 +164,20 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
         guard !Task.isCancelled else {
             throw .cancelled
         }
-        return try await readState(using: controller)
+        return try await readState(using: controller, capability: capability)
     }
 
     private static func readState(
-        using controller: any UPnPMediaTargetRenderingControlling
+        using controller: any UPnPMediaTargetRenderingControlling,
+        capability: UPnPMediaTargetVolumeCapability
     ) async throws(UPnPMediaTargetError) -> MediaTargetVolumeState {
         guard !Task.isCancelled else {
             throw .cancelled
         }
         let volume = try await controller.getVolume()
+        guard capability.contains(volume) else {
+            throw .invalidResponseValue
+        }
         guard !Task.isCancelled else {
             throw .cancelled
         }
@@ -171,8 +185,9 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
         return MediaTargetVolumeState(
             absoluteVolume: volume,
             isMuted: isMuted,
-            minimumVolume: 0,
-            maximumVolume: Int(UInt16.max)
+            minimumVolume: capability.minimumVolume,
+            maximumVolume: capability.maximumVolume,
+            volumeStep: capability.step
         )
     }
 
@@ -238,6 +253,9 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
             return .cancelled
         case .missingRenderingControlService,
              .missingRenderingControlControlURL,
+             .missingRenderingControlSCPDURL,
+             .missingVolumeCapability,
+             .invalidVolumeCapability,
              .invalidRequestValue:
             return .capabilityUnavailable
         case .unexpectedStatusCode,

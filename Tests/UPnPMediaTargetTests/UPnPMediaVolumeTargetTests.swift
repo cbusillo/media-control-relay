@@ -5,7 +5,39 @@ import Testing
 
 @Suite("UPnP media volume target", .serialized)
 struct UPnPMediaVolumeTargetTests {
-    @Test("State reads return the generic ui2 volume range")
+    @Test("State and writes use the resolved target capability")
+    func usesResolvedCapability() async throws {
+        let capability = try UPnPMediaTargetVolumeCapability(
+            minimumVolume: 10,
+            maximumVolume: 90,
+            step: 5
+        )
+        let fixture = makeTargetFixture(
+            descriptorOctets: [39],
+            controllers: [
+                39: [
+                    ScriptedRenderingController(steps: [
+                        .getVolume(.success(12)),
+                        .getMute(.success(false)),
+                    ]),
+                ],
+            ],
+            volumeCapability: capability
+        )
+
+        let state = try await fixture.target.readState()
+
+        #expect(state.minimumVolume == 10)
+        #expect(state.maximumVolume == 90)
+        #expect(state.volumeStep == 5)
+
+        await #expect(throws: MediaTargetFailure.capabilityUnavailable) {
+            _ = try await fixture.target.apply(.setVolume(13))
+        }
+        #expect(fixture.factory.createdEndpoints == [makeControlURL(39)])
+    }
+
+    @Test("State reads return the resolved volume capability")
     func readsState() async throws {
         let fixture = makeTargetFixture(
             descriptorOctets: [40],
@@ -24,9 +56,28 @@ struct UPnPMediaVolumeTargetTests {
         #expect(state.absoluteVolume == 12)
         #expect(state.isMuted)
         #expect(state.minimumVolume == 0)
-        #expect(state.maximumVolume == Int(UInt16.max))
+        #expect(state.maximumVolume == 100)
+        #expect(state.volumeStep == 1)
         #expect(await fixture.resolver.resolveCount == 1)
         #expect(fixture.factory.createdEndpoints == [makeControlURL(40)])
+    }
+
+    @Test("Out-of-range target reads fail instead of clamping")
+    func rejectsOutOfRangeReadBack() async {
+        let fixture = makeTargetFixture(
+            descriptorOctets: [55],
+            controllers: [
+                55: [
+                    ScriptedRenderingController(steps: [
+                        .getVolume(.success(101)),
+                    ]),
+                ],
+            ]
+        )
+
+        await #expect(throws: MediaTargetFailure.malformedResponse) {
+            _ = try await fixture.target.readState()
+        }
     }
 
     @Test("Set volume returns only matching read-back state")
@@ -346,13 +397,19 @@ private struct TargetFixture {
 
 private func makeTargetFixture(
     descriptorOctets: [Int],
-    controllers: [Int: [any UPnPMediaTargetRenderingControlling]]
+    controllers: [Int: [any UPnPMediaTargetRenderingControlling]],
+    volumeCapability: UPnPMediaTargetVolumeCapability? = nil
 ) -> TargetFixture {
     let identity = MediaTargetIdentity(stableIdentifier: "uuid:fixture-target")
     let descriptors = descriptorOctets.map {
         UPnPMediaTargetDescriptor(
             identity: identity,
-            renderingControlURL: makeControlURL($0)
+            renderingControlURL: makeControlURL($0),
+            volumeCapability: volumeCapability ?? (try! UPnPMediaTargetVolumeCapability(
+                minimumVolume: 0,
+                maximumVolume: 100,
+                step: 1
+            ))
         )
     }
     let resolver = TargetResolverStub(descriptors: descriptors)

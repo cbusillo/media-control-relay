@@ -7,26 +7,66 @@ public protocol UPnPMediaTargetDescriptorFetching: Sendable {
 }
 
 public struct UPnPMediaTargetURLSessionDescriptorFetcher: UPnPMediaTargetDescriptorFetching, Sendable {
-    public static let defaultMaximumResponseBytes =
-        UPnPMediaTargetURLSessionHTTPTransport.defaultMaximumResponseBytes
+    public static let defaultMaximumDeviceDescriptionBytes =
+        UPnPMediaTargetDeviceDescriptionParser.defaultMaximumPayloadBytes
+    public static let defaultMaximumServiceDescriptionBytes =
+        UPnPMediaTargetSCPDParser.defaultMaximumPayloadBytes
 
     private let http: any UPnPMediaTargetHTTPTransacting
-    private let maximumResponseBytes: Int
+    private let maximumDeviceDescriptionBytes: Int
+    private let maximumServiceDescriptionBytes: Int
 
     public init(
-        http: any UPnPMediaTargetHTTPTransacting = UPnPMediaTargetURLSessionHTTPTransport(),
-        maximumResponseBytes: Int = defaultMaximumResponseBytes
+        http: any UPnPMediaTargetHTTPTransacting = UPnPMediaTargetURLSessionHTTPTransport(
+            maximumResponseBytes: defaultMaximumServiceDescriptionBytes
+        ),
+        maximumDeviceDescriptionBytes: Int = defaultMaximumDeviceDescriptionBytes,
+        maximumServiceDescriptionBytes: Int = defaultMaximumServiceDescriptionBytes
     ) {
         self.http = http
-        self.maximumResponseBytes = min(
-            max(1, maximumResponseBytes),
-            Self.defaultMaximumResponseBytes
-        )
+        self.maximumDeviceDescriptionBytes = max(1, min(
+            maximumDeviceDescriptionBytes,
+            Self.defaultMaximumDeviceDescriptionBytes
+        ))
+        self.maximumServiceDescriptionBytes = max(1, min(
+            maximumServiceDescriptionBytes,
+            Self.defaultMaximumServiceDescriptionBytes
+        ))
     }
 
     public func fetch(
         location: URL
     ) async throws(UPnPMediaTargetError) -> UPnPMediaTargetDescriptor {
+        let validatedLocation = try UPnPMediaTargetEndpointPolicy.validate(location)
+        let deviceData = try await get(
+            at: validatedLocation,
+            maximumResponseBytes: maximumDeviceDescriptionBytes
+        )
+        let deviceDescription = try UPnPMediaTargetDeviceDescriptionParser.parse(
+            deviceData,
+            location: validatedLocation,
+            maximumPayloadBytes: maximumDeviceDescriptionBytes
+        )
+        let serviceData = try await get(
+            at: deviceDescription.renderingControlSCPDURL,
+            maximumResponseBytes: maximumServiceDescriptionBytes
+        )
+        let volumeCapability = try UPnPMediaTargetSCPDParser.parse(
+            serviceData,
+            maximumPayloadBytes: maximumServiceDescriptionBytes
+        )
+
+        return UPnPMediaTargetDescriptor(
+            identity: deviceDescription.identity,
+            renderingControlURL: deviceDescription.renderingControlURL,
+            volumeCapability: volumeCapability
+        )
+    }
+
+    private func get(
+        at location: URL,
+        maximumResponseBytes: Int
+    ) async throws(UPnPMediaTargetError) -> Data {
         let validatedLocation = try UPnPMediaTargetEndpointPolicy.validate(location)
         var request = URLRequest(url: validatedLocation)
         request.httpMethod = "GET"
@@ -47,11 +87,6 @@ public struct UPnPMediaTargetURLSessionDescriptorFetcher: UPnPMediaTargetDescrip
         guard response.statusCode == 200 else {
             throw .unexpectedStatusCode(response.statusCode)
         }
-
-        return try UPnPMediaTargetDeviceDescriptionParser.parse(
-            data,
-            location: validatedLocation,
-            maximumPayloadBytes: maximumResponseBytes
-        )
+        return data
     }
 }
