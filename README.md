@@ -93,6 +93,7 @@ scripts/generate-project.sh
 - [Product identity](docs/product-identity.md)
 - [Protocol provenance audit](docs/provenance-audit.md)
 - [Privacy](docs/privacy.md)
+- [Security policy](SECURITY.md)
 - [Repository settings](docs/repo-settings.md)
 - [Product plan](https://github.com/cbusillo/media-control-relay/issues/1)
 
