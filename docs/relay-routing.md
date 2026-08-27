@@ -111,3 +111,7 @@ display-absent diagnostics are deferred to issue #23.
 
 No real device, Samsung transport, network, pairing, or credential behavior is
 claimed by this milestone.
+
+The later signed pairing-free Samsung UPnP matrix is recorded separately in
+[`samsung-upnp-qualification.md`](samsung-upnp-qualification.md). That record
+does not broaden this milestone's preview-target claims.
