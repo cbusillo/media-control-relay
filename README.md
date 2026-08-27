@@ -89,6 +89,7 @@ scripts/generate-project.sh
 - [Architecture](docs/architecture.md)
 - [Relay routing](docs/relay-routing.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
+- [Samsung UPnP qualification](docs/samsung-upnp-qualification.md)
 - [Product identity](docs/product-identity.md)
 - [Protocol provenance audit](docs/provenance-audit.md)
 - [Privacy](docs/privacy.md)
