@@ -1,0 +1,31 @@
+---
+version: 2
+
+updates:
+  - package-ecosystem: swift
+    directory: "/"
+    open-pull-requests-limit: 2
+    schedule:
+      interval: weekly
+    groups:
+      all-version-updates:
+        patterns:
+          - "*"
+      all-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    open-pull-requests-limit: 2
+    schedule:
+      interval: weekly
+    groups:
+      all-version-updates:
+        patterns:
+          - "*"
+      all-security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"

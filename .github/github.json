@@ -1,0 +1,125 @@
+{
+  "defaultBranch": "main",
+  "projectType": "native-macos-app",
+  "docs": {
+    "agentNotes": "AGENTS.md",
+    "overview": "README.md",
+    "architecture": "docs/architecture.md",
+    "routing": "docs/relay-routing.md",
+    "inputMonitoring": "docs/input-monitoring.md",
+    "qualification": "docs/samsung-upnp-qualification.md",
+    "provenance": "docs/provenance-audit.md",
+    "privacy": "docs/privacy.md",
+    "repoSettings": "docs/repo-settings.md"
+  },
+  "qualityGate": {
+    "test": {
+      "default": "swift test"
+    },
+    "validate": {
+      "default": "scripts/check.sh"
+    },
+    "inspection": {
+      "tool": "jetbrains",
+      "ide": "IntelliJ IDEA",
+      "scopePreference": ["changed_files", "directory", "whole_project"]
+    },
+    "docsRequiredWhen": [
+      "behavior changes",
+      "public API changes",
+      "user-visible UI changes",
+      "permission or recovery behavior changes",
+      "media-target protocol changes",
+      "signing or distribution changes",
+      "validation gate changes",
+      "GitHub repository settings changes"
+    ]
+  },
+  "importantWorkflows": ["Validation"],
+  "githubSettings": {
+    "expected": {
+      "hasIssues": true,
+      "hasProjects": true,
+      "hasWiki": false,
+      "allowMergeCommit": true,
+      "allowSquashMerge": false,
+      "allowRebaseMerge": false,
+      "deleteBranchOnMerge": true,
+      "actionsDefaultWorkflowPermissions": "read",
+      "actionsCanCreatePullRequests": false,
+      "actionsRequireShaPinning": true
+    }
+  },
+  "pullRequests": {
+    "preferredMergeMethod": "merge",
+    "allowedMergeMethods": ["merge"]
+  },
+  "prWorkflow": {
+    "mergePolicy": {
+      "requireExplicitUserApproval": true,
+      "readyStateIsMergeIntent": false,
+      "fixTrainSettling": "Green and mergeable pull requests are ready for a merge decision, not automatic merge intent."
+    },
+    "watchSkill": "babysit-pr",
+    "watchSkillSource": "shared-codex-skills"
+  },
+  "branchProtection": {
+    "main": {
+      "system": "classic",
+      "requiresPullRequest": true,
+      "requiredStatusChecks": ["validation"],
+      "requiresStrictStatusChecks": true,
+      "requiredApprovals": 0,
+      "dismissStaleReviews": true,
+      "enforceAdmins": true,
+      "blocksForcePushes": true,
+      "blocksDeletion": true,
+      "requiresConversationResolution": true
+    }
+  },
+  "githubSignals": {
+    "postMerge": {
+      "waitForActions": true
+    },
+    "capabilities": {
+      "secretScanning": "available",
+      "secretScanningPushProtection": "available",
+      "dependabotSecurityUpdates": "available"
+    },
+    "refreshWhen": [
+      "repository visibility changes",
+      "branch protection changes",
+      "merge settings change",
+      "security settings change"
+    ]
+  },
+  "cleanup": {
+    "deleteMergedLocalBranches": true,
+    "removeMergedCleanWorktrees": true,
+    "commands": [
+      {
+        "name": "git status",
+        "command": "git status --short --branch",
+        "when": "routine",
+        "description": "Confirm the checkout is clean before closeout."
+      },
+      {
+        "name": "worktree list",
+        "command": "git worktree list",
+        "when": "routine",
+        "description": "List linked worktrees so stale generated worktrees are visible."
+      }
+    ]
+  },
+  "metadataFreshness": {
+    "updateWhen": [
+      "validation gates change",
+      "important workflows change",
+      "docs routing changes",
+      "branch protection changes",
+      "merge settings change",
+      "cleanup policy changes",
+      "ownership boundaries change"
+    ]
+  }
+}

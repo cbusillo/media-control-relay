@@ -1,5 +1,18 @@
 # Media Control Relay Agent Notes
 
+## GitHub Workflow
+
+- Treat `main` and any future shared, release, or production branch as a
+  protected no-direct-work zone.
+- Create a focused task branch before editing or committing implementation or
+  repository-policy changes.
+- Push task branches and open or update pull requests; do not probe protection
+  by attempting a direct push to `main`.
+- Use normal merge commits. Do not squash or rebase pull requests.
+- Run `scripts/check.sh` and wait for the required `validation` check before
+  merge.
+- Delete merged task branches and clean merged worktrees during closeout.
+
 ## Product Shape
 
 Media Control Relay is a focused native macOS menu-bar app that routes actions

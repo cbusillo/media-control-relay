@@ -3,6 +3,7 @@
 .swiftpm/
 DerivedData/
 MediaControlRelay.xcodeproj/
+.idea/
 scratch/
 xcuserdata/
 *.xcuserstate
