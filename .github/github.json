@@ -10,6 +10,7 @@
     "qualification": "docs/samsung-upnp-qualification.md",
     "provenance": "docs/provenance-audit.md",
     "privacy": "docs/privacy.md",
+    "security": "SECURITY.md",
     "repoSettings": "docs/repo-settings.md"
   },
   "qualityGate": {
@@ -18,6 +19,11 @@
     },
     "validate": {
       "default": "scripts/check.sh"
+    },
+    "security": {
+      "secretScan": "scripts/check-secrets.sh",
+      "actionPins": "scripts/check-action-pins.sh",
+      "codeScanning": "Analyze Swift"
     },
     "inspection": {
       "tool": "jetbrains",
@@ -35,7 +41,7 @@
       "GitHub repository settings changes"
     ]
   },
-  "importantWorkflows": ["Validation"],
+  "importantWorkflows": ["Validation", "CodeQL"],
   "githubSettings": {
     "expected": {
       "hasIssues": true,
@@ -67,7 +73,7 @@
     "main": {
       "system": "classic",
       "requiresPullRequest": true,
-      "requiredStatusChecks": ["validation"],
+      "requiredStatusChecks": ["validation", "Analyze Swift"],
       "requiresStrictStatusChecks": true,
       "requiredApprovals": 0,
       "dismissStaleReviews": true,
@@ -77,14 +83,22 @@
       "requiresConversationResolution": true
     }
   },
+  "runnerPolicy": {
+    "pullRequestMacOS": "macos-15",
+    "routineMacOS": "macos-15",
+    "notes": "Pin validation and CodeQL to an explicit GitHub-hosted macOS image instead of macos-latest. Review the baseline quarterly and whenever GitHub announces image retirement, the required Xcode or Swift baseline changes, Apple distribution requirements change, or CI emits image-deprecation warnings. Trial replacements on a task-branch pull request, move validation and CodeQL together after both pass, and retain a rollback image only while GitHub still supports it."
+  },
   "githubSignals": {
     "postMerge": {
-      "waitForActions": true
+      "waitForActions": true,
+      "checkSecurityAndQuality": true
     },
     "capabilities": {
+      "codeScanning": "available",
       "secretScanning": "available",
       "secretScanningPushProtection": "available",
-      "dependabotSecurityUpdates": "available"
+      "dependabotSecurityUpdates": "available",
+      "securityAdvisories": "available"
     },
     "refreshWhen": [
       "repository visibility changes",
@@ -115,6 +129,7 @@
     "updateWhen": [
       "validation gates change",
       "important workflows change",
+      "runner image policy changes",
       "docs routing changes",
       "branch protection changes",
       "merge settings change",
