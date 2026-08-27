@@ -57,20 +57,37 @@ final class RelayAppModel {
     private let coordinator: RelayCoordinator
     private let preferences: UserDefaults
     private var mediaTargetSession: MediaTargetSession?
-    private var targetPresentation = MediaTargetPresentationModel()
-    private var lastTargetOutcomeGeneration: UInt64?
+    private var targetPresentation: MediaTargetPresentationModel
     private var applicationActivationToken: NSObjectProtocol?
     private var volumeKeyTask: Task<Void, Never>?
     private var volumeActionTask: Task<Void, Never>?
     private var targetProbeTask: Task<Void, Never>?
     private var targetProbeGeneration: UInt64 = 0
-    private var commandContinuation: AsyncStream<RelayCommand>.Continuation?
+    private var commandContinuation: AsyncStream<TargetCommandRequest>.Continuation?
     private var commandPumpTask: Task<Void, Never>?
     private var commandGeneration: UInt64 = 0
+    private var nextPresentationRequestID: UInt64 = 0
+    private var repeatedVolumeAction: VolumeAction?
+    private var activeHoldGeneration: UInt64 = 0
+    private var pendingPresentationRequest: PendingPresentationRequest?
+    private var presentationDismissalTask: Task<Void, Never>?
     private var awaitingWakeCompletion = false
     private var hasReceivedNetworkPathSnapshot = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
+
+    private struct TargetCommandRequest: Sendable {
+        let command: RelayCommand
+        let presentationRequestID: UInt64
+        let presentationEpoch: UInt64
+        let holdGeneration: UInt64?
+    }
+
+    private struct PendingPresentationRequest: Equatable {
+        let requestID: UInt64
+        let epoch: UInt64
+        let holdGeneration: UInt64?
+    }
 
     init(
         routeObserver: any RouteObserving = SystemRouteObserver(),
@@ -80,6 +97,7 @@ final class RelayAppModel {
         inputMonitoringAccess: InputMonitoringAccessClient = .live,
         applicationNotificationCenter: NotificationCenter = .default,
         discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
+        targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
         mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
             MediaTargetSessionFactory.make(configuration: $0)
         }
@@ -95,6 +113,9 @@ final class RelayAppModel {
         self.discovery = discovery
         self.mediaTargetSessionFactory = mediaTargetSessionFactory
         self.preferences = configurationStore.defaults
+        self.targetPresentation = MediaTargetPresentationModel(
+            timing: targetPresentationTiming
+        )
         self.coordinator = RelayCoordinator(
             configuration: configuration,
             cancelHeldGesture: {
@@ -121,7 +142,10 @@ final class RelayAppModel {
                 guard !Task.isCancelled, let self else {
                     return
                 }
-                self.handleVolumeAction(action)
+                self.handleVolumeAction(
+                    action,
+                    isHeldRepeat: volumeKeyGestureMonitor.isRepeating(action)
+                )
             }
         }
         routeObserver.onSnapshot = { [weak self] snapshot in
@@ -629,6 +653,7 @@ final class RelayAppModel {
     ) {
         targetProbeGeneration &+= 1
         let generation = targetProbeGeneration
+        let presentationEpoch = targetPresentation.invalidationEpoch
         targetProbeTask = Task { @MainActor [weak self, mediaTargetSession] in
             defer {
                 if let self, self.targetProbeGeneration == generation {
@@ -659,9 +684,9 @@ final class RelayAppModel {
                 return
             }
             if outcome.reachability == .reachable {
-                lastTargetOutcomeGeneration = outcome.generation
                 _ = targetPresentation.receiveProbe(
                     outcome,
+                    epoch: presentationEpoch,
                     at: presentationTimestamp
                 )
                 syncPresentationState()
@@ -702,7 +727,7 @@ final class RelayAppModel {
 
     private func startCommandDispatch(for mediaTargetSession: MediaTargetSession) {
         cancelCommandDispatch()
-        let stream = AsyncStream<RelayCommand>.makeStream()
+        let stream = AsyncStream<TargetCommandRequest>.makeStream()
         commandGeneration &+= 1
         let generation = commandGeneration
         commandContinuation = stream.continuation
@@ -714,15 +739,30 @@ final class RelayAppModel {
                 }
             }
 
-            for await command in stream.stream {
+            for await request in stream.stream {
                 guard let self,
                       !Task.isCancelled,
                       commandGeneration == generation,
                       self.mediaTargetSession === mediaTargetSession else {
                     return
                 }
+                guard request.holdGeneration == nil ||
+                    request.holdGeneration == activeHoldGeneration else {
+                    coordinator.completeCommand()
+                    syncCoordinatorState()
+                    _ = targetPresentation.cancel(
+                        requestID: request.presentationRequestID,
+                        epoch: request.presentationEpoch
+                    )
+                    clearPendingPresentationRequest(
+                        requestID: request.presentationRequestID,
+                        epoch: request.presentationEpoch
+                    )
+                    syncPresentationState()
+                    continue
+                }
                 targetCommandsDispatched += 1
-                let outcome = await mediaTargetSession.execute(command.action)
+                let outcome = await mediaTargetSession.execute(request.command.action)
                 guard !Task.isCancelled,
                       commandGeneration == generation,
                       self.mediaTargetSession === mediaTargetSession else {
@@ -731,18 +771,40 @@ final class RelayAppModel {
 
                 coordinator.completeCommand()
                 syncCoordinatorState()
-                guard let outcome else {
-                    _ = targetPresentation.fail(
-                        generation: lastTargetOutcomeGeneration ?? 0,
-                        at: presentationTimestamp
+                guard request.holdGeneration == nil ||
+                    request.holdGeneration == activeHoldGeneration else {
+                    _ = targetPresentation.cancel(
+                        requestID: request.presentationRequestID,
+                        epoch: request.presentationEpoch
+                    )
+                    clearPendingPresentationRequest(
+                        requestID: request.presentationRequestID,
+                        epoch: request.presentationEpoch
                     )
                     syncPresentationState()
                     continue
                 }
-                lastTargetOutcomeGeneration = outcome.generation
+                guard let outcome else {
+                    _ = targetPresentation.cancel(
+                        requestID: request.presentationRequestID,
+                        epoch: request.presentationEpoch
+                    )
+                    clearPendingPresentationRequest(
+                        requestID: request.presentationRequestID,
+                        epoch: request.presentationEpoch
+                    )
+                    syncPresentationState()
+                    continue
+                }
                 _ = targetPresentation.receive(
                     outcome,
+                    requestID: request.presentationRequestID,
+                    epoch: request.presentationEpoch,
                     at: presentationTimestamp
+                )
+                clearPendingPresentationRequest(
+                    requestID: request.presentationRequestID,
+                    epoch: request.presentationEpoch
                 )
                 syncPresentationState()
                 if outcome.reachability != .reachable {
@@ -772,10 +834,36 @@ final class RelayAppModel {
         if event.phase == .pressed, !event.isRepeat {
             observedVolumeKeyPressCount += 1
         }
+        if event.phase == .pressed,
+            event.isRepeat,
+           event.action.supportsHoldRepeat {
+            if repeatedVolumeAction != event.action {
+                activeHoldGeneration &+= 1
+            }
+            repeatedVolumeAction = event.action
+        }
         volumeKeyGestureMonitor.ingest(event)
+        if event.phase == .released,
+           repeatedVolumeAction == event.action {
+            let releasedHoldGeneration = activeHoldGeneration
+            repeatedVolumeAction = nil
+            activeHoldGeneration &+= 1
+            if let request = pendingPresentationRequest,
+               request.holdGeneration == releasedHoldGeneration {
+                _ = targetPresentation.cancel(
+                    requestID: request.requestID,
+                    epoch: request.epoch
+                )
+                pendingPresentationRequest = nil
+                syncPresentationState()
+            }
+        }
     }
 
-    func handleVolumeAction(_ action: VolumeAction) {
+    func handleVolumeAction(
+        _ action: VolumeAction,
+        isHeldRepeat: Bool = false
+    ) {
         observedVolumeActionCount += 1
         lastObservedVolumeAction = action
         guard let command = apply(.volumeAction(action)) else {
@@ -787,33 +875,63 @@ final class RelayAppModel {
             coordinator.completeCommand()
             syncCoordinatorState()
         case .upnpMediaRenderer:
-            let presentationGeneration = lastTargetOutcomeGeneration ?? 0
+            nextPresentationRequestID &+= 1
+            let presentationRequestID = nextPresentationRequestID
+            let presentationEpoch = targetPresentation.invalidationEpoch
+            if isHeldRepeat,
+               repeatedVolumeAction != action {
+                activeHoldGeneration &+= 1
+                repeatedVolumeAction = action
+            }
+            let holdGeneration = isHeldRepeat ? activeHoldGeneration : nil
             _ = targetPresentation.begin(
                 action: action,
-                generation: presentationGeneration,
+                requestID: presentationRequestID,
+                epoch: presentationEpoch,
                 at: presentationTimestamp
+            )
+            pendingPresentationRequest = PendingPresentationRequest(
+                requestID: presentationRequestID,
+                epoch: presentationEpoch,
+                holdGeneration: holdGeneration
             )
             syncPresentationState()
             guard let commandContinuation else {
                 coordinator.completeCommand()
                 syncCoordinatorState()
                 _ = targetPresentation.fail(
-                    generation: presentationGeneration,
+                    requestID: presentationRequestID,
+                    epoch: presentationEpoch,
                     at: presentationTimestamp
+                )
+                clearPendingPresentationRequest(
+                    requestID: presentationRequestID,
+                    epoch: presentationEpoch
                 )
                 syncPresentationState()
                 apply(.transportReachability(.unreachable))
                 return
             }
-            switch commandContinuation.yield(command) {
+            let request = TargetCommandRequest(
+                command: command,
+                presentationRequestID: presentationRequestID,
+                presentationEpoch: presentationEpoch,
+                holdGeneration: holdGeneration
+            )
+            switch commandContinuation.yield(request) {
             case .enqueued:
                 break
             case .dropped, .terminated:
                 coordinator.completeCommand()
                 syncCoordinatorState()
                 _ = targetPresentation.fail(
-                    generation: presentationGeneration,
+                    requestID: presentationRequestID,
+                    epoch: presentationEpoch,
                     at: presentationTimestamp
+                )
+                clearPendingPresentationRequest(
+                    requestID: presentationRequestID,
+                    epoch: presentationEpoch
                 )
                 syncPresentationState()
                 apply(.transportReachability(.unreachable))
@@ -822,8 +940,13 @@ final class RelayAppModel {
                 coordinator.completeCommand()
                 syncCoordinatorState()
                 _ = targetPresentation.fail(
-                    generation: presentationGeneration,
+                    requestID: presentationRequestID,
+                    epoch: presentationEpoch,
                     at: presentationTimestamp
+                )
+                clearPendingPresentationRequest(
+                    requestID: presentationRequestID,
+                    epoch: presentationEpoch
                 )
                 syncPresentationState()
                 apply(.transportReachability(.unreachable))
@@ -843,6 +966,7 @@ final class RelayAppModel {
         _ reason: MediaTargetPresentationInvalidation
     ) {
         targetPresentation.invalidate(reason)
+        pendingPresentationRequest = nil
         syncPresentationState()
     }
 
@@ -865,6 +989,60 @@ final class RelayAppModel {
 
     private func syncPresentationState() {
         targetPresentationState = targetPresentation.state
+        schedulePresentationDismissal()
+        announcePresentationIfNeeded()
+    }
+
+    private func clearPendingPresentationRequest(
+        requestID: UInt64,
+        epoch: UInt64
+    ) {
+        guard pendingPresentationRequest?.requestID == requestID,
+              pendingPresentationRequest?.epoch == epoch else {
+            return
+        }
+        pendingPresentationRequest = nil
+    }
+
+    private func schedulePresentationDismissal() {
+        presentationDismissalTask?.cancel()
+        guard targetPresentationState.isVisible else {
+            presentationDismissalTask = nil
+            return
+        }
+
+        let delay = targetPresentation.timing.confirmationDisplayDuration
+        presentationDismissalTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            guard let self else {
+                return
+            }
+            _ = targetPresentation.advance(to: presentationTimestamp)
+            syncPresentationState()
+        }
+    }
+
+    private func announcePresentationIfNeeded() {
+        guard targetPresentation.shouldAnnounce(at: presentationTimestamp),
+              let value = targetPresentationState.value else {
+            return
+        }
+
+        let announcement = value.isMuted
+            ? "Muted, volume \(value.percentage) percent"
+            : "Volume \(value.percentage) percent"
+        NSAccessibility.post(
+            element: NSApp,
+            notification: .announcementRequested,
+            userInfo: [
+                .announcement: announcement,
+                .priority: NSAccessibilityPriorityLevel.low.rawValue,
+            ]
+        )
     }
 }
 

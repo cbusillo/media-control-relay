@@ -40,8 +40,7 @@ actor MediaTargetSession {
             confirmedState = try await target.readState()
             reachability = .reachable
         } catch .cancelled {
-            reachability = .unknown
-            confirmedState = nil
+            return nil
         } catch .authenticationRejected {
             reachability = .authenticationRejected
             confirmedState = nil
@@ -72,8 +71,7 @@ actor MediaTargetSession {
             confirmedState = try await executor.execute(action)
             reachability = .reachable
         } catch .cancelled {
-            reachability = .unknown
-            confirmedState = nil
+            return nil
         } catch .authenticationRejected {
             reachability = .authenticationRejected
             confirmedState = nil

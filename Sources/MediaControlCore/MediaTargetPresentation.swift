@@ -25,6 +25,24 @@ public struct MediaTargetPresentationValue: Equatable, Sendable {
     public let maximumVolume: Int
     public let volumeStep: Int
 
+    public init(
+        normalizedLevel: Double,
+        confirmedVolume: Int,
+        displayedVolume: Int,
+        isMuted: Bool,
+        minimumVolume: Int,
+        maximumVolume: Int,
+        volumeStep: Int
+    ) {
+        self.normalizedLevel = normalizedLevel
+        self.confirmedVolume = confirmedVolume
+        self.displayedVolume = displayedVolume
+        self.isMuted = isMuted
+        self.minimumVolume = minimumVolume
+        self.maximumVolume = maximumVolume
+        self.volumeStep = volumeStep
+    }
+
     public var percentage: Int {
         Int((normalizedLevel * 100).rounded())
     }
@@ -116,26 +134,16 @@ public enum MediaTargetPresentationState: Equatable, Sendable {
 public struct MediaTargetPresentationTiming: Equatable, Sendable {
     public let baselineFreshness: TimeInterval
     public let confirmationDisplayDuration: TimeInterval
-    public let holdSettleDelay: TimeInterval
     public let announcementInterval: TimeInterval
 
     public init(
         baselineFreshness: TimeInterval = 1,
         confirmationDisplayDuration: TimeInterval = 1.5,
-        holdSettleDelay: TimeInterval = 0.2,
         announcementInterval: TimeInterval = 0.25
     ) {
         self.baselineFreshness = max(0, baselineFreshness)
         self.confirmationDisplayDuration = max(0, confirmationDisplayDuration)
-        self.holdSettleDelay = max(0, holdSettleDelay)
         self.announcementInterval = max(0, announcementInterval)
-    }
-
-    public func holdHasSettled(
-        startedAt: TimeInterval,
-        at timestamp: TimeInterval
-    ) -> Bool {
-        timestamp - startedAt >= holdSettleDelay
     }
 }
 
@@ -144,9 +152,12 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
 
     public let timing: MediaTargetPresentationTiming
 
-    private var newestGeneration: UInt64 = 0
+    public private(set) var invalidationEpoch: UInt64 = 0
+
+    private var newestOutcomeGeneration: UInt64 = 0
     private var pendingAction: VolumeAction?
-    private var pendingGeneration: UInt64?
+    private var pendingRequestID: UInt64?
+    private var newestRequestID: UInt64 = 0
     private var lastConfirmedValue: MediaTargetPresentationValue?
     private var lastConfirmedAt: TimeInterval?
     private var lastNonzeroConfirmedVolume: Int?
@@ -160,24 +171,46 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     @discardableResult
     public mutating func receiveProbe(
         _ outcome: MediaTargetSessionOutcome,
+        epoch: UInt64,
         at timestamp: TimeInterval
     ) -> Bool {
-        receive(outcome, at: timestamp)
+        guard epoch == invalidationEpoch,
+              outcome.generation >= newestOutcomeGeneration else {
+            return false
+        }
+
+        newestOutcomeGeneration = outcome.generation
+        guard outcome.reachability == .reachable,
+              let confirmedState = outcome.confirmedState,
+              let value = makePresentationValue(for: confirmedState) else {
+            return false
+        }
+
+        guard pendingAction == nil else {
+            return false
+        }
+        lastConfirmedValue = value
+        lastConfirmedAt = timestamp
+        state = stateFor(value: value, action: nil)
+        stateSince = timestamp
+        return true
     }
 
     @discardableResult
     public mutating func begin(
         action: VolumeAction,
-        generation: UInt64,
+        requestID: UInt64,
+        epoch: UInt64,
         at timestamp: TimeInterval
     ) -> Bool {
-        guard generation >= newestGeneration else {
+        guard epoch == invalidationEpoch,
+              requestID > newestRequestID else {
             return false
         }
 
-        newestGeneration = generation
+        newestRequestID = requestID
         pendingAction = action
-        pendingGeneration = generation
+        pendingRequestID = requestID
         if let lastConfirmedAt,
            timestamp >= lastConfirmedAt,
            timestamp - lastConfirmedAt <= timing.baselineFreshness,
@@ -193,18 +226,16 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     @discardableResult
     public mutating func receive(
         _ outcome: MediaTargetSessionOutcome,
+        requestID: UInt64,
+        epoch: UInt64,
         at timestamp: TimeInterval
     ) -> Bool {
-        guard outcome.generation >= newestGeneration else {
+        guard epoch == invalidationEpoch,
+              requestID == pendingRequestID else {
             return false
         }
 
-        if let pendingGeneration,
-           outcome.generation < pendingGeneration {
-            return false
-        }
-
-        newestGeneration = outcome.generation
+        newestOutcomeGeneration = max(newestOutcomeGeneration, outcome.generation)
         guard outcome.reachability == .reachable,
               let confirmedState = outcome.confirmedState,
               let value = makePresentationValue(for: confirmedState) else {
@@ -213,7 +244,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
             }
             state = .failed(lastConfirmedValue)
             pendingAction = nil
-            pendingGeneration = nil
+            pendingRequestID = nil
             stateSince = timestamp
             return true
         }
@@ -222,7 +253,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastConfirmedValue = value
         lastConfirmedAt = timestamp
         pendingAction = nil
-        pendingGeneration = nil
+        pendingRequestID = nil
         state = stateFor(value: value, action: action)
         stateSince = timestamp
         return true
@@ -230,26 +261,50 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
 
     @discardableResult
     public mutating func fail(
-        generation: UInt64,
+        requestID: UInt64,
+        epoch: UInt64,
         at timestamp: TimeInterval
     ) -> Bool {
-        guard generation >= newestGeneration,
+        guard epoch == invalidationEpoch,
+              requestID == pendingRequestID,
               pendingAction != nil else {
             return false
         }
 
-        newestGeneration = generation
         pendingAction = nil
-        pendingGeneration = nil
+        pendingRequestID = nil
         state = .failed(lastConfirmedValue)
         stateSince = timestamp
         return true
     }
 
-    public mutating func invalidate(_ reason: MediaTargetPresentationInvalidation) {
-        newestGeneration &+= 1
+    @discardableResult
+    public mutating func cancel(
+        requestID: UInt64,
+        epoch: UInt64
+    ) -> Bool {
+        guard epoch == invalidationEpoch,
+              requestID == pendingRequestID else {
+            return false
+        }
+
         pendingAction = nil
-        pendingGeneration = nil
+        pendingRequestID = nil
+        state = .hidden
+        stateSince = nil
+        lastAnnouncementAt = nil
+        return true
+    }
+
+    public mutating func invalidate(_ reason: MediaTargetPresentationInvalidation) {
+        invalidationEpoch &+= 1
+        newestOutcomeGeneration = 0
+        pendingAction = nil
+        pendingRequestID = nil
+        lastConfirmedValue = nil
+        lastConfirmedAt = nil
+        lastNonzeroConfirmedVolume = nil
+        lastAnnouncementAt = nil
         switch reason {
         case .sleep:
             state = .suspended
@@ -264,6 +319,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     public mutating func dismiss() {
         state = .hidden
         stateSince = nil
+        lastAnnouncementAt = nil
     }
 
     @discardableResult
@@ -281,8 +337,10 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     }
 
     public mutating func shouldAnnounce(at timestamp: TimeInterval) -> Bool {
-        guard state.isVisible,
-              state.value != nil else {
+        switch state {
+        case .confirmed, .muted, .rail:
+            break
+        case .hidden, .pendingCold, .pendingBaseline, .failed, .suspended, .routeLost:
             return false
         }
         guard let lastAnnouncementAt else {
@@ -300,10 +358,10 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     private mutating func makePresentationValue(
         for state: MediaTargetVolumeState
     ) -> MediaTargetPresentationValue? {
-        if state.absoluteVolume > 0 {
+        if state.absoluteVolume > state.minimumVolume {
             lastNonzeroConfirmedVolume = state.absoluteVolume
         }
-        let retainedVolume = state.isMuted && state.absoluteVolume == 0
+        let retainedVolume = state.isMuted && state.absoluteVolume == state.minimumVolume
             ? lastNonzeroConfirmedVolume
             : nil
         return MediaTargetVolumeNormalizer.normalize(

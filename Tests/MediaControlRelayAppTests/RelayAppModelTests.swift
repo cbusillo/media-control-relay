@@ -23,7 +23,7 @@ struct RelayAppModelTests {
         await waitUntil { harness.model.relayState == .active }
 
         #expect(harness.model.relayState == .active)
-        #expect(harness.model.targetPresentationState.confirmedVolume == 5)
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 5)
         harness.cleanup()
     }
 
@@ -343,7 +343,90 @@ struct RelayAppModelTests {
         #expect(harness.model.targetCommandsDispatched == 1)
         #expect(harness.model.targetCommandsFailed == 0)
         #expect(harness.model.relayState == .active)
-        #expect(harness.model.targetPresentationState.confirmedVolume == 6)
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 6)
+        harness.cleanup()
+    }
+
+    @Test("A target switch never presents the prior target during an immediate keypress")
+    func targetSwitchImmediateKeypressStartsCold() async {
+        let firstTarget = AppModelTargetStub()
+        let secondTarget = AppModelTargetStub(
+            initialState: MediaTargetVolumeState(
+                absoluteVolume: 40,
+                isMuted: false,
+                minimumVolume: 10,
+                maximumVolume: 50,
+                volumeStep: 5
+            )
+        )
+        let firstSession = MediaTargetSession(target: firstTarget, invalidateResolution: { _ in })
+        let secondSession = MediaTargetSession(target: secondTarget, invalidateResolution: { _ in })
+        var sessions = [firstSession, secondSession]
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "first-target"),
+            session: nil,
+            sessionFactory: { _ in
+                sessions.isEmpty ? nil : sessions.removeFirst()
+            }
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 5)
+        harness.model.selectDiscoveredTarget(
+            MediaTargetDiscoveryChoice(id: "second-target", label: "Second target")
+        )
+        harness.model.handleVolumeAction(.up)
+
+        #expect(harness.model.targetPresentationState.value == nil)
+        await waitUntil { harness.model.relayState == .active }
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 40)
+        harness.model.handleVolumeAction(.up)
+        await waitUntilAsync { await secondTarget.appliedOperations == [.setVolume(45)] }
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 45)
+        harness.cleanup()
+    }
+
+    @Test("Runtime presentation automatically hides after its configured duration")
+    func runtimePresentationAutomaticallyHides() async {
+        let target = AppModelTargetStub()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            targetPresentationTiming: MediaTargetPresentationTiming(
+                confirmationDisplayDuration: 0.05
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntilAsync { await target.appliedOperations == [.setVolume(6)] }
+        await waitUntil { harness.model.targetPresentationState == .hidden }
+
+        #expect(harness.model.targetPresentationState == .hidden)
+        harness.cleanup()
+    }
+
+    @Test("Target cancellation does not fail or tear down later command dispatch")
+    func cancelledCommandKeepsDispatchAvailable() async {
+        let target = CancellationThenSuccessTarget()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.mute)
+        await waitUntilAsync { await target.applyCount == 1 }
+        await waitUntil { harness.model.targetPresentationState == .hidden }
+        #expect(harness.model.targetCommandsFailed == 0)
+        #expect(harness.model.relayState == .active)
+
+        harness.model.handleVolumeAction(.up)
+        await waitUntilAsync { await target.appliedOperations == [.setVolume(6)] }
+        #expect(harness.model.targetCommandsFailed == 0)
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 6)
         harness.cleanup()
     }
 
@@ -452,7 +535,13 @@ struct RelayAppModelTests {
 
         let diagnostics = harness.model.diagnosticsSummary
         #expect(harness.model.targetCommandsFailed == 1)
-        #expect(harness.model.targetPresentationState.isFailed)
+        let isFailed: Bool
+        if case .failed = harness.model.targetPresentationState {
+            isFailed = true
+        } else {
+            isFailed = false
+        }
+        #expect(isFailed)
         #expect(diagnostics.contains("target_connection=local-network"))
         #expect(!diagnostics.contains(sensitiveIdentifier))
         #expect(!diagnostics.contains("timeout"))
@@ -479,7 +568,7 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
-    @Test("Physical command execution preserves FIFO action order")
+    @Test("Rapid physical command execution preserves FIFO order and latest presentation")
     func commandOrderIsFIFO() async {
         let target = AppModelTargetStub()
         let session = MediaTargetSession(
@@ -504,6 +593,40 @@ struct RelayAppModelTests {
                 .setVolume(5),
             ]
         )
+        #expect(harness.model.targetPresentationState.value?.confirmedVolume == 5)
+        harness.cleanup()
+    }
+
+    @Test("Held input release discards queued repeat commands")
+    func heldInputReleaseDiscardsBacklog() async {
+        let target = BlockingCommandTarget()
+        let monitor = ControllableVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        let timestamp = ProcessInfo.processInfo.systemUptime
+        monitor.publish(
+            VolumeKeyEvent(action: .up, phase: .pressed, isRepeat: false, timestamp: timestamp)
+        )
+        await waitUntilAsync { await target.applyCount == 1 }
+        try? await Task.sleep(for: .milliseconds(500))
+        monitor.publish(
+            VolumeKeyEvent(
+                action: .up,
+                phase: .released,
+                isRepeat: false,
+                timestamp: timestamp + 0.97
+            )
+        )
+        await target.releaseCurrentApply()
+        try? await Task.sleep(for: .milliseconds(100))
+
+        #expect(await target.applyCount == 1)
         harness.cleanup()
     }
 
@@ -662,7 +785,9 @@ private func makeHarness(
     session: MediaTargetSession?,
     volumeKeyMonitor: any VolumeKeyMonitoring = InactiveVolumeKeyMonitor(),
     discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
-    initialNetworkSnapshot: NetworkPathSnapshot? = nil
+    initialNetworkSnapshot: NetworkPathSnapshot? = nil,
+    targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
+    sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
     let suiteName = "com.shinycomputers.media-control-relay.app-model-tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
@@ -686,7 +811,10 @@ private func makeHarness(
         ),
         applicationNotificationCenter: applicationNotificationCenter,
         discovery: discovery,
-        mediaTargetSessionFactory: { _ in session }
+        targetPresentationTiming: targetPresentationTiming,
+        mediaTargetSessionFactory: { configuration in
+            sessionFactory?(configuration) ?? session
+        }
     )
     return AppModelHarness(
         model: model,
@@ -756,6 +884,28 @@ private final class FlakyVolumeKeyMonitor: VolumeKeyMonitoring {
 }
 
 @MainActor
+private final class ControllableVolumeKeyMonitor: VolumeKeyMonitoring {
+    let events: AsyncStream<VolumeKeyEvent>
+    private let continuation: AsyncStream<VolumeKeyEvent>.Continuation
+
+    init() {
+        let stream = AsyncStream<VolumeKeyEvent>.makeStream()
+        events = stream.stream
+        continuation = stream.continuation
+    }
+
+    func start() throws {}
+
+    func stop() {
+        continuation.finish()
+    }
+
+    func publish(_ event: VolumeKeyEvent) {
+        continuation.yield(event)
+    }
+}
+
+@MainActor
 private final class AppModelRouteObserver: RouteObserving {
     var onSnapshot: ((RouteSnapshot) -> Void)?
     var onStateChange: ((RouteObservationState) -> Void)?
@@ -801,9 +951,13 @@ private final class AppModelRouteObserver: RouteObserving {
 private actor AppModelTargetStub: MediaVolumeTarget {
     nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
 
-    private var currentState = makeVolumeState()
+    private var currentState: MediaTargetVolumeState
     private(set) var readCount = 0
     private(set) var appliedOperations: [MediaTargetVolumeOperation] = []
+
+    init(initialState: MediaTargetVolumeState = makeVolumeState()) {
+        currentState = initialState
+    }
 
     func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
         readCount += 1
@@ -813,6 +967,30 @@ private actor AppModelTargetStub: MediaVolumeTarget {
     func apply(
         _ operation: MediaTargetVolumeOperation
     ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        appliedOperations.append(operation)
+        currentState = applying(operation, to: currentState)
+        return currentState
+    }
+}
+
+private actor CancellationThenSuccessTarget: MediaVolumeTarget {
+    nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
+
+    private var currentState = makeVolumeState()
+    private(set) var applyCount = 0
+    private(set) var appliedOperations: [MediaTargetVolumeOperation] = []
+
+    func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        currentState
+    }
+
+    func apply(
+        _ operation: MediaTargetVolumeOperation
+    ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        applyCount += 1
+        if applyCount == 1 {
+            throw .cancelled
+        }
         appliedOperations.append(operation)
         currentState = applying(operation, to: currentState)
         return currentState
@@ -1024,19 +1202,6 @@ private func applying(
             minimumVolume: state.minimumVolume,
             maximumVolume: state.maximumVolume
         )
-    }
-}
-
-private extension MediaTargetPresentationState {
-    var confirmedVolume: Int? {
-        value?.confirmedVolume
-    }
-
-    var isFailed: Bool {
-        if case .failed = self {
-            return true
-        }
-        return false
     }
 }
 

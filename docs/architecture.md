@@ -27,8 +27,8 @@ Pure Swift logic with a Foundation-only dependency:
 - deterministic routing reduction and bounded preview command recording;
 - deterministic absolute-volume planning, optional bounded reread input, and
   transport-neutral failure taxonomy;
-- sendable confirmed-session outcomes and pure, generation-guarded target
-  presentation normalization and state transitions;
+- sendable confirmed-session outcomes and pure, epoch- and request-correlated
+  target-presentation normalization and state transitions;
 - target-aware status copy;
 - diagnostics redaction.
 
@@ -82,14 +82,14 @@ queue or transport cache.
 
 `MediaTargetSession` publishes a sendable outcome containing coarse reachability,
 the confirmed target state when available, and a monotonically increasing
-generation. Results from an invalidated, task-cancelled, or superseded request
-are discarded by the session; target cancellation is returned as a coarse
-non-confirming outcome. `MediaTargetPresentationModel` accepts only reachable
-confirmed state at the newest generation, normalizes it against the
-target-declared range and step, retains a last confirmed nonzero display level
-while muted without changing the confirmed target volume, and represents
-pending, failed, rail, suspended, route-lost, and hidden states without target
-identity.
+generation. Results from invalidated, task-cancelled, superseded, or target-
+cancelled requests are discarded. `MediaTargetPresentationModel` keeps a local
+invalidation epoch separate from session request generations and accepts a
+command outcome only for its exact pending request. Every invalidation clears
+the confirmed baseline, mute-retention value, and announcement throttle, so a
+fresh session cannot display a prior target's state. The app schedules confirmed
+presentation dismissal and posts throttled VoiceOver announcements; held-key
+release cancels queued repeat work before it can animate after release.
 
 ### UPnPMediaTarget
 

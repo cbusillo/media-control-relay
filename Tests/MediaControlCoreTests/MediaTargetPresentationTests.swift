@@ -3,46 +3,38 @@ import Testing
 
 @Suite("Media target presentation")
 struct MediaTargetPresentationTests {
-    @Test("Normalization uses nonzero bounds and exact rails")
-    func normalizationUsesDeclaredBounds() {
-        let minimum = MediaTargetVolumeState(
-            absoluteVolume: 10,
-            isMuted: false,
-            minimumVolume: 10,
-            maximumVolume: 50,
-            volumeStep: 5
-        )
-        let midpoint = MediaTargetVolumeState(
-            absoluteVolume: 30,
-            isMuted: false,
-            minimumVolume: 10,
-            maximumVolume: 50,
-            volumeStep: 5
-        )
-        let maximum = MediaTargetVolumeState(
-            absoluteVolume: 50,
-            isMuted: false,
-            minimumVolume: 10,
-            maximumVolume: 50,
-            volumeStep: 5
-        )
+    @Test("Normalization preserves declared nonzero bounds and step")
+    func normalizationUsesDeclaredBoundsAndStep() {
+        let minimum = state(volume: 10, minimum: 10, maximum: 50, step: 5)
+        let midpoint = state(volume: 30, minimum: 10, maximum: 50, step: 5)
+        let maximum = state(volume: 50, minimum: 10, maximum: 50, step: 5)
 
-        #expect(MediaTargetVolumeNormalizer.normalize(minimum)?.percentage == 0)
-        #expect(MediaTargetVolumeNormalizer.normalize(midpoint)?.percentage == 50)
-        #expect(MediaTargetVolumeNormalizer.normalize(maximum)?.percentage == 100)
+        expect(MediaTargetVolumeNormalizer.normalize(minimum)?.percentage == 0)
+        expect(MediaTargetVolumeNormalizer.normalize(midpoint)?.percentage == 50)
+        expect(MediaTargetVolumeNormalizer.normalize(maximum)?.percentage == 100)
+        expect(MediaTargetVolumeNormalizer.normalize(midpoint)?.volumeStep == 5)
     }
 
     @Test("Normalization rejects degenerate capability metadata")
     func normalizationRejectsDegenerateMetadata() {
-        let equalBounds = MediaTargetVolumeState(
-            absoluteVolume: 10,
+        expect(MediaTargetVolumeNormalizer.normalize(
+            state(volume: 10, minimum: 10, maximum: 10, step: 1)
+        ) == nil)
+    }
+
+    @Test("Presentation values are constructible by public clients")
+    func presentationValueHasPublicInitializer() {
+        let value = MediaTargetPresentationValue(
+            normalizedLevel: 0.5,
+            confirmedVolume: 30,
+            displayedVolume: 30,
             isMuted: false,
             minimumVolume: 10,
-            maximumVolume: 10,
-            volumeStep: 1
+            maximumVolume: 50,
+            volumeStep: 5
         )
 
-        #expect(MediaTargetVolumeNormalizer.normalize(equalBounds) == nil)
+        expect(value.percentage == 50)
     }
 
     @Test("Pending presentation uses a fresh baseline and otherwise stays cold")
@@ -51,124 +43,123 @@ struct MediaTargetPresentationTests {
             timing: MediaTargetPresentationTiming(baselineFreshness: 1)
         )
         let baseline = outcome(volume: 25, generation: 1)
+        let epoch = presentation.invalidationEpoch
 
-        let receivedBaseline = presentation.receiveProbe(baseline, at: 10)
-        #expect(receivedBaseline)
-        let beganWithBaseline = presentation.begin(action: .up, generation: 1, at: 10.5)
-        #expect(beganWithBaseline)
-        #expect(
-            presentation.state == .pendingBaseline(
-                .up,
-                try! #require(MediaTargetVolumeNormalizer.normalize(baseline.confirmedState!))
-            )
-        )
+        expect(presentation.receiveProbe(baseline, epoch: epoch, at: 10))
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 10.5))
+        guard let confirmedState = baseline.confirmedState,
+              let expectedValue = MediaTargetVolumeNormalizer.normalize(confirmedState) else {
+            Issue.record("Expected valid presentation baseline")
+            return
+        }
+        expect(presentation.state == .pendingBaseline(.up, expectedValue))
 
         presentation.dismiss()
-        let beganCold = presentation.begin(action: .up, generation: 1, at: 12.1)
-        #expect(beganCold)
-        #expect(presentation.state == .pendingCold(.up))
+        expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 12.1))
+        expect(presentation.state == .pendingCold(.up))
     }
 
-    @Test("Confirmed commands advance only on a current successful outcome")
-    func confirmedCommandsRejectStaleAndFailedResults() {
+    @Test("Each begin accepts only its actual request result")
+    func commandResultsCannotAliasAPreviousRequest() {
         var presentation = MediaTargetPresentationModel()
-        let baseline = outcome(volume: 20, generation: 1)
-        let newer = outcome(volume: 30, generation: 2)
-        let stale = outcome(volume: 25, generation: 1)
-        let failed = MediaTargetSessionOutcome(
-            reachability: .unreachable,
-            confirmedState: nil,
-            generation: 3
-        )
+        let epoch = presentation.invalidationEpoch
 
-        let receivedBaseline = presentation.receiveProbe(baseline, at: 0)
-        #expect(receivedBaseline)
-        let began = presentation.begin(action: .up, generation: 1, at: 1)
-        #expect(began)
-        let receivedNewer = presentation.receive(newer, at: 1.1)
-        #expect(receivedNewer)
-        #expect(presentation.state.confirmedVolume == 30)
-        let receivedStale = presentation.receive(stale, at: 1.2)
-        #expect(!receivedStale)
-        #expect(presentation.state.confirmedVolume == 30)
-
-        let beganAgain = presentation.begin(action: .up, generation: 2, at: 2)
-        #expect(beganAgain)
-        let receivedFailure = presentation.receive(failed, at: 2.1)
-        #expect(receivedFailure)
-        #expect(presentation.state.isFailed)
-        #expect(presentation.state.confirmedVolume == 30)
+        expect(presentation.receiveProbe(outcome(volume: 20, generation: 1), epoch: epoch, at: 0))
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 1))
+        expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 1.01))
+        expect(!presentation.receive(
+            outcome(volume: 25, generation: 2),
+            requestID: 1,
+            epoch: epoch,
+            at: 1.1
+        ))
+        expect(presentation.receive(
+            outcome(volume: 30, generation: 3),
+            requestID: 2,
+            epoch: epoch,
+            at: 1.2
+        ))
+        expect(presentation.state.value?.confirmedVolume == 30)
     }
 
-    @Test("Mute retains the last confirmed nonzero display level")
-    func muteRetainsLastNonzeroLevel() {
+    @Test("Mute retains the last confirmed level above a nonzero minimum")
+    func muteRetainsLastNonzeroLevelRelativeToMinimum() {
         var presentation = MediaTargetPresentationModel()
-        let receivedBaseline = presentation.receiveProbe(
-            outcome(volume: 40, generation: 1),
+        let epoch = presentation.invalidationEpoch
+        expect(presentation.receiveProbe(
+            outcome(volume: 30, generation: 1, minimum: 10, maximum: 50, step: 5),
+            epoch: epoch,
             at: 0
-        )
-        #expect(receivedBaseline)
-        let began = presentation.begin(action: .mute, generation: 1, at: 1)
-        #expect(began)
-
-        let muted = MediaTargetSessionOutcome(
-            reachability: .reachable,
-            confirmedState: MediaTargetVolumeState(
-                absoluteVolume: 0,
+        ))
+        expect(presentation.begin(action: .mute, requestID: 1, epoch: epoch, at: 1))
+        expect(presentation.receive(
+            outcome(
+                volume: 10,
                 isMuted: true,
-                minimumVolume: 0,
-                maximumVolume: 100,
-                volumeStep: 5
+                generation: 2,
+                minimum: 10,
+                maximum: 50,
+                step: 5
             ),
-            generation: 2
-        )
-        let receivedMuted = presentation.receive(muted, at: 1.1)
-        #expect(receivedMuted)
-        #expect(presentation.state.isMuted)
-        #expect(presentation.state.displayedVolume == 40)
-        #expect(presentation.state.confirmedVolume == 0)
+            requestID: 1,
+            epoch: epoch,
+            at: 1.1
+        ))
+
+        expect(presentation.state.value?.displayedVolume == 30)
+        expect(presentation.state.value?.confirmedVolume == 10)
+        expect(presentation.state.value?.isMuted == true)
+    }
+
+    @Test("Invalidation clears caches and accepts a fresh session generation")
+    func invalidationClearsPresentationCachesAndRecovers() {
+        var presentation = MediaTargetPresentationModel()
+        let originalEpoch = presentation.invalidationEpoch
+        expect(presentation.receiveProbe(
+            outcome(volume: 40, generation: 12),
+            epoch: originalEpoch,
+            at: 0
+        ))
+        expect(presentation.shouldAnnounce(at: 0))
+
+        presentation.invalidate(.configuration)
+        let freshEpoch = presentation.invalidationEpoch
+        expect(freshEpoch != originalEpoch)
+        expect(presentation.state == .hidden)
+        expect(presentation.begin(action: .up, requestID: 1, epoch: freshEpoch, at: 0.1))
+        expect(presentation.state == .pendingCold(.up))
+        expect(presentation.fail(requestID: 1, epoch: freshEpoch, at: 0.2))
+        expect(presentation.state == .failed(nil))
+        expect(!presentation.receiveProbe(
+            outcome(volume: 45, generation: 13),
+            epoch: originalEpoch,
+            at: 0.3
+        ))
+        expect(presentation.receiveProbe(
+            outcome(volume: 15, generation: 1),
+            epoch: freshEpoch,
+            at: 0.4
+        ))
+        expect(presentation.state.value?.confirmedVolume == 15)
+        expect(presentation.shouldAnnounce(at: 0.4))
     }
 
     @Test("Rails remain visible as confirmed state")
     func railsRemainVisible() {
         var presentation = MediaTargetPresentationModel()
-        let receivedBaseline = presentation.receiveProbe(
-            outcome(volume: 95, generation: 1),
-            at: 0
-        )
-        #expect(receivedBaseline)
-        let began = presentation.begin(action: .up, generation: 1, at: 1)
-        #expect(began)
-
-        let maximum = outcome(volume: 100, generation: 2)
-        let receivedMaximum = presentation.receive(maximum, at: 1.1)
-        #expect(receivedMaximum)
-        #expect(presentation.state == .rail(.maximum, presentation.state.value!))
+        let epoch = presentation.invalidationEpoch
+        expect(presentation.receiveProbe(outcome(volume: 95, generation: 1), epoch: epoch, at: 0))
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 1))
+        expect(presentation.receive(
+            outcome(volume: 100, generation: 2),
+            requestID: 1,
+            epoch: epoch,
+            at: 1.1
+        ))
+        expect(presentation.state == .rail(.maximum, presentation.state.value!))
     }
 
-    @Test("Invalidation hides level without accepting later stale confirmation")
-    func invalidationHidesAndRejectsStaleConfirmation() {
-        var presentation = MediaTargetPresentationModel()
-        let baseline = outcome(volume: 40, generation: 4)
-        let receivedBaseline = presentation.receiveProbe(baseline, at: 0)
-        #expect(receivedBaseline)
-
-        presentation.invalidate(.routeMismatch)
-        #expect(presentation.state == .routeLost)
-        let receivedStale = presentation.receive(
-            outcome(volume: 45, generation: 4),
-            at: 1
-        )
-        #expect(!receivedStale)
-        #expect(presentation.state == .routeLost)
-
-        presentation.invalidate(.sleep)
-        #expect(presentation.state == .suspended)
-        presentation.invalidate(.permission)
-        #expect(presentation.state == .hidden)
-    }
-
-    @Test("Timing policy dismisses settled visible state and throttles announcements")
+    @Test("Timing dismisses visible state and resets announcement throttling")
     func timingPolicy() {
         var presentation = MediaTargetPresentationModel(
             timing: MediaTargetPresentationTiming(
@@ -176,69 +167,56 @@ struct MediaTargetPresentationTests {
                 announcementInterval: 1
             )
         )
-        let receivedBaseline = presentation.receiveProbe(
-            outcome(volume: 40, generation: 1),
-            at: 0
-        )
-        #expect(receivedBaseline)
-        let firstAnnouncement = presentation.shouldAnnounce(at: 0)
-        #expect(firstAnnouncement)
-        let earlyAnnouncement = presentation.shouldAnnounce(at: 0.5)
-        #expect(!earlyAnnouncement)
-        let secondAnnouncement = presentation.shouldAnnounce(at: 1)
-        #expect(secondAnnouncement)
-        let beforeDismissal = presentation.advance(to: 1.9)
-        #expect(!beforeDismissal)
-        let dismissed = presentation.advance(to: 2)
-        #expect(dismissed)
-        #expect(presentation.state == .hidden)
+        let epoch = presentation.invalidationEpoch
+        expect(presentation.receiveProbe(outcome(volume: 40, generation: 1), epoch: epoch, at: 0))
+        expect(presentation.shouldAnnounce(at: 0))
+        expect(!presentation.shouldAnnounce(at: 0.5))
+        expect(presentation.shouldAnnounce(at: 1))
+        expect(!presentation.advance(to: 1.9))
+        expect(presentation.advance(to: 2))
+        expect(presentation.state == .hidden)
+        expect(presentation.receiveProbe(outcome(volume: 45, generation: 2), epoch: epoch, at: 2.1))
+        expect(presentation.shouldAnnounce(at: 2.1))
     }
 
-    private func outcome(volume: Int, generation: UInt64) -> MediaTargetSessionOutcome {
+    private func expect(_ condition: Bool) {
+        #expect(condition)
+    }
+
+    private func outcome(
+        volume: Int,
+        isMuted: Bool = false,
+        generation: UInt64,
+        minimum: Int = 0,
+        maximum: Int = 100,
+        step: Int = 5
+    ) -> MediaTargetSessionOutcome {
         MediaTargetSessionOutcome(
             reachability: .reachable,
-            confirmedState: MediaTargetVolumeState(
-                absoluteVolume: volume,
-                isMuted: false,
-                minimumVolume: 0,
-                maximumVolume: 100,
-                volumeStep: 5
+            confirmedState: state(
+                volume: volume,
+                isMuted: isMuted,
+                minimum: minimum,
+                maximum: maximum,
+                step: step
             ),
             generation: generation
         )
     }
-}
 
-private extension MediaTargetPresentationState {
-    var value: MediaTargetPresentationValue? {
-        switch self {
-        case let .confirmed(value), let .muted(value), let .rail(_, value):
-            value
-        case let .pendingBaseline(_, value):
-            value
-        case let .failed(value):
-            value
-        case .hidden, .pendingCold, .suspended, .routeLost:
-            nil
-        }
-    }
-
-    var confirmedVolume: Int? {
-        value?.confirmedVolume
-    }
-
-    var displayedVolume: Int? {
-        value?.displayedVolume
-    }
-
-    var isMuted: Bool {
-        value?.isMuted == true
-    }
-
-    var isFailed: Bool {
-        if case .failed = self {
-            return true
-        }
-        return false
+    private func state(
+        volume: Int,
+        isMuted: Bool = false,
+        minimum: Int,
+        maximum: Int,
+        step: Int
+    ) -> MediaTargetVolumeState {
+        MediaTargetVolumeState(
+            absoluteVolume: volume,
+            isMuted: isMuted,
+            minimumVolume: minimum,
+            maximumVolume: maximum,
+            volumeStep: step
+        )
     }
 }

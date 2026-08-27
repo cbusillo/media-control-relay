@@ -70,7 +70,7 @@ struct MediaTargetSessionTests {
         #expect(outcome?.confirmedState == nil)
     }
 
-    @Test("Cancelled probes return unknown")
+    @Test("Cancelled probes publish nothing")
     func cancelledProbe() async {
         let target = SessionTargetStub(result: .failure(.cancelled))
         let session = MediaTargetSession(
@@ -79,8 +79,7 @@ struct MediaTargetSessionTests {
         )
 
         let outcome = await session.probe()
-        #expect(outcome?.reachability == .unknown)
-        #expect(outcome?.confirmedState == nil)
+        #expect(outcome == nil)
     }
 
     @Test("Invalidation discards a stale in-flight probe")
@@ -179,8 +178,7 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
         let cancelledOutcome = await cancelledSession.execute(.mute)
-        #expect(cancelledOutcome?.reachability == .unknown)
-        #expect(cancelledOutcome?.confirmedState == nil)
+        #expect(cancelledOutcome == nil)
     }
 
     @Test("Command authentication rejection remains distinct")

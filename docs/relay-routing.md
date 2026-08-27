@@ -40,12 +40,16 @@ whether a command is eligible.
 
 Physical target work also feeds the pure `MediaTargetPresentationModel`. A
 fresh probe establishes the confirmed baseline; an action enters pending-cold
-or pending-with-baseline, and only the newest reachable session outcome moves
-the confirmed level. Failed, cancelled, timed-out, mismatched, and superseded
-results never advance it. Target-declared minimum, maximum, and step values
-drive normalization, exact rail feedback, and mute display retention. The
-presentation model has no AppKit, transport, target identity, or hardware
-dependency.
+or pending-with-baseline, and only the reachable outcome correlated to that
+exact action may move the confirmed level. Its local invalidation epoch is
+separate from session generations, and configuration, permission, session,
+sleep, and route changes clear all cached presentation values before recovery.
+Failed, cancelled, timed-out, mismatched, and superseded results never advance
+it. The app dismisses presentation after the configured duration, makes
+throttled accessibility announcements for confirmed state, and drops held-repeat
+backlog at release. Target-declared minimum, maximum, and step values drive
+normalization, exact rail feedback, and mute display retention. The presentation
+model has no AppKit, transport, target identity, or hardware dependency.
 
 ## Lifecycle
 
