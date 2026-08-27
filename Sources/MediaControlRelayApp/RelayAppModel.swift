@@ -42,6 +42,7 @@ final class RelayAppModel {
     var networkTransitionCount = 0
     var networkPathSnapshot = NetworkPathSnapshot.unknown
     var targetConfiguration: RelayConfiguration?
+    private(set) var targetPresentationState: MediaTargetPresentationState = .hidden
 
     let productStatus: LocalizedStringResource = "Preview build"
     let discovery: MediaTargetDiscoveryModel
@@ -56,6 +57,8 @@ final class RelayAppModel {
     private let coordinator: RelayCoordinator
     private let preferences: UserDefaults
     private var mediaTargetSession: MediaTargetSession?
+    private var targetPresentation = MediaTargetPresentationModel()
+    private var lastTargetOutcomeGeneration: UInt64?
     private var applicationActivationToken: NSObjectProtocol?
     private var volumeKeyTask: Task<Void, Never>?
     private var volumeActionTask: Task<Void, Never>?
@@ -153,6 +156,7 @@ final class RelayAppModel {
             guard let self else { return }
             volumeKeyGestureMonitor.cancel()
             discovery.cancelScan()
+            invalidateTargetPresentation(.sleep)
             refreshTargetSession(invalidation: .lifecycleChanged)
         }
         routeObserver.onWake = { [weak self] in
@@ -523,6 +527,21 @@ final class RelayAppModel {
     private func apply(_ event: RelayRoutingEvent) -> RelayCommand? {
         let command = coordinator.apply(event)
         syncCoordinatorState()
+        switch event {
+        case .configuration:
+            invalidateTargetPresentation(.configuration)
+        case let .inputMonitoringAuthorization(authorization)
+            where authorization != .granted:
+            invalidateTargetPresentation(.permission)
+        case .routeSnapshot where !activationMatches:
+            invalidateTargetPresentation(.routeMismatch)
+        case let .routeObservationState(state) where state != .observing:
+            invalidateTargetPresentation(
+                state == .suspended ? .sleep : .routeMismatch
+            )
+        default:
+            break
+        }
         return command
     }
 
@@ -561,6 +580,7 @@ final class RelayAppModel {
         invalidation: MediaTargetSessionInvalidation
     ) {
         cancelTargetProbe()
+        invalidateTargetPresentation(for: invalidation)
 
         guard targetConfiguration?.target.kind == .upnpMediaRenderer else {
             return
@@ -632,18 +652,24 @@ final class RelayAppModel {
                   relayState == .checkingTarget else {
                 return
             }
-            guard let reachability = await mediaTargetSession.probe(),
+            guard let outcome = await mediaTargetSession.probe(),
                   !Task.isCancelled,
                   targetProbeGeneration == generation,
                   self.mediaTargetSession === mediaTargetSession else {
                 return
             }
-            if reachability == .reachable {
+            if outcome.reachability == .reachable {
+                lastTargetOutcomeGeneration = outcome.generation
+                _ = targetPresentation.receiveProbe(
+                    outcome,
+                    at: presentationTimestamp
+                )
+                syncPresentationState()
                 startCommandDispatch(for: mediaTargetSession)
             } else {
                 cancelCommandDispatch()
             }
-            apply(.transportReachability(reachability))
+            apply(.transportReachability(outcome.reachability))
         }
     }
 
@@ -696,7 +722,7 @@ final class RelayAppModel {
                     return
                 }
                 targetCommandsDispatched += 1
-                let reachability = await mediaTargetSession.execute(command.action)
+                let outcome = await mediaTargetSession.execute(command.action)
                 guard !Task.isCancelled,
                       commandGeneration == generation,
                       self.mediaTargetSession === mediaTargetSession else {
@@ -705,14 +731,25 @@ final class RelayAppModel {
 
                 coordinator.completeCommand()
                 syncCoordinatorState()
-                guard let reachability else {
+                guard let outcome else {
+                    _ = targetPresentation.fail(
+                        generation: lastTargetOutcomeGeneration ?? 0,
+                        at: presentationTimestamp
+                    )
+                    syncPresentationState()
                     continue
                 }
-                if reachability != .reachable {
+                lastTargetOutcomeGeneration = outcome.generation
+                _ = targetPresentation.receive(
+                    outcome,
+                    at: presentationTimestamp
+                )
+                syncPresentationState()
+                if outcome.reachability != .reachable {
                     targetCommandsFailed += 1
                 }
-                apply(.transportReachability(reachability))
-                if reachability != .reachable {
+                apply(.transportReachability(outcome.reachability))
+                if outcome.reachability != .reachable {
                     cancelCommandDispatch()
                     return
                 }
@@ -750,9 +787,21 @@ final class RelayAppModel {
             coordinator.completeCommand()
             syncCoordinatorState()
         case .upnpMediaRenderer:
+            let presentationGeneration = lastTargetOutcomeGeneration ?? 0
+            _ = targetPresentation.begin(
+                action: action,
+                generation: presentationGeneration,
+                at: presentationTimestamp
+            )
+            syncPresentationState()
             guard let commandContinuation else {
                 coordinator.completeCommand()
                 syncCoordinatorState()
+                _ = targetPresentation.fail(
+                    generation: presentationGeneration,
+                    at: presentationTimestamp
+                )
+                syncPresentationState()
                 apply(.transportReachability(.unreachable))
                 return
             }
@@ -762,11 +811,21 @@ final class RelayAppModel {
             case .dropped, .terminated:
                 coordinator.completeCommand()
                 syncCoordinatorState()
+                _ = targetPresentation.fail(
+                    generation: presentationGeneration,
+                    at: presentationTimestamp
+                )
+                syncPresentationState()
                 apply(.transportReachability(.unreachable))
                 cancelCommandDispatch()
             @unknown default:
                 coordinator.completeCommand()
                 syncCoordinatorState()
+                _ = targetPresentation.fail(
+                    generation: presentationGeneration,
+                    at: presentationTimestamp
+                )
+                syncPresentationState()
                 apply(.transportReachability(.unreachable))
                 cancelCommandDispatch()
             }
@@ -774,6 +833,38 @@ final class RelayAppModel {
             coordinator.completeCommand()
             syncCoordinatorState()
         }
+    }
+
+    private var presentationTimestamp: TimeInterval {
+        Date().timeIntervalSinceReferenceDate
+    }
+
+    private func invalidateTargetPresentation(
+        _ reason: MediaTargetPresentationInvalidation
+    ) {
+        targetPresentation.invalidate(reason)
+        syncPresentationState()
+    }
+
+    private func invalidateTargetPresentation(
+        for reason: MediaTargetSessionInvalidation
+    ) {
+        switch reason {
+        case .authorizationChanged:
+            invalidateTargetPresentation(.session)
+        case .routeContextChanged:
+            invalidateTargetPresentation(.routeMismatch)
+        case .networkContextChanged:
+            invalidateTargetPresentation(.session)
+        case .lifecycleChanged:
+            invalidateTargetPresentation(.sleep)
+        case .sessionReplaced:
+            invalidateTargetPresentation(.session)
+        }
+    }
+
+    private func syncPresentationState() {
+        targetPresentationState = targetPresentation.state
     }
 }
 

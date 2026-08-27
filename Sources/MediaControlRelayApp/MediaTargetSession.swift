@@ -28,47 +28,68 @@ actor MediaTargetSession {
         self.invalidateResolution = invalidateResolution
     }
 
-    func probe() async -> TransportReachability? {
-        let requestedGeneration = generation
-        let reachability: TransportReachability
-        do {
-            _ = try await target.readState()
-            reachability = .reachable
-        } catch .cancelled {
-            reachability = .unknown
-        } catch .authenticationRejected {
-            reachability = .authenticationRejected
-        } catch {
-            reachability = .unreachable
-        }
-
-        guard generation == requestedGeneration else {
-            return nil
-        }
-        return reachability
-    }
-
-    func execute(_ action: VolumeAction) async -> TransportReachability? {
+    func probe() async -> MediaTargetSessionOutcome? {
         guard !Task.isCancelled else {
             return nil
         }
+        generation &+= 1
         let requestedGeneration = generation
-        let reachability: TransportReachability?
+        let reachability: TransportReachability
+        let confirmedState: MediaTargetVolumeState?
         do {
-            _ = try await executor.execute(action)
+            confirmedState = try await target.readState()
             reachability = .reachable
         } catch .cancelled {
-            reachability = nil
+            reachability = .unknown
+            confirmedState = nil
         } catch .authenticationRejected {
             reachability = .authenticationRejected
+            confirmedState = nil
         } catch {
             reachability = .unreachable
+            confirmedState = nil
         }
 
-        guard generation == requestedGeneration else {
+        guard !Task.isCancelled, generation == requestedGeneration else {
             return nil
         }
-        return reachability
+        return MediaTargetSessionOutcome(
+            reachability: reachability,
+            confirmedState: confirmedState,
+            generation: requestedGeneration
+        )
+    }
+
+    func execute(_ action: VolumeAction) async -> MediaTargetSessionOutcome? {
+        guard !Task.isCancelled else {
+            return nil
+        }
+        generation &+= 1
+        let requestedGeneration = generation
+        let reachability: TransportReachability
+        let confirmedState: MediaTargetVolumeState?
+        do {
+            confirmedState = try await executor.execute(action)
+            reachability = .reachable
+        } catch .cancelled {
+            reachability = .unknown
+            confirmedState = nil
+        } catch .authenticationRejected {
+            reachability = .authenticationRejected
+            confirmedState = nil
+        } catch {
+            reachability = .unreachable
+            confirmedState = nil
+        }
+
+        guard !Task.isCancelled, generation == requestedGeneration else {
+            return nil
+        }
+        return MediaTargetSessionOutcome(
+            reachability: reachability,
+            confirmedState: confirmedState,
+            generation: requestedGeneration
+        )
     }
 
     func invalidate(

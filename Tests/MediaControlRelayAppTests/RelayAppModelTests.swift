@@ -23,6 +23,7 @@ struct RelayAppModelTests {
         await waitUntil { harness.model.relayState == .active }
 
         #expect(harness.model.relayState == .active)
+        #expect(harness.model.targetPresentationState.confirmedVolume == 5)
         harness.cleanup()
     }
 
@@ -342,6 +343,7 @@ struct RelayAppModelTests {
         #expect(harness.model.targetCommandsDispatched == 1)
         #expect(harness.model.targetCommandsFailed == 0)
         #expect(harness.model.relayState == .active)
+        #expect(harness.model.targetPresentationState.confirmedVolume == 6)
         harness.cleanup()
     }
 
@@ -365,6 +367,7 @@ struct RelayAppModelTests {
         #expect(await target.appliedOperations.isEmpty)
         #expect(harness.model.commandsSuppressed == 1)
         #expect(harness.model.relayState == .dormant)
+        #expect(harness.model.targetPresentationState == .routeLost)
         harness.cleanup()
     }
 
@@ -426,6 +429,7 @@ struct RelayAppModelTests {
 
         #expect(harness.model.relayState == .dormant)
         #expect(harness.model.targetCommandsFailed == 0)
+        #expect(harness.model.targetPresentationState == .suspended)
         harness.cleanup()
     }
 
@@ -448,6 +452,7 @@ struct RelayAppModelTests {
 
         let diagnostics = harness.model.diagnosticsSummary
         #expect(harness.model.targetCommandsFailed == 1)
+        #expect(harness.model.targetPresentationState.isFailed)
         #expect(diagnostics.contains("target_connection=local-network"))
         #expect(!diagnostics.contains(sensitiveIdentifier))
         #expect(!diagnostics.contains("timeout"))
@@ -1019,6 +1024,19 @@ private func applying(
             minimumVolume: state.minimumVolume,
             maximumVolume: state.maximumVolume
         )
+    }
+}
+
+private extension MediaTargetPresentationState {
+    var confirmedVolume: Int? {
+        value?.confirmedVolume
+    }
+
+    var isFailed: Bool {
+        if case .failed = self {
+            return true
+        }
+        return false
     }
 }
 
