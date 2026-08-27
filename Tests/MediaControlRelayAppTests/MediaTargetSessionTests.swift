@@ -13,7 +13,26 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
 
-        #expect(await session.probe() == .reachable)
+        let outcome = await session.probe()
+        #expect(outcome?.reachability == .reachable)
+        #expect(outcome?.confirmedState == makeState())
+        #expect(outcome?.generation == 1)
+    }
+
+    @Test("Probe and command outcomes carry newer generations")
+    func outcomesCarryMonotonicGenerations() async {
+        let target = SessionCommandTarget()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+
+        let probe = await session.probe()
+        let command = await session.execute(.up)
+
+        #expect(probe?.generation == 1)
+        #expect(command?.generation == 2)
+        #expect(command?.confirmedState?.absoluteVolume == 6)
     }
 
     @Test("Generic transport and target failures remain unreachable")
@@ -32,7 +51,9 @@ struct MediaTargetSessionTests {
                 invalidateResolution: { _ in }
             )
 
-            #expect(await session.probe() == .unreachable)
+            let outcome = await session.probe()
+            #expect(outcome?.reachability == .unreachable)
+            #expect(outcome?.confirmedState == nil)
         }
     }
 
@@ -44,10 +65,12 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
 
-        #expect(await session.probe() == .authenticationRejected)
+        let outcome = await session.probe()
+        #expect(outcome?.reachability == .authenticationRejected)
+        #expect(outcome?.confirmedState == nil)
     }
 
-    @Test("Cancelled probes return unknown")
+    @Test("Cancelled probes publish nothing")
     func cancelledProbe() async {
         let target = SessionTargetStub(result: .failure(.cancelled))
         let session = MediaTargetSession(
@@ -55,7 +78,8 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
 
-        #expect(await session.probe() == .unknown)
+        let outcome = await session.probe()
+        #expect(outcome == nil)
     }
 
     @Test("Invalidation discards a stale in-flight probe")
@@ -120,7 +144,9 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
 
-        #expect(await session.execute(.up) == .reachable)
+        let outcome = await session.execute(.up)
+        #expect(outcome?.reachability == .reachable)
+        #expect(outcome?.confirmedState == makeState(absoluteVolume: 6))
         #expect(await target.appliedOperations == [.setVolume(6)])
     }
 
@@ -141,7 +167,9 @@ struct MediaTargetSessionTests {
                 invalidateResolution: { _ in }
             )
 
-            #expect(await session.execute(.mute) == .unreachable)
+            let outcome = await session.execute(.mute)
+            #expect(outcome?.reachability == .unreachable)
+            #expect(outcome?.confirmedState == nil)
         }
 
         let cancelledTarget = SessionCommandFailureTarget(failure: .cancelled)
@@ -149,7 +177,8 @@ struct MediaTargetSessionTests {
             target: cancelledTarget,
             invalidateResolution: { _ in }
         )
-        #expect(await cancelledSession.execute(.mute) == nil)
+        let cancelledOutcome = await cancelledSession.execute(.mute)
+        #expect(cancelledOutcome == nil)
     }
 
     @Test("Command authentication rejection remains distinct")
@@ -160,7 +189,9 @@ struct MediaTargetSessionTests {
             invalidateResolution: { _ in }
         )
 
-        #expect(await session.execute(.mute) == .authenticationRejected)
+        let outcome = await session.execute(.mute)
+        #expect(outcome?.reachability == .authenticationRejected)
+        #expect(outcome?.confirmedState == nil)
     }
 
     @Test("Invalidation discards stale command success")
@@ -359,9 +390,9 @@ private actor InvalidationRecorder {
     }
 }
 
-private func makeState() -> MediaTargetVolumeState {
+private func makeState(absoluteVolume: Int = 5) -> MediaTargetVolumeState {
     MediaTargetVolumeState(
-        absoluteVolume: 5,
+        absoluteVolume: absoluteVolume,
         isMuted: false,
         minimumVolume: 0,
         maximumVolume: 10

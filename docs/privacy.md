@@ -37,5 +37,14 @@ addresses, gateways, endpoints, and path descriptions are never copied to
 diagnostics. Empty discovery is not treated as evidence that macOS denied Local
 Network access.
 
+Confirmed presentation state contains only volume bounds, step, mute, normalized
+level, coarse pending/failure/rail/lifecycle state, and local request/epoch
+guards. It does not carry target identity, host data, control URLs, session
+identifiers, or raw protocol responses. A muted confirmation at the target's
+minimum volume may retain the last confirmed level above that minimum for
+continuity, while the confirmed target volume remains unchanged and no target
+state is inferred. All retained presentation state is cleared on configuration,
+permission, session, sleep, and route invalidation.
+
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.

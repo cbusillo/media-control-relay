@@ -20,6 +20,13 @@ public struct VolumeKeyGestureTracker: Sendable {
         return nextRepeatTimestamp
     }
 
+    public var repeatingAction: VolumeAction? {
+        guard completedRepeatTicks > 0 else {
+            return nil
+        }
+        return heldAction
+    }
+
     public mutating func ingest(
         _ event: VolumeKeyEvent,
         pendingCount: Int = 0

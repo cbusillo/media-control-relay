@@ -38,6 +38,23 @@ one preview sink, applies reducer outputs, cancels the gesture monitor when
 requested, and publishes state and activity for SwiftUI. It does not decide
 whether a command is eligible.
 
+Physical target work also feeds the pure `MediaTargetPresentationModel`. A
+fresh probe establishes a hidden confirmed baseline and never announces; an
+action enters pending-cold or pending-with-baseline, and only the reachable
+outcome correlated to that exact in-flight action may move the confirmed level.
+Its local invalidation epoch is
+separate from session generations, and configuration, permission, session,
+sleep, and route changes clear all cached presentation values before recovery.
+Failed, cancelled, timed-out, mismatched, and superseded results never advance
+it. The app dismisses terminal presentation after the configured duration,
+makes throttled accessibility announcements for changed confirmed state, drops
+held-repeat backlog at release, and still presents the already in-flight final
+confirmation. Target-declared minimum and maximum values drive normalization,
+exact rail feedback, and mute display retention; `volumeStep` remains capability
+metadata for command planning and validation rather than presentation scaling.
+The presentation model has no AppKit, transport, target identity, or hardware
+dependency.
+
 ## Lifecycle
 
 Commands require all of the following:
@@ -53,6 +70,11 @@ unknown route matching, and configuration removal therefore stop recording
 without waiting for a timer. Suspended and stopped observation invalidate the
 cached activation match. The reducer is timer-free; gesture timing remains in
 the existing bounded gesture monitor.
+
+Presentation state is hidden on configuration, permission, and session
+invalidation; it becomes suspended during sleep and route-lost on a route
+mismatch. Wake and recovery require a fresh probe or a newer command
+confirmation before a level is displayed again.
 
 State precedence is `unconfigured`, `unsupported`, `needsPermission`, route
 matching, then target reachability. Target reachability distinguishes

@@ -27,6 +27,8 @@ Pure Swift logic with a Foundation-only dependency:
 - deterministic routing reduction and bounded preview command recording;
 - deterministic absolute-volume planning, optional bounded reread input, and
   transport-neutral failure taxonomy;
+- sendable confirmed-session outcomes and pure, epoch- and request-correlated
+  target-presentation normalization and state transitions;
 - target-aware status copy;
 - diagnostics redaction.
 
@@ -77,6 +79,19 @@ requires a fresh matching route plus reachable transport before emitting target
 work. `MediaTargetCommandExecutor` turns one routed relative action into one
 current-state read and at most one absolute target write without owning another
 queue or transport cache.
+
+`MediaTargetSession` publishes a sendable outcome containing coarse reachability,
+the confirmed target state when available, and a monotonically increasing
+generation. Results from invalidated, task-cancelled, superseded, or target-
+cancelled requests are discarded. `MediaTargetPresentationModel` keeps a local
+invalidation epoch separate from session request generations, seeds a hidden
+baseline from fresh probes, and accepts a command outcome only for its exact
+in-flight request. Every invalidation clears the confirmed baseline,
+mute-retention value, and announcement throttle, so a fresh session cannot
+display a prior target's state. The app schedules terminal presentation dismissal
+and posts throttled changed-value VoiceOver announcements; held-key release
+cancels queued repeat work before it can animate after release while preserving
+the final already in-flight confirmation.
 
 ### UPnPMediaTarget
 

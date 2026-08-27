@@ -32,6 +32,10 @@ final class VolumeKeyGestureMonitor {
         tracker.cancelHold()
     }
 
+    func isRepeating(_ action: VolumeAction) -> Bool {
+        tracker.repeatingAction == action
+    }
+
     private func tick() {
         emit(tracker.tick(at: ProcessInfo.processInfo.systemUptime))
         scheduleNextDeadline()
