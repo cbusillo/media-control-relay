@@ -24,6 +24,9 @@ public enum UPnPMediaTargetError: Error, Equatable, Sendable {
     case missingStableIdentity
     case missingRenderingControlService
     case missingRenderingControlControlURL
+    case missingRenderingControlSCPDURL
+    case missingVolumeCapability
+    case invalidVolumeCapability
     case invalidControlURL
     case malformedSSDPResponse
 }

@@ -38,7 +38,8 @@ This initial slice includes:
 - bounded repeat, debounce, deduplication, and queue policy;
 - passive listen-only volume-key observation with permission recovery UI;
 - pairing-free UPnP RenderingControl discovery, stable-identity resolution,
-  serialized volume/mute execution, and requested-dimension read-back;
+  service-declared volume bounds/step, serialized volume/mute execution, and
+  requested-dimension read-back;
 - network, authentication, offline, route, sleep, and wake recovery states;
 - privacy-safe diagnostics redaction;
 - a native SwiftUI menu-bar and setup/settings shell;

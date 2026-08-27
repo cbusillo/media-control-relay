@@ -85,22 +85,34 @@ struct UPnPMediaTargetDiscoveryTests {
             identity: "UUID:FIXTURE-TARGET",
             controlURL: "/rendering/control"
         )
+        let serviceXML = makeServiceDescriptionXML()
 
         let success = StubHTTPTransport(
-            data: descriptorXML,
-            response: makeHTTPResponse(url: location, statusCode: 200)
+            responses: [
+                (descriptorXML, makeHTTPResponse(url: location, statusCode: 200)),
+                (serviceXML, makeHTTPResponse(url: makeHTTPURL([10, 20, 30, 41], "/rendering/scpd.xml"), statusCode: 200)),
+            ]
         )
         let fetcher = UPnPMediaTargetURLSessionDescriptorFetcher(http: success)
         let descriptor = try await fetcher.fetch(location: location)
         #expect(descriptor.identity == MediaTargetIdentity(stableIdentifier: "uuid:fixture-target"))
         #expect(descriptor.renderingControlURL == makeHTTPURL([10, 20, 30, 41], "/rendering/control"))
+        #expect(success.requestedURLs == [
+            location,
+            makeHTTPURL([10, 20, 30, 41], "/rendering/scpd.xml"),
+        ])
+        #expect(success.responseLimits == [
+            UPnPMediaTargetURLSessionDescriptorFetcher.defaultMaximumDeviceDescriptionBytes,
+            UPnPMediaTargetURLSessionDescriptorFetcher.defaultMaximumServiceDescriptionBytes,
+        ])
 
         let changedURL = StubHTTPTransport(
-            data: descriptorXML,
-            response: makeHTTPResponse(
-                url: makeHTTPURL([10, 20, 30, 42], "/description.xml"),
-                statusCode: 200
-            )
+            responses: [
+                (descriptorXML, makeHTTPResponse(
+                    url: makeHTTPURL([10, 20, 30, 42], "/description.xml"),
+                    statusCode: 200
+                )),
+            ]
         )
         await #expect(throws: UPnPMediaTargetError.redirectRejected) {
             _ = try await UPnPMediaTargetURLSessionDescriptorFetcher(http: changedURL)
@@ -108,10 +120,46 @@ struct UPnPMediaTargetDiscoveryTests {
         }
 
         let notOK = StubHTTPTransport(
-            data: descriptorXML,
-            response: makeHTTPResponse(url: location, statusCode: 204)
+            responses: [
+                (descriptorXML, makeHTTPResponse(url: location, statusCode: 204)),
+            ]
         )
         await #expect(throws: UPnPMediaTargetError.unexpectedStatusCode(204)) {
+            _ = try await UPnPMediaTargetURLSessionDescriptorFetcher(http: notOK)
+                .fetch(location: location)
+        }
+    }
+
+    @Test("Service-description fetch requires exact HTTP 200 and the requested URL")
+    func serviceDescriptionFetchPolicy() async {
+        let location = makeHTTPURL([10, 20, 30, 45], "/description.xml")
+        let serviceURL = makeHTTPURL([10, 20, 30, 45], "/rendering/scpd.xml")
+        let descriptorXML = makeDescriptionXML(
+            identity: "UUID:FIXTURE-TARGET",
+            controlURL: "/rendering/control"
+        )
+
+        let changedURL = StubHTTPTransport(
+            responses: [
+                (descriptorXML, makeHTTPResponse(url: location, statusCode: 200)),
+                (makeServiceDescriptionXML(), makeHTTPResponse(
+                    url: makeHTTPURL([10, 20, 30, 46], "/rendering/scpd.xml"),
+                    statusCode: 200
+                )),
+            ]
+        )
+        await #expect(throws: UPnPMediaTargetError.redirectRejected) {
+            _ = try await UPnPMediaTargetURLSessionDescriptorFetcher(http: changedURL)
+                .fetch(location: location)
+        }
+
+        let notOK = StubHTTPTransport(
+            responses: [
+                (descriptorXML, makeHTTPResponse(url: location, statusCode: 200)),
+                (makeServiceDescriptionXML(), makeHTTPResponse(url: serviceURL, statusCode: 404)),
+            ]
+        )
+        await #expect(throws: UPnPMediaTargetError.unexpectedStatusCode(404)) {
             _ = try await UPnPMediaTargetURLSessionDescriptorFetcher(http: notOK)
                 .fetch(location: location)
         }
@@ -124,13 +172,25 @@ struct UPnPMediaTargetDiscoveryTests {
         let locationB = makeHTTPURL([10, 20, 30, 44], "/description.xml")
         let responseA = try UPnPMediaTargetSSDPResponse(location: locationA, usn: "uuid:fixture-target")
         let responseB = try UPnPMediaTargetSSDPResponse(location: locationB, usn: "uuid:fixture-target")
+        let capabilityA = try UPnPMediaTargetVolumeCapability(
+            minimumVolume: 0,
+            maximumVolume: 100,
+            step: 1
+        )
+        let capabilityB = try UPnPMediaTargetVolumeCapability(
+            minimumVolume: 10,
+            maximumVolume: 90,
+            step: 5
+        )
         let descriptorA = UPnPMediaTargetDescriptor(
             identity: identity,
-            renderingControlURL: makeHTTPURL([10, 20, 30, 43], "/control/a")
+            renderingControlURL: makeHTTPURL([10, 20, 30, 43], "/control/a"),
+            volumeCapability: capabilityA
         )
         let descriptorB = UPnPMediaTargetDescriptor(
             identity: identity,
-            renderingControlURL: makeHTTPURL([10, 20, 30, 44], "/control/b")
+            renderingControlURL: makeHTTPURL([10, 20, 30, 44], "/control/b"),
+            volumeCapability: capabilityB
         )
         let searcher = SequencedSearcher(responses: [[responseA], [responseB]])
         let fetcher = SequencedDescriptorFetcher(values: [locationA: .success(descriptorA), locationB: .success(descriptorB)])
@@ -148,6 +208,7 @@ struct UPnPMediaTargetDiscoveryTests {
         await resolver.invalidate(for: .interfaceChanged)
         #expect(await resolver.currentGeneration == 1)
         #expect(try await resolver.resolve() == descriptorB)
+        #expect((try await resolver.resolve()).volumeCapability == capabilityB)
         #expect(searcher.callCount == 2)
         #expect(fetcher.locations == [locationA, locationB])
     }
@@ -181,6 +242,53 @@ struct UPnPMediaTargetDiscoveryTests {
 
         #expect(try await resolver.resolve() == expected)
         #expect(fetcher.locations == [duplicateLocation, mismatchLocation, goodLocation])
+    }
+
+    @Test("Resolver preserves semantic capability failures")
+    func propagatesCapabilityFailure() async {
+        let identity = MediaTargetIdentity(stableIdentifier: "uuid:fixture-target")
+        let location = makeHTTPURL([10, 20, 30, 48], "/description.xml")
+        let response = try! UPnPMediaTargetSSDPResponse(location: location, usn: "uuid:fixture-target")
+        let resolver = UPnPMediaTargetResolver(
+            identity: identity,
+            searcher: SequencedSearcher(responses: [[response]]),
+            descriptorFetcher: SequencedDescriptorFetcher(values: [
+                location: .failure(.missingVolumeCapability),
+            ])
+        )
+
+        await #expect(throws: UPnPMediaTargetError.missingVolumeCapability) {
+            _ = try await resolver.resolve()
+        }
+    }
+
+    @Test("Resolver continues past a stale incapable location")
+    func capabilityFailureDoesNotHideLaterValidLocation() async throws {
+        let identity = MediaTargetIdentity(stableIdentifier: "uuid:fixture-target")
+        let staleLocation = makeHTTPURL([10, 20, 30, 49], "/description.xml")
+        let validLocation = makeHTTPURL([10, 20, 30, 50], "/description.xml")
+        let stale = try UPnPMediaTargetSSDPResponse(
+            location: staleLocation,
+            usn: "uuid:fixture-target"
+        )
+        let valid = try UPnPMediaTargetSSDPResponse(
+            location: validLocation,
+            usn: "uuid:fixture-target"
+        )
+        let expected = UPnPMediaTargetDescriptor(
+            identity: identity,
+            renderingControlURL: validLocation
+        )
+        let resolver = UPnPMediaTargetResolver(
+            identity: identity,
+            searcher: SequencedSearcher(responses: [[stale, valid]]),
+            descriptorFetcher: SequencedDescriptorFetcher(values: [
+                staleLocation: .failure(.missingVolumeCapability),
+                validLocation: .success(expected),
+            ])
+        )
+
+        #expect(try await resolver.resolve() == expected)
     }
 
     @Test("Resolver continues after a stale candidate timeout")
@@ -398,15 +506,38 @@ struct UPnPMediaTargetDiscoveryTests {
     }
 }
 
-private struct StubHTTPTransport: UPnPMediaTargetHTTPTransacting {
-    let data: Data
-    let response: HTTPURLResponse
+private final class StubHTTPTransport: UPnPMediaTargetHTTPTransacting, @unchecked Sendable {
+    private let lock = NSLock()
+    private let responses: [(Data, HTTPURLResponse)]
+    private var index = 0
+    private(set) var requestedURLs: [URL] = []
+    private(set) var responseLimits: [Int] = []
+
+    init(data: Data, response: HTTPURLResponse) {
+        responses = [(data, response)]
+    }
+
+    init(responses: [(Data, HTTPURLResponse)]) {
+        self.responses = responses
+    }
 
     func send(
         _ request: URLRequest,
         maximumResponseBytes: Int
     ) async throws(UPnPMediaTargetError) -> (Data, HTTPURLResponse) {
-        (data, response)
+        withLock {
+            requestedURLs.append(request.url!)
+            responseLimits.append(maximumResponseBytes)
+            let response = responses[min(index, responses.count - 1)]
+            index += 1
+            return response
+        }
+    }
+
+    private func withLock<T>(_ operation: () -> T) -> T {
+        lock.lock()
+        defer { lock.unlock() }
+        return operation()
     }
 }
 
@@ -619,10 +750,30 @@ private func makeDescriptionXML(identity: String, controlURL: String) -> Data {
               <service>
                 <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
                 <controlURL>\(controlURL)</controlURL>
+                <SCPDURL>/rendering/scpd.xml</SCPDURL>
               </service>
             </serviceList>
           </device>
         </root>
+        """.utf8
+    )
+}
+
+private func makeServiceDescriptionXML() -> Data {
+    Data(
+        """
+        <?xml version="1.0" encoding="utf-8"?>
+        <scpd>
+          <serviceStateTable>
+            <stateVariable>
+              <name>Volume</name>
+              <dataType>ui2</dataType>
+              <allowedValueRange>
+                <maximum>100</maximum>
+              </allowedValueRange>
+            </stateVariable>
+          </serviceStateTable>
+        </scpd>
         """.utf8
     )
 }

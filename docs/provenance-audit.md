@@ -36,7 +36,8 @@ rail model, or reconciliation behavior.
 
 The UPnP MediaRenderer transport is original Swift code written from the
 published specifications above. It implements endpoint safety, bounded XML,
-device-description parsing, and the four RenderingControl volume/mute actions
+device-description and RenderingControl SCPD parsing, service-declared volume
+range/step validation, and the four RenderingControl volume/mute actions
 without copying third-party source or device-specific control code.
 
 `THIRD-PARTY-NOTICES.md` is required only if a compatible external source

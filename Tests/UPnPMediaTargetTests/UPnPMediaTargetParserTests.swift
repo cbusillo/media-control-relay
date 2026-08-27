@@ -14,13 +14,14 @@ struct UPnPMediaTargetParserTests {
             controlURL: "/upnp/control/rendering"
         )
 
-        let descriptor = try UPnPMediaTargetDeviceDescriptionParser.parse(
+        let description = try UPnPMediaTargetDeviceDescriptionParser.parse(
             xml,
             location: location
         )
 
-        #expect(descriptor.identity == MediaTargetIdentity(stableIdentifier: "uuid:happy-path"))
-        #expect(descriptor.renderingControlURL == makeHTTPURL(octets: [192, 168, 100, 10], path: "/upnp/control/rendering"))
+        #expect(description.identity == MediaTargetIdentity(stableIdentifier: "uuid:happy-path"))
+        #expect(description.renderingControlURL == makeHTTPURL(octets: [192, 168, 100, 10], path: "/upnp/control/rendering"))
+        #expect(description.renderingControlSCPDURL == makeHTTPURL(octets: [192, 168, 100, 10], path: "/upnp/scpd/rendering.xml"))
     }
 
     @Test("Missing identity fails closed")
@@ -33,6 +34,50 @@ struct UPnPMediaTargetParserTests {
         let location = makeHTTPURL(octets: [192, 168, 100, 10], path: "/description.xml")
 
         #expect(throws: UPnPMediaTargetError.missingStableIdentity) {
+            try UPnPMediaTargetDeviceDescriptionParser.parse(xml, location: location)
+        }
+    }
+
+    @Test("Missing RenderingControl SCPD URL fails with a precise capability error")
+    func missingSCPDURLFailsClosed() {
+        let xml = makeDescriptionXML(
+            udn: "uuid:scpd-missing",
+            urlBase: nil,
+            controlURL: "/upnp/control/rendering",
+            scpdURL: nil
+        )
+        let location = makeHTTPURL(octets: [192, 168, 100, 10], path: "/description.xml")
+
+        #expect(throws: UPnPMediaTargetError.missingRenderingControlSCPDURL) {
+            try UPnPMediaTargetDeviceDescriptionParser.parse(xml, location: location)
+        }
+    }
+
+    @Test("RenderingControl endpoint fields must come from one service entry")
+    func doesNotCombineRenderingControlServices() {
+        let xml = Data(
+            """
+            <?xml version="1.0" encoding="utf-8"?>
+            <root>
+              <device>
+                <UDN>uuid:split-services</UDN>
+                <serviceList>
+                  <service>
+                    <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
+                    <controlURL>/rendering/control-a</controlURL>
+                  </service>
+                  <service>
+                    <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
+                    <SCPDURL>/rendering/scpd-b.xml</SCPDURL>
+                  </service>
+                </serviceList>
+              </device>
+            </root>
+            """.utf8
+        )
+        let location = makeHTTPURL(octets: [192, 168, 100, 10], path: "/description.xml")
+
+        #expect(throws: UPnPMediaTargetError.missingRenderingControlSCPDURL) {
             try UPnPMediaTargetDeviceDescriptionParser.parse(xml, location: location)
         }
     }
@@ -145,6 +190,7 @@ struct UPnPMediaTargetParserTests {
                   <u:service>
                     <u:serviceType>urn:schemas-upnp-org:service:RenderingControl:1</u:serviceType>
                     <u:controlURL>/rendering/control</u:controlURL>
+                    <u:SCPDURL>/rendering/scpd.xml</u:SCPDURL>
                   </u:service>
                 </u:serviceList>
               </u:device>
@@ -152,12 +198,13 @@ struct UPnPMediaTargetParserTests {
             """.utf8
         )
 
-        let descriptor = try UPnPMediaTargetDeviceDescriptionParser.parse(
+        let description = try UPnPMediaTargetDeviceDescriptionParser.parse(
             xml,
             location: location
         )
 
-        #expect(descriptor.identity == MediaTargetIdentity(stableIdentifier: "uuid:namespaced"))
+        #expect(description.identity == MediaTargetIdentity(stableIdentifier: "uuid:namespaced"))
+        #expect(description.renderingControlSCPDURL == makeHTTPURL(octets: [10, 1, 2, 3], path: "/rendering/scpd.xml"))
     }
 }
 
@@ -170,7 +217,8 @@ private func makeHTTPURL(octets: [Int], path: String) -> URL {
 private func makeDescriptionXML(
     udn: String?,
     urlBase: String?,
-    controlURL: String?
+    controlURL: String?,
+    scpdURL: String? = "/upnp/scpd/rendering.xml"
 ) -> Data {
     var xml = """
     <?xml version="1.0" encoding="utf-8"?>
@@ -192,6 +240,10 @@ private func makeDescriptionXML(
           <service>
             <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
     """
+
+    if let scpdURL {
+        xml += "\n            <SCPDURL>\(scpdURL)</SCPDURL>"
+    }
 
     if let controlURL {
         xml += "\n            <controlURL>\(controlURL)</controlURL>"

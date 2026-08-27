@@ -10,7 +10,7 @@ public enum UPnPMediaTargetDeviceDescriptionParser {
         _ data: Data,
         location: URL? = nil,
         maximumPayloadBytes: Int = defaultMaximumPayloadBytes
-    ) throws(UPnPMediaTargetError) -> UPnPMediaTargetDescriptor {
+    ) throws(UPnPMediaTargetError) -> UPnPMediaTargetDeviceDescription {
         try UPnPMediaTargetXMLGate.validatePayload(
             data,
             maximumPayloadBytes: maximumPayloadBytes
@@ -50,17 +50,28 @@ public enum UPnPMediaTargetDeviceDescriptionParser {
         }
 
         guard let renderingControlControlURL = delegate.renderingControlControlURL else {
+            if delegate.renderingControlControlURLFound {
+                throw .missingRenderingControlSCPDURL
+            }
             throw .missingRenderingControlControlURL
+        }
+        guard let renderingControlSCPDText = delegate.renderingControlSCPDURL else {
+            throw .missingRenderingControlSCPDURL
         }
 
         let renderingControlURL = try UPnPMediaTargetEndpointPolicy.resolveControlURL(
             renderingControlControlURL,
             relativeTo: baseURL
         )
+        let renderingControlSCPDURL = try UPnPMediaTargetEndpointPolicy.resolveControlURL(
+            renderingControlSCPDText,
+            relativeTo: baseURL
+        )
 
-        return UPnPMediaTargetDescriptor(
+        return UPnPMediaTargetDeviceDescription(
             identity: identity,
-            renderingControlURL: renderingControlURL
+            renderingControlURL: renderingControlURL,
+            renderingControlSCPDURL: renderingControlSCPDURL
         )
     }
 
@@ -71,15 +82,19 @@ private final class DeviceDescriptionDelegate: NSObject, XMLParserDelegate {
     var urlBase: String?
     var urlBaseElementFound = false
     var renderingControlControlURL: String?
+    var renderingControlSCPDURL: String?
+    var renderingControlControlURLFound = false
     var renderingControlServiceFound = false
     var error: UPnPMediaTargetError?
 
     private struct ServiceCapture {
         var serviceType: String?
         var controlURL: String?
+        var scpdURL: String?
     }
 
     private var currentText = ""
+    private var elementStack: [String] = []
     private var serviceStack: [ServiceCapture] = []
 
     func parser(
@@ -90,6 +105,7 @@ private final class DeviceDescriptionDelegate: NSObject, XMLParserDelegate {
         attributes attributeDict: [String : String] = [:]
     ) {
         currentText.removeAll(keepingCapacity: true)
+        elementStack.append(elementName)
         if elementName == "service" {
             serviceStack.append(ServiceCapture())
         }
@@ -105,8 +121,17 @@ private final class DeviceDescriptionDelegate: NSObject, XMLParserDelegate {
         namespaceURI: String?,
         qualifiedName qName: String?
     ) {
+        guard elementStack.last == elementName else {
+            error = .malformedXML
+            parser.abortParsing()
+            return
+        }
         let value = currentText.trimmingCharacters(in: .whitespacesAndNewlines)
-        defer { currentText.removeAll(keepingCapacity: true) }
+        let parent = elementStack.dropLast().last
+        defer {
+            currentText.removeAll(keepingCapacity: true)
+            elementStack.removeLast()
+        }
 
         switch elementName {
         case "UDN":
@@ -119,26 +144,66 @@ private final class DeviceDescriptionDelegate: NSObject, XMLParserDelegate {
                 urlBase = value
             }
         case "serviceType":
-            if !serviceStack.isEmpty {
-                serviceStack[serviceStack.count - 1].serviceType = value
+            if parent == "service", !serviceStack.isEmpty {
+                assignServiceField(
+                    value,
+                    to: &serviceStack[serviceStack.count - 1].serviceType,
+                    parser: parser
+                )
             }
         case "controlURL":
-            if !serviceStack.isEmpty {
-                serviceStack[serviceStack.count - 1].controlURL = value
+            if parent == "service", !serviceStack.isEmpty {
+                assignServiceField(
+                    value,
+                    to: &serviceStack[serviceStack.count - 1].controlURL,
+                    parser: parser
+                )
+            }
+        case "SCPDURL":
+            if parent == "service", !serviceStack.isEmpty {
+                assignServiceField(
+                    value,
+                    to: &serviceStack[serviceStack.count - 1].scpdURL,
+                    parser: parser
+                )
             }
         case "service":
             if let service = serviceStack.popLast(),
                service.serviceType == UPnPMediaTargetDeviceDescriptionParser.renderingControlServiceType {
                 renderingControlServiceFound = true
+                let controlURL = service.controlURL.flatMap { value in
+                    value.isEmpty ? nil : value
+                }
+                let scpdURL = service.scpdURL.flatMap { value in
+                    value.isEmpty ? nil : value
+                }
+                if controlURL != nil {
+                    renderingControlControlURLFound = true
+                }
                 if renderingControlControlURL == nil,
-                   let controlURL = service.controlURL,
-                   !controlURL.isEmpty {
+                   renderingControlSCPDURL == nil,
+                   let controlURL,
+                   let scpdURL {
                     renderingControlControlURL = controlURL
+                    renderingControlSCPDURL = scpdURL
                 }
             }
         default:
             break
         }
+    }
+
+    private func assignServiceField(
+        _ value: String,
+        to field: inout String?,
+        parser: XMLParser
+    ) {
+        guard field == nil else {
+            error = .malformedXML
+            parser.abortParsing()
+            return
+        }
+        field = value
     }
 
     func parser(_ parser: XMLParser, parseErrorOccurred parseError: Error) {

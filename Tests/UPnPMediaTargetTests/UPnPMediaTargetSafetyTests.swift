@@ -257,6 +257,8 @@ private func makeDescriptionXML(
             <serviceType>urn:schemas-upnp-org:service:RenderingControl:1</serviceType>
     """
 
+    xml += "\n            <SCPDURL>/rendering/scpd.xml</SCPDURL>"
+
     if let controlURL {
         xml += "\n            <controlURL>\(controlURL)</controlURL>"
     }
