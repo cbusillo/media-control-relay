@@ -238,6 +238,101 @@ struct MediaTargetPresentationTests {
         expect(presentation.shouldAnnounce(at: 5.5))
     }
 
+    @Test("Rapid confirmed values coalesce to one trailing announcement")
+    func rapidConfirmedValuesCoalesceAnnouncements() {
+        var presentation = MediaTargetPresentationModel(
+            timing: MediaTargetPresentationTiming(announcementInterval: 1)
+        )
+        let epoch = presentation.invalidationEpoch
+
+        expect(presentation.receiveProbe(outcome(volume: 40, generation: 1), epoch: epoch, at: 0))
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 0.1))
+        expect(presentation.receive(
+            outcome(volume: 45, generation: 2),
+            requestID: 1,
+            epoch: epoch,
+            at: 0.2
+        ))
+        expect(presentation.shouldAnnounce(at: 0.2))
+        expect(presentation.pendingAnnouncementDeadline == nil)
+
+        expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 0.3))
+        expect(presentation.receive(
+            outcome(volume: 50, generation: 3),
+            requestID: 2,
+            epoch: epoch,
+            at: 0.4
+        ))
+        expect(!presentation.shouldAnnounce(at: 0.4))
+        expect(presentation.pendingAnnouncementDeadline == 1.2)
+
+        expect(presentation.begin(action: .up, requestID: 3, epoch: epoch, at: 0.5))
+        expect(presentation.receive(
+            outcome(volume: 55, generation: 4),
+            requestID: 3,
+            epoch: epoch,
+            at: 0.6
+        ))
+        expect(!presentation.shouldAnnounce(at: 0.6))
+        expect(!presentation.shouldAnnounce(at: 1.19))
+        expect(presentation.shouldAnnounce(at: 1.2))
+        expect(presentation.state.value?.confirmedVolume == 55)
+        expect(presentation.pendingAnnouncementDeadline == nil)
+    }
+
+    @Test("Dismissal and invalidation cancel deferred announcements")
+    func dismissalAndInvalidationCancelDeferredAnnouncements() {
+        var dismissed = MediaTargetPresentationModel(
+            timing: MediaTargetPresentationTiming(announcementInterval: 1)
+        )
+        let dismissedEpoch = dismissed.invalidationEpoch
+        expect(dismissed.receiveProbe(outcome(volume: 40, generation: 1), epoch: dismissedEpoch, at: 0))
+        expect(dismissed.begin(action: .up, requestID: 1, epoch: dismissedEpoch, at: 0.1))
+        expect(dismissed.receive(
+            outcome(volume: 45, generation: 2),
+            requestID: 1,
+            epoch: dismissedEpoch,
+            at: 0.2
+        ))
+        expect(dismissed.shouldAnnounce(at: 0.2))
+        expect(dismissed.begin(action: .up, requestID: 2, epoch: dismissedEpoch, at: 0.3))
+        expect(dismissed.receive(
+            outcome(volume: 50, generation: 3),
+            requestID: 2,
+            epoch: dismissedEpoch,
+            at: 0.4
+        ))
+        expect(!dismissed.shouldAnnounce(at: 0.4))
+        dismissed.dismiss()
+        expect(dismissed.pendingAnnouncementDeadline == nil)
+        expect(!dismissed.shouldAnnounce(at: 1.2))
+
+        var invalidated = MediaTargetPresentationModel(
+            timing: MediaTargetPresentationTiming(announcementInterval: 1)
+        )
+        let invalidatedEpoch = invalidated.invalidationEpoch
+        expect(invalidated.receiveProbe(outcome(volume: 40, generation: 1), epoch: invalidatedEpoch, at: 0))
+        expect(invalidated.begin(action: .up, requestID: 1, epoch: invalidatedEpoch, at: 0.1))
+        expect(invalidated.receive(
+            outcome(volume: 45, generation: 2),
+            requestID: 1,
+            epoch: invalidatedEpoch,
+            at: 0.2
+        ))
+        expect(invalidated.shouldAnnounce(at: 0.2))
+        expect(invalidated.begin(action: .up, requestID: 2, epoch: invalidatedEpoch, at: 0.3))
+        expect(invalidated.receive(
+            outcome(volume: 50, generation: 3),
+            requestID: 2,
+            epoch: invalidatedEpoch,
+            at: 0.4
+        ))
+        expect(!invalidated.shouldAnnounce(at: 0.4))
+        invalidated.invalidate(.session)
+        expect(invalidated.pendingAnnouncementDeadline == nil)
+        expect(!invalidated.shouldAnnounce(at: 1.2))
+    }
+
     private func expect(_ condition: Bool) {
         #expect(condition)
     }

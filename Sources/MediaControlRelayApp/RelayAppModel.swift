@@ -72,6 +72,8 @@ final class RelayAppModel {
     private var activeHoldGeneration: UInt64 = 0
     private var activePresentationRequest: PendingPresentationRequest?
     private var presentationDismissalTask: Task<Void, Never>?
+    private var presentationAnnouncementTask: Task<Void, Never>?
+    private var presentationAnnouncementGeneration: UInt64 = 0
     private var awaitingWakeCompletion = false
     private var hasReceivedNetworkPathSnapshot = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
@@ -973,6 +975,7 @@ final class RelayAppModel {
         targetPresentationState = state
         schedulePresentationDismissal()
         announcePresentationIfNeeded()
+        schedulePresentationAnnouncement()
     }
 
     private func schedulePresentationDismissal() {
@@ -1007,6 +1010,33 @@ final class RelayAppModel {
             ? "Muted"
             : "Volume \(value.percentage) percent"
         postAccessibilityAnnouncement(announcement)
+    }
+
+    private func schedulePresentationAnnouncement() {
+        presentationAnnouncementGeneration &+= 1
+        presentationAnnouncementTask?.cancel()
+        guard let deadline = targetPresentation.pendingAnnouncementDeadline else {
+            presentationAnnouncementTask = nil
+            return
+        }
+
+        let generation = presentationAnnouncementGeneration
+        let delay = max(0, deadline - presentationTimestamp)
+        presentationAnnouncementTask = Task { @MainActor [weak self] in
+            do {
+                try await Task.sleep(for: .seconds(delay))
+            } catch {
+                return
+            }
+            guard let self,
+                  !Task.isCancelled,
+                  presentationAnnouncementGeneration == generation else {
+                return
+            }
+            presentationAnnouncementTask = nil
+            announcePresentationIfNeeded()
+            schedulePresentationAnnouncement()
+        }
     }
 }
 

@@ -769,6 +769,60 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Rapid confirmed presentations emit the latest trailing announcement")
+    func rapidConfirmedPresentationsCoalesceAccessibilityAnnouncements() async {
+        let target = AppModelTargetStub()
+        let announcements = AnnouncementRecorder()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0.3),
+            announcementRecorder: announcements
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { announcements.values == ["Volume 60 percent"] }
+
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 7 }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 8 }
+
+        #expect(announcements.values == ["Volume 60 percent"])
+        await waitUntil {
+            announcements.values == ["Volume 60 percent", "Volume 80 percent"]
+        }
+        harness.cleanup()
+    }
+
+    @Test("Presentation invalidation cancels a deferred accessibility announcement")
+    func presentationInvalidationCancelsDeferredAccessibilityAnnouncement() async {
+        let target = AppModelTargetStub()
+        let announcements = AnnouncementRecorder()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0.3),
+            announcementRecorder: announcements
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { announcements.values == ["Volume 60 percent"] }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 7 }
+
+        harness.routeObserver.sleep()
+        await waitUntil { harness.model.targetPresentationState == .suspended }
+        try? await Task.sleep(for: .milliseconds(350))
+
+        #expect(announcements.values == ["Volume 60 percent"])
+        harness.cleanup()
+    }
+
     @Test("Repeated rail confirmations dismiss after the latest command")
     func repeatedRailPresentationDismisses() async {
         let target = AppModelTargetStub(

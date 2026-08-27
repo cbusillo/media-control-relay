@@ -164,6 +164,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     private var stateSince: TimeInterval?
     private var lastAnnouncementAt: TimeInterval?
     private var lastAnnouncedValue: MediaTargetPresentationValue?
+    private var hasPendingAnnouncement = false
 
     public init(timing: MediaTargetPresentationTiming = MediaTargetPresentationTiming()) {
         self.timing = timing
@@ -210,6 +211,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         newestRequestID = requestID
         pendingAction = action
         pendingRequestID = requestID
+        hasPendingAnnouncement = false
         if let lastConfirmedAt,
            timestamp >= lastConfirmedAt,
            timestamp - lastConfirmedAt <= timing.baselineFreshness,
@@ -245,6 +247,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
             pendingAction = nil
             pendingRequestID = nil
             stateSince = timestamp
+            hasPendingAnnouncement = false
             return true
         }
 
@@ -274,6 +277,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         pendingRequestID = nil
         state = .failed(lastConfirmedValue)
         stateSince = timestamp
+        hasPendingAnnouncement = false
         return true
     }
 
@@ -293,6 +297,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         stateSince = nil
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
+        hasPendingAnnouncement = false
         return true
     }
 
@@ -306,6 +311,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastNonzeroConfirmedVolume = nil
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
+        hasPendingAnnouncement = false
         switch reason {
         case .sleep:
             state = .suspended
@@ -322,6 +328,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         stateSince = nil
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
+        hasPendingAnnouncement = false
     }
 
     @discardableResult
@@ -337,6 +344,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         self.stateSince = nil
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
+        hasPendingAnnouncement = false
         return true
     }
 
@@ -353,12 +361,22 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         switch state {
         case let .confirmed(value), let .muted(value), let .rail(_, value):
             guard value != lastAnnouncedValue else {
+                hasPendingAnnouncement = false
                 return false
             }
             return recordAnnouncement(at: timestamp, value: value)
         case .hidden, .pendingCold, .pendingBaseline, .failed, .suspended, .routeLost:
+            hasPendingAnnouncement = false
             return false
         }
+    }
+
+    public var pendingAnnouncementDeadline: TimeInterval? {
+        guard hasPendingAnnouncement,
+              let lastAnnouncementAt else {
+            return nil
+        }
+        return lastAnnouncementAt + timing.announcementInterval
     }
 
     private mutating func recordAnnouncement(
@@ -368,14 +386,19 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         guard let lastAnnouncementAt else {
             self.lastAnnouncementAt = timestamp
             lastAnnouncedValue = value
+            hasPendingAnnouncement = false
             return true
         }
-        guard timestamp >= lastAnnouncementAt,
-              timestamp - lastAnnouncementAt >= timing.announcementInterval else {
+        guard timestamp >= lastAnnouncementAt else {
+            return false
+        }
+        guard timestamp - lastAnnouncementAt >= timing.announcementInterval else {
+            hasPendingAnnouncement = true
             return false
         }
         self.lastAnnouncementAt = timestamp
         lastAnnouncedValue = value
+        hasPendingAnnouncement = false
         return true
     }
 
