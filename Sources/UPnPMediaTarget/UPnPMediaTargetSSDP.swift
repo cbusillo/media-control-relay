@@ -200,6 +200,12 @@ public protocol UPnPMediaTargetSSDPSearching: Sendable {
     ) async throws(UPnPMediaTargetError) -> [UPnPMediaTargetSSDPResponse]
 }
 
+enum UPnPMediaTargetSSDPSocketFailure {
+    static func classifySendError(_ errorCode: Int32) -> UPnPMediaTargetError {
+        errorCode == EHOSTUNREACH ? .localNetworkDenied : .offline
+    }
+}
+
 public final class UPnPMediaTargetIPv4SSDPSearcher: UPnPMediaTargetSSDPSearching, @unchecked Sendable {
     public init() {}
 
@@ -298,10 +304,10 @@ private final class SearchOperation: @unchecked Sendable {
         let request = Data(
             "M-SEARCH * HTTP/1.1\r\nHOST: \(UPnPMediaTargetSSDP.multicastHost):\(UPnPMediaTargetSSDP.multicastPort)\r\nMAN: \"ssdp:discover\"\r\nMX: 1\r\nST: \(UPnPMediaTargetSSDP.searchTarget)\r\n\r\n".utf8
         )
-        let sent = request.withUnsafeBytes { bytes in
+        let sendOutcome = request.withUnsafeBytes { bytes in
             withUnsafePointer(to: destination) { pointer in
                 pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { address in
-                    sendto(
+                    let sent = sendto(
                         descriptor,
                         bytes.baseAddress,
                         bytes.count,
@@ -309,11 +315,15 @@ private final class SearchOperation: @unchecked Sendable {
                         address,
                         socklen_t(MemoryLayout<sockaddr_in>.size)
                     )
+                    return (sent, sent < 0 ? errno : 0)
                 }
             }
         }
-        guard sent == request.count else {
-            finishWithNetworkResult(.offline)
+        guard sendOutcome.0 == request.count else {
+            let error = sendOutcome.0 < 0
+                ? UPnPMediaTargetSSDPSocketFailure.classifySendError(sendOutcome.1)
+                : .offline
+            finishWithNetworkResult(error)
             return
         }
 

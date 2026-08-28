@@ -245,6 +245,8 @@ public actor UPnPMediaVolumeTarget: MediaVolumeTarget {
             return .authenticationRejected
         case .discoveryUnavailable:
             return .discoveryUnavailable
+        case .localNetworkDenied:
+            return .localNetworkDenied
         case .offline:
             return .offline
         case .timeout:

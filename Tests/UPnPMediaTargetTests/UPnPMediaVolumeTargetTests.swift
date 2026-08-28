@@ -148,12 +148,13 @@ struct UPnPMediaVolumeTargetTests {
         ])
     }
 
-    @Test("Protocol, timeout, and cancellation errors map to neutral failures")
+    @Test("Adapter errors preserve their core failure categories")
     func mapsTransportFailures() async {
         let cases: [(Int, UPnPMediaTargetError, MediaTargetFailure)] = [
             (44, .protocolFault, .protocolFault),
             (45, .timeout, .timeout),
             (46, .cancelled, .cancelled),
+            (47, .localNetworkDenied, .localNetworkDenied),
         ]
 
         for (octet, adapterError, expectedFailure) in cases {

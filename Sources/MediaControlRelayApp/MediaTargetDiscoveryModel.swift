@@ -11,6 +11,7 @@ enum MediaTargetDiscoveryState: Equatable {
     case scanning
     case results([MediaTargetDiscoveryChoice])
     case empty
+    case localNetworkDenied
     case failed
     case routeUnavailable([MediaTargetDiscoveryChoice])
 }
@@ -51,6 +52,11 @@ final class MediaTargetDiscoveryModel {
                     )
                 }
                 state = choices.isEmpty ? .empty : .results(choices)
+            } catch UPnPMediaTargetError.localNetworkDenied {
+                guard !Task.isCancelled, generation == requestedGeneration else {
+                    return
+                }
+                state = .localNetworkDenied
             } catch {
                 guard !Task.isCancelled, generation == requestedGeneration else {
                     return

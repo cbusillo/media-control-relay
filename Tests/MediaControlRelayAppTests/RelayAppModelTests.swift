@@ -103,6 +103,35 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Target-reported local-network denial retries on activation while path stays available")
+    func targetReportedLocalNetworkDenialRecovery() async {
+        let target = LocalNetworkRetryingAppModelTarget()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            initialNetworkSnapshot: availableNetworkSnapshot()
+        )
+
+        await waitUntil {
+            harness.model.relayState == .needsLocalNetworkPermission
+        }
+        #expect(harness.model.diagnosticsSummary.contains("network_path=available"))
+
+        harness.applicationNotificationCenter.post(
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        await waitUntil { harness.model.relayState == .active }
+
+        #expect(await target.readCount == 2)
+        #expect(harness.model.targetRecoveryAttempts == 0)
+        harness.cleanup()
+    }
+
     @Test("App activation refreshes network denial before retrying a probe")
     func activationRefreshesNetworkFirst() async {
         let target = AppModelTargetStub()
@@ -1534,6 +1563,26 @@ private actor RetryingAppModelTarget: MediaVolumeTarget {
         readCount += 1
         if readCount == 1 {
             throw .offline
+        }
+        return makeVolumeState()
+    }
+
+    func apply(
+        _ operation: MediaTargetVolumeOperation
+    ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        throw .capabilityUnavailable
+    }
+}
+
+private actor LocalNetworkRetryingAppModelTarget: MediaVolumeTarget {
+    nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
+
+    private(set) var readCount = 0
+
+    func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        readCount += 1
+        if readCount == 1 {
+            throw .localNetworkDenied
         }
         return makeVolumeState()
     }

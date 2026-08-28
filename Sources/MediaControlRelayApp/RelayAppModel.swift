@@ -663,7 +663,9 @@ final class RelayAppModel {
               targetConfiguration?.target.kind == .upnpMediaRenderer,
               networkPathSnapshot.status == .unknown ||
                 networkPathSnapshot.status == .available,
-              relayState == .checkingTarget || relayState == .offline else {
+              relayState == .checkingTarget ||
+                relayState == .offline ||
+                relayState == .needsLocalNetworkPermission else {
             return
         }
         guard let mediaTargetSession else {
@@ -711,7 +713,8 @@ final class RelayAppModel {
                   self.mediaTargetSession === mediaTargetSession else {
                 return
             }
-            if outcome.reachability == .reachable {
+            let reachability = effectiveReachability(outcome.reachability)
+            if reachability == .reachable {
                 _ = targetPresentation.receiveProbe(
                     outcome,
                     epoch: presentationEpoch,
@@ -722,7 +725,7 @@ final class RelayAppModel {
             } else {
                 cancelCommandDispatch()
             }
-            apply(.transportReachability(outcome.reachability))
+            apply(.transportReachability(reachability))
         }
     }
 
@@ -796,11 +799,12 @@ final class RelayAppModel {
                     continue
                 }
                 receivePresentationOutcome(outcome, for: presentationRequest)
-                if outcome.reachability != .reachable {
+                let reachability = effectiveReachability(outcome.reachability)
+                if reachability != .reachable {
                     targetCommandsFailed += 1
                 }
-                apply(.transportReachability(outcome.reachability))
-                if outcome.reachability != .reachable {
+                apply(.transportReachability(reachability))
+                if reachability != .reachable {
                     cancelCommandDispatch()
                     return
                 }
@@ -817,6 +821,16 @@ final class RelayAppModel {
         coordinator.cancelPendingCommands()
         syncCoordinatorState()
         cancelActivePresentationRequest()
+    }
+
+    private func effectiveReachability(
+        _ reachability: TransportReachability
+    ) -> TransportReachability {
+        guard reachability == .localNetworkDenied,
+              networkPathSnapshot.status != .available else {
+            return reachability
+        }
+        return .unreachable
     }
 
     private func record(_ event: VolumeKeyEvent) {

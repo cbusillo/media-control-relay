@@ -60,6 +60,7 @@ public enum MediaTargetVolumePlan: Equatable, Sendable {
 public enum MediaTargetFailure: Error, Equatable, Sendable {
     case authenticationRejected
     case discoveryUnavailable
+    case localNetworkDenied
     case offline
     case capabilityUnavailable
     case timeout
