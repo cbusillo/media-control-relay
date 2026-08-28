@@ -37,10 +37,12 @@ jobs:
             if [ ! -d "$candidate" ]; then
               continue
             fi
-            version="$(
+            if ! version="$(
               DEVELOPER_DIR="$candidate/Contents/Developer" \
-                xcodebuild -version | awk 'NR == 1 { print $2 }'
-            )"
+                xcodebuild -version 2>/dev/null | awk 'NR == 1 { print $2 }'
+            )"; then
+              continue
+            fi
             major_version="${version%%.*}"
             case "$major_version" in
               ''|*[!0-9]*) continue ;;

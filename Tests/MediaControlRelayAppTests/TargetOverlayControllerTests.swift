@@ -312,8 +312,7 @@ struct TargetOverlayControllerTests {
         let optionsProvider = OverlayAccessibilityDisplayOptionsProviderStub(
             options: TargetOverlayAccessibilityDisplayOptions(
                 reduceTransparency: false,
-                increaseContrast: false,
-                reduceMotion: false
+                increaseContrast: false
             )
         )
         let panel = TargetOverlayPanel()
@@ -329,8 +328,7 @@ struct TargetOverlayControllerTests {
 
         optionsProvider.options = TargetOverlayAccessibilityDisplayOptions(
             reduceTransparency: true,
-            increaseContrast: true,
-            reduceMotion: true
+            increaseContrast: true
         )
         notificationCenter.post(
             name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,

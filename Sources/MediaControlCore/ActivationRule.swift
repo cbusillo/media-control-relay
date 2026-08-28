@@ -44,7 +44,7 @@ public struct ActivationRule: Codable, Equatable, Sendable {
         }
     }
 
-    public func matchesDisplayName(_ displayName: String?) -> Bool {
+    func matchesDisplayName(_ displayName: String?) -> Bool {
         guard let expectedDisplay = normalized(displayMatch) ?? normalized(audioOutputMatch) else {
             return false
         }

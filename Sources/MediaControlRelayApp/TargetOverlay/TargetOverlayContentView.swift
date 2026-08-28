@@ -5,7 +5,6 @@ import SwiftUI
 struct TargetOverlayAccessibilityDisplayOptions: Equatable {
     let reduceTransparency: Bool
     let increaseContrast: Bool
-    let reduceMotion: Bool
 }
 
 @MainActor
@@ -20,8 +19,7 @@ struct LiveTargetOverlayAccessibilityDisplayOptionsProvider:
     var accessibilityDisplayOptions: TargetOverlayAccessibilityDisplayOptions {
         TargetOverlayAccessibilityDisplayOptions(
             reduceTransparency: NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
-            increaseContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast,
-            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+            increaseContrast: NSWorkspace.shared.accessibilityDisplayShouldIncreaseContrast
         )
     }
 }
