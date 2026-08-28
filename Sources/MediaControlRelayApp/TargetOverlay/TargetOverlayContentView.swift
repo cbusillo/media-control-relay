@@ -115,8 +115,8 @@ struct TargetOverlayContentView: View {
     private var glyphColor: Color {
         switch visualState.glyph {
         case .warning:
-            Color(nsColor: .systemOrange)
-        case .speaker, .muted, nil:
+            .secondary
+        case .speaker, .speakerLow, .speakerMedium, .speakerHigh, .muted, nil:
             .primary
         }
     }

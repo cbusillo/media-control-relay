@@ -2,13 +2,22 @@ import MediaControlCore
 
 enum TargetOverlayGlyph: Equatable {
     case speaker
+    case speakerLow
+    case speakerMedium
+    case speakerHigh
     case muted
     case warning
 
     var systemName: String {
         switch self {
         case .speaker:
+            "speaker.fill"
+        case .speakerLow:
+            "speaker.wave.1.fill"
+        case .speakerMedium:
             "speaker.wave.2.fill"
+        case .speakerHigh:
+            "speaker.wave.3.fill"
         case .muted:
             "speaker.slash.fill"
         case .warning:
@@ -66,20 +75,22 @@ struct TargetOverlayVisualState: Equatable {
                 caption: .adjusting
             )
         case let .pendingBaseline(_, value):
+            let level = Self.boundedLevel(for: value)
             self = Self(
                 isVisible: true,
-                glyph: .speaker,
-                level: Self.boundedLevel(for: value),
+                glyph: Self.speakerGlyph(for: level),
+                level: level,
                 levelTreatment: .pending,
                 caption: .adjusting
             )
         case let .confirmed(value), let .rail(_, value):
+            let level = Self.boundedLevel(for: value)
             self = Self(
                 isVisible: true,
-                glyph: .speaker,
-                level: Self.boundedLevel(for: value),
+                glyph: Self.speakerGlyph(for: level),
+                level: level,
                 levelTreatment: .confirmed,
-                caption: .percentage(Self.boundedLevel(for: value))
+                caption: .percentage(level)
             )
         case let .muted(value):
             self = Self(
@@ -110,5 +121,18 @@ struct TargetOverlayVisualState: Equatable {
 
     private static func boundedLevel(for value: MediaTargetPresentationValue) -> Double {
         min(max(value.normalizedLevel, 0), 1)
+    }
+
+    private static func speakerGlyph(for level: Double) -> TargetOverlayGlyph {
+        if level == 0 {
+            return .speaker
+        }
+        if level < 0.34 {
+            return .speakerLow
+        }
+        if level < 0.67 {
+            return .speakerMedium
+        }
+        return .speakerHigh
     }
 }

@@ -21,7 +21,7 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
         panel: TargetOverlayPanel = TargetOverlayPanel(),
         accessibilityDisplayOptionsProvider: any TargetOverlayAccessibilityDisplayOptionsProviding =
             LiveTargetOverlayAccessibilityDisplayOptionsProvider(),
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) {
         self.panel = panel
         self.accessibilityDisplayOptionsProvider = accessibilityDisplayOptionsProvider
@@ -34,6 +34,9 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
             )
         )
         super.init()
+        contentView.sizingOptions = []
+        contentView.frame = panel.contentRect(forFrameRect: panel.frame)
+        contentView.autoresizingMask = [.width, .height]
         panel.contentView = contentView
         contentView.setAccessibilityElement(false)
         panel.apply(accessibilityDisplayOptions: accessibilityDisplayOptions)

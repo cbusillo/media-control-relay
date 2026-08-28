@@ -212,20 +212,20 @@ struct TargetOverlayControllerTests {
         let pendingBaseline = TargetOverlayVisualState(
             presentationState: .pendingBaseline(.down, value)
         )
-        #expect(pendingBaseline.glyph == .speaker)
+        #expect(pendingBaseline.glyph == .speakerMedium)
         #expect(pendingBaseline.level == 0.5)
         #expect(pendingBaseline.levelTreatment == .pending)
         #expect(pendingBaseline.caption == .adjusting)
 
         let confirmed = TargetOverlayVisualState(presentationState: .confirmed(value))
-        #expect(confirmed.glyph == .speaker)
+        #expect(confirmed.glyph == .speakerMedium)
         #expect(confirmed.level == 0.5)
         #expect(confirmed.levelTreatment == .confirmed)
         #expect(confirmed.caption == .percentage(0.5))
 
         for rail in [MediaTargetPresentationRail.minimum, .maximum] {
             let visualState = TargetOverlayVisualState(presentationState: .rail(rail, value))
-            #expect(visualState.glyph == .speaker)
+            #expect(visualState.glyph == .speakerMedium)
             #expect(visualState.level == 0.5)
             #expect(visualState.levelTreatment == .confirmed)
             #expect(visualState.caption == .percentage(0.5))
@@ -264,8 +264,17 @@ struct TargetOverlayControllerTests {
 
         #expect(minimumVisualState.level == 0)
         #expect(minimumVisualState.caption == .percentage(0))
+        #expect(minimumVisualState.glyph == .speaker)
         #expect(maximumVisualState.level == 1)
         #expect(maximumVisualState.caption == .percentage(1))
+        #expect(maximumVisualState.glyph == .speakerHigh)
+
+        #expect(TargetOverlayVisualState(
+            presentationState: .confirmed(makePresentationValue(normalizedLevel: 0.2))
+        ).glyph == .speakerLow)
+        #expect(TargetOverlayVisualState(
+            presentationState: .confirmed(makePresentationValue(normalizedLevel: 0.5))
+        ).glyph == .speakerMedium)
     }
 
     @Test("Accessibility display changes refresh the presenter without ordering a panel")
