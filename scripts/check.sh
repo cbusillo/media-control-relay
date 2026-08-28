@@ -26,9 +26,11 @@ swift test
 scripts/check-secrets.sh
 scripts/check-action-pins.sh
 scripts/check-privacy-manifest.sh
+scripts/check-app-store-export.sh
 shellcheck \
 	scripts/check.sh \
 	scripts/check-action-pins.sh \
+	scripts/check-app-store-export.sh \
 	scripts/check-privacy-manifest.sh \
 	scripts/check-secrets.sh \
 	scripts/generate-project.sh
