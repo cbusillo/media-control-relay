@@ -826,11 +826,15 @@ final class RelayAppModel {
     private func effectiveReachability(
         _ reachability: TransportReachability
     ) -> TransportReachability {
-        guard reachability == .localNetworkDenied,
-              networkPathSnapshot.status != .available else {
+        guard reachability == .localNetworkDenied else {
             return reachability
         }
-        return .unreachable
+        return switch networkPathSnapshot.status {
+        case .unknown, .available, .localNetworkDenied:
+            .localNetworkDenied
+        case .unavailable:
+            .unreachable
+        }
     }
 
     private func record(_ event: VolumeKeyEvent) {
