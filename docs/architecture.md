@@ -168,9 +168,10 @@ probe, and an offline or Local Network-blocked target retries when the app next
 refreshes permission state. A `NWPathMonitor` observer invalidates resolver and
 command generations when the available network path or active interface kinds
 change. The system path reason `localNetworkDenied` is authoritative. The
-denial-compatible error observed on the initial SSDP multicast send produces
-Local Network recovery only while the system path remains available; empty
-discovery and generic transport failure remain inconclusive. Setup discovery
+denial-compatible error observed on the initial SSDP multicast send remains a
+Local Network recovery state while the system path is unknown or available,
+and is demoted to offline when the path is unavailable. Empty discovery and
+generic transport failure remain inconclusive. Setup discovery
 uses the same recovery only when the current path is available or explicitly
 denied. Device authentication rejection has separate target-recovery copy and
 is never presented as macOS Local Network denial.

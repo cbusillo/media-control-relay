@@ -132,6 +132,33 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Target-reported local-network denial survives an unsettled path")
+    func targetReportedLocalNetworkDenialWithUnknownPath() async {
+        let target = LocalNetworkRetryingAppModelTarget()
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session
+        )
+
+        await waitUntil {
+            harness.model.relayState == .needsLocalNetworkPermission
+        }
+        #expect(harness.model.diagnosticsSummary.contains("network_path=unknown"))
+
+        harness.applicationNotificationCenter.post(
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        await waitUntil { harness.model.relayState == .active }
+
+        #expect(await target.readCount == 2)
+        harness.cleanup()
+    }
+
     @Test("App activation refreshes network denial before retrying a probe")
     func activationRefreshesNetworkFirst() async {
         let target = AppModelTargetStub()
