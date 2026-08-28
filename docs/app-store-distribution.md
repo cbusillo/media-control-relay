@@ -2,9 +2,10 @@
 
 ## Scope
 
-This record covers the local Mac App Store archive and export path for Media
-Control Relay. It does not claim App Store Connect ingestion, TestFlight launch,
-App Review acceptance, storefront availability, or update behavior.
+This record covers the local Mac App Store archive and export path, App Store
+Connect app-record creation, and privacy-answer reconciliation for Media Control
+Relay. It does not claim binary ingestion, TestFlight launch, App Review
+acceptance, storefront availability, or update behavior.
 
 The procedure may contact the Apple Developer service and create or download
 signing assets when `-allowProvisioningUpdates` is present. It never commits or
@@ -100,14 +101,14 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- App Store Connect privacy-answer reconciliation;
-- upload against an intentional app record and build number;
+- a public privacy-policy URL;
+- upload against the created app record and an intentional build number;
 - TestFlight installation, first-run Input Monitoring, and update behavior; and
 - an App Review feasibility decision for the sandboxed listen-only event tap.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
 
-## App Store Connect Record Probe
+## App Store Connect Record and Privacy
 
 On August 28, 2026, the validation method authenticated through the configured
 Xcode account and queried App Store Connect for the Media Control Relay bundle
@@ -118,11 +119,26 @@ delivery.
 This proves:
 
 - the configured Xcode account can read App Store Connect state;
-- no App Store Connect app record is visible to the configured account for the
-  bundle identifier; and
+- no App Store Connect app record was visible to the configured account for the
+  bundle identifier at the time of this probe; and
 - this validation run did not upload a build or consume build number `1`.
 
-Given the earlier export evidence, the remaining account blocker is app-record
-creation rather than additional signing or profile work. Creation still needs
-three decisions: the globally visible app name, the permanent non-reusable SKU,
-and the primary locale.
+Later on August 28, the operator approved the globally visible app name, a
+permanent non-reusable SKU, and English (U.S.) as the primary locale. The macOS
+app record was created through the App Store Connect website because Apple does
+not support creating app records through the API. API read-back then returned
+exactly one record for the bundle identifier and confirmed that the approved
+name, SKU, and locale were stored. Repository evidence intentionally omits the
+SKU and App Store Connect object identifier.
+
+The App Privacy questionnaire was reconciled with `PrivacyInfo.xcprivacy` and
+saved as **Data Not Collected**. This matches the app's local-only architecture,
+absence of analytics, advertising, accounts, cloud relay, and third-party
+packages, and empty collected-data declaration.
+
+App Store Connect reported that its explicit user-access setting could not be
+saved, but confirmed that all account users currently have access to the app.
+This matches the approved full-access intent and requires no follow-up unless
+access is deliberately restricted later. No binary was uploaded, and build
+number `1` remains unused. The first TestFlight upload remains a separate
+explicit decision.
