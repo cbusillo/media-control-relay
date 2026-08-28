@@ -188,6 +188,35 @@ struct TargetOverlayControllerTests {
         #expect(!panel.isVisible)
     }
 
+    @Test("Panel presenter shows, positions, and hides the reusable panel")
+    func panelPresenterShowAndHide() {
+        let panel = TargetOverlayPanel()
+        let presenter = TargetOverlayPanelPresenter(
+            panel: panel,
+            notificationCenter: NotificationCenter()
+        )
+        let frame = OverlayRect(
+            origin: OverlayPoint(x: -10_000, y: -10_000),
+            size: TargetOverlayMetrics.panelSize
+        )
+
+        presenter.show(state: .confirmed(makePresentationValue()), frame: frame)
+        defer { presenter.hide() }
+
+        #expect(panel.frame == NSRect(
+            x: frame.origin.x,
+            y: frame.origin.y,
+            width: frame.size.width,
+            height: frame.size.height
+        ))
+        #expect(panel.isVisible)
+        #expect(!panel.isKeyWindow)
+        #expect(!panel.isMainWindow)
+
+        presenter.hide()
+        #expect(!panel.isVisible)
+    }
+
     @Test("Visual state mapping covers every presentation state")
     func visualStateMapping() {
         let value = makePresentationValue()

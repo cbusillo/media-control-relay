@@ -18,6 +18,10 @@ that screen's visible frame. The resolver uses this order:
 5. The main screen.
 6. The first live screen.
 
+Audio-only activation rules skip route-display matching and start at the
+fallback ladder, because display identity is not part of their activation
+contract.
+
 No live screen, a hidden/suspended/route-lost presentation state, or a missing
 activation rule orders the panel out.
 

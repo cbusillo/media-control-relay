@@ -45,13 +45,19 @@ struct OverlayPlacementTests {
         #expect(placement == OverlayScreenPlacement(screen: target, reason: .matchedRouteDisplayName))
     }
 
-    @Test("Audio-only routes use the primary fallback")
+    @Test("Audio-only routes use the primary fallback even with a matching display")
     func audioOnlyPrimaryFallback() {
         let pointer = screen(name: "Pointer", containsPointer: true)
         let placement = OverlayPlacementResolver.resolve(
             activationRule: ActivationRule(audioOutputMatch: "Living Room", requiresDisplay: false),
-            routeSnapshot: route(displays: []),
-            screens: [screen(name: "Main", isMain: true), pointer]
+            routeSnapshot: route(displays: [
+                DisplaySnapshot(name: "Living Room TV", stableIdentifier: "matching-display"),
+            ]),
+            screens: [
+                screen(identifier: "matching-display", name: "Living Room TV"),
+                screen(name: "Main", isMain: true),
+                pointer,
+            ]
         )
 
         #expect(placement == OverlayScreenPlacement(

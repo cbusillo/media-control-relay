@@ -94,9 +94,9 @@ public enum OverlayPlacementResolver {
             return nil
         }
 
-        let matchingDisplays = routeSnapshot.displays.filter {
-            activationRule.matchesDisplayName($0.name)
-        }
+        let matchingDisplays = activationRule.requiresDisplay
+            ? routeSnapshot.displays.filter { activationRule.matchesDisplayName($0.name) }
+            : []
         if matchingDisplays.count == 1, let matchingDisplay = matchingDisplays.first {
             if let stableIdentifier = matchingDisplay.stableIdentifier {
                 let matchingScreens = screens.filter {

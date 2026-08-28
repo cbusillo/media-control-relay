@@ -29,18 +29,29 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Select Xcode 26
+      - name: Select Xcode 26 or later
         run: |
           set -euo pipefail
           xcode_app=''
-          for candidate in /Applications/Xcode_26*.app; do
-            if [ -d "$candidate" ]; then
+          for candidate in /Applications/Xcode*.app; do
+            if [ ! -d "$candidate" ]; then
+              continue
+            fi
+            version="$(
+              DEVELOPER_DIR="$candidate/Contents/Developer" \
+                xcodebuild -version | awk 'NR == 1 { print $2 }'
+            )"
+            major_version="${version%%.*}"
+            case "$major_version" in
+              ''|*[!0-9]*) continue ;;
+            esac
+            if [ "$major_version" -ge 26 ]; then
               xcode_app="$candidate"
               break
             fi
           done
           if [ -z "$xcode_app" ]; then
-            printf '%s\n' 'Xcode 26+ is required, but no /Applications/Xcode_26*.app was found.' >&2
+            printf '%s\n' 'Xcode 26 or later is required, but no compatible Xcode app was found.' >&2
             exit 1
           fi
           printf 'DEVELOPER_DIR=%s\n' "$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
