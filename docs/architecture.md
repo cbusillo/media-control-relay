@@ -205,6 +205,15 @@ refresh work; wake registers them again and publishes one fresh snapshot. Audio
 UIDs and display identifiers remain private in memory for stable equality only.
 They are not included in diagnostics or logs.
 
+Overlay placement remains a Foundation-only core stage. It resolves one active
+route display to a live screen only when the route match and stable identity are
+unambiguous; otherwise it falls back in order to a single screen, the
+pointer-containing screen, the main screen, then the supplied first screen.
+Placement reasons are coarse and never contain display names or identifiers.
+Panel geometry centers against the full display frame, bottom-anchors and
+clamps inside the visible frame, and aligns to the display backing scale. AppKit
+adapters provide live screen descriptors and render the resulting geometry.
+
 ### Future Samsung Adapter
 
 Protocol code will live behind a narrow adapter interface and enter only after

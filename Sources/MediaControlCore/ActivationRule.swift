@@ -39,14 +39,16 @@ public struct ActivationRule: Codable, Equatable, Sendable {
         guard requiresDisplay else {
             return true
         }
+        return snapshot.displayNames.contains {
+            matchesDisplayName($0)
+        }
+    }
 
-        let expectedDisplay = normalized(displayMatch) ?? normalized(audioOutputMatch)
-        guard let expectedDisplay else {
+    public func matchesDisplayName(_ displayName: String?) -> Bool {
+        guard let expectedDisplay = normalized(displayMatch) ?? normalized(audioOutputMatch) else {
             return false
         }
-        return snapshot.displayNames.contains {
-            contains($0, expected: expectedDisplay)
-        }
+        return contains(displayName, expected: expectedDisplay)
     }
 
     private func contains(_ value: String?, expected: String) -> Bool {
