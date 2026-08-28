@@ -25,9 +25,11 @@ command -v ruby >/dev/null 2>&1 || {
 swift test
 scripts/check-secrets.sh
 scripts/check-action-pins.sh
+scripts/check-privacy-manifest.sh
 shellcheck \
 	scripts/check.sh \
 	scripts/check-action-pins.sh \
+	scripts/check-privacy-manifest.sh \
 	scripts/check-secrets.sh \
 	scripts/generate-project.sh
 find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
@@ -36,7 +38,7 @@ ruby -e 'require "json"; JSON.parse(File.read(ARGV.fetch(0)))' \
 	.github/github.json
 ruby -e 'require "yaml"; YAML.safe_load(File.read(ARGV.fetch(0)), aliases: false)' \
 	.github/dependabot.yml
-plutil -lint Config/*.plist Config/*.entitlements
+plutil -lint Config/*.plist Config/*.entitlements Config/*.xcprivacy
 git diff --check
 scripts/generate-project.sh
 xcodebuild \

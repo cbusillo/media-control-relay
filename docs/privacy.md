@@ -57,5 +57,30 @@ state. It is excluded from the accessibility tree because the app model owns
 the corresponding VoiceOver announcements; the overlay does not add another
 record of values, device state, or user interaction.
 
+## Privacy Manifest
+
+`Config/PrivacyInfo.xcprivacy` is the machine-readable form of this policy. The
+app declares no tracking domains and no collected data types. It declares only
+the required-reason API categories used by app-owned code:
+
+- `NSPrivacyAccessedAPICategoryUserDefaults` with reason `CA92.1` for the
+  selected target, route rule, and permission-request state stored for this app;
+  and
+- `NSPrivacyAccessedAPICategorySystemBootTime` with reason `35F9.1` for relative
+  gesture, route-coalescing, presentation, and SSDP scan timing based on
+  `ProcessInfo.systemUptime` and `DispatchTime` uptime.
+
+The app has no third-party package dependencies, and its linked internal
+libraries are static, so the app-level manifest covers the complete shipped
+code. Validation checks the exact declarations, watches for selected new
+required-reason API families, and proves that the manifest is present in the
+built app bundle.
+
+The local manifest audit does not prove whether App Store Connect currently
+enforces required-reason declarations for a Mac-only binary. Profile-backed
+export and upload evidence remains part of issue #16. At submission time, the
+App Store Connect privacy answers must remain consistent with the manifest's
+no-tracking and no-collected-data declarations.
+
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.
