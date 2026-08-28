@@ -127,6 +127,36 @@ struct OverlayPlacementTests {
         )?.reason == .firstScreen)
     }
 
+    @Test("First-screen fallback is deterministic across input order")
+    func deterministicFirstScreenFallback() {
+        let left = screen(
+            identifier: "left",
+            name: "Left",
+            frame: OverlayRect(x: -100, y: 0, width: 100, height: 100),
+            visibleFrame: OverlayRect(x: -100, y: 0, width: 100, height: 100)
+        )
+        let right = screen(
+            identifier: "right",
+            name: "Right",
+            frame: OverlayRect(x: 0, y: 0, width: 100, height: 100),
+            visibleFrame: OverlayRect(x: 0, y: 0, width: 100, height: 100)
+        )
+
+        let forward = OverlayPlacementResolver.resolve(
+            activationRule: rule(),
+            routeSnapshot: route(displays: []),
+            screens: [left, right]
+        )
+        let reversed = OverlayPlacementResolver.resolve(
+            activationRule: rule(),
+            routeSnapshot: route(displays: []),
+            screens: [right, left]
+        )
+
+        #expect(forward == OverlayScreenPlacement(screen: left, reason: .firstScreen))
+        #expect(reversed == forward)
+    }
+
     @Test("No live screens produces no placement")
     func noScreens() {
         #expect(OverlayPlacementResolver.resolve(

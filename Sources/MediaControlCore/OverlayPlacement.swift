@@ -65,13 +65,13 @@ public struct OverlayScreenDescriptor: Equatable, Sendable {
     }
 }
 
-public enum OverlayPlacementReason: Equatable, Sendable {
-    case matchedRouteDisplayStableIdentifier
-    case matchedRouteDisplayName
-    case singleLiveScreen
-    case pointerContainingScreen
-    case mainScreen
-    case firstScreen
+public enum OverlayPlacementReason: String, Equatable, Sendable {
+    case matchedRouteDisplayStableIdentifier = "matched-route-display-stable-identifier"
+    case matchedRouteDisplayName = "matched-route-display-name"
+    case singleLiveScreen = "single-live-screen"
+    case pointerContainingScreen = "pointer-containing-screen"
+    case mainScreen = "main-screen"
+    case firstScreen = "first-screen"
 }
 
 public struct OverlayScreenPlacement: Equatable, Sendable {
@@ -124,16 +124,32 @@ public enum OverlayPlacementResolver {
         if screens.count == 1, let screen = screens.first {
             return OverlayScreenPlacement(screen: screen, reason: .singleLiveScreen)
         }
-        if let screen = screens.first(where: \ .containsPointer) {
+        if let screen = screens.first(where: \.containsPointer) {
             return OverlayScreenPlacement(screen: screen, reason: .pointerContainingScreen)
         }
-        if let screen = screens.first(where: \ .isMain) {
+        if let screen = screens.first(where: \.isMain) {
             return OverlayScreenPlacement(screen: screen, reason: .mainScreen)
         }
-        guard let screen = screens.first else {
+        guard let screen = screens.sorted(by: isOrderedBefore).first else {
             return nil
         }
         return OverlayScreenPlacement(screen: screen, reason: .firstScreen)
+    }
+
+    private static func isOrderedBefore(
+        _ lhs: OverlayScreenDescriptor,
+        _ rhs: OverlayScreenDescriptor
+    ) -> Bool {
+        if lhs.frame.origin.x != rhs.frame.origin.x {
+            return lhs.frame.origin.x < rhs.frame.origin.x
+        }
+        if lhs.frame.origin.y != rhs.frame.origin.y {
+            return lhs.frame.origin.y < rhs.frame.origin.y
+        }
+        if lhs.stableIdentifier != rhs.stableIdentifier {
+            return (lhs.stableIdentifier ?? "") < (rhs.stableIdentifier ?? "")
+        }
+        return (lhs.name ?? "") < (rhs.name ?? "")
     }
 
     private static func namesMatch(_ lhs: String?, _ rhs: String) -> Bool {
