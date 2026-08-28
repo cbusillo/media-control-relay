@@ -83,8 +83,10 @@ State precedence is `unconfigured`, `unsupported`, `needsPermission`, route
 matching, then target reachability. Target reachability distinguishes
 `needsLocalNetworkPermission`, `targetAuthenticationRejected`,
 `checkingTarget`, `offline`, and `active`. Unknown reachability is
-`checkingTarget`, never `offline`; Local Network denial requires an explicit
-system path reason and is never inferred from an empty discovery result.
+`checkingTarget`, never `offline`. An explicit system-path denial is
+authoritative. The denial-compatible error observed on the initial SSDP
+multicast send is treated as Local Network denial only while the system path
+remains available, and is never inferred from an empty discovery result.
 
 ## Status And Diagnostics
 

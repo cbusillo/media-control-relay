@@ -17,6 +17,7 @@ public enum UPnPMediaTargetError: Error, Equatable, Sendable {
     case nonHTTPResponse
     case unexpectedStatusCode(Int)
     case protocolFault
+    case localNetworkDenied
     case offline
     case timeout
     case cancelled

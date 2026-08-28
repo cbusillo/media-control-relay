@@ -213,6 +213,26 @@ struct SettingsView: View {
             Button("Search Again") {
                 model.discovery.startScan()
             }
+        case .localNetworkDenied:
+            if model.networkPathSnapshot.status == .available ||
+                model.networkPathSnapshot.status == .localNetworkDenied {
+                Text("Local-network access is unavailable. Enable Media Control Relay in Privacy & Security, then check access again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Open Privacy & Security") {
+                    model.openLocalNetworkSettings()
+                }
+                Button("Check Access Again") {
+                    model.discovery.startScan()
+                }
+            } else {
+                Text("Couldn’t search this network.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Search Again") {
+                    model.discovery.startScan()
+                }
+            }
         case .failed:
             Text("Couldn’t search this network.")
                 .font(.footnote)

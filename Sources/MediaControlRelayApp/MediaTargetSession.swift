@@ -44,6 +44,9 @@ actor MediaTargetSession {
         } catch .authenticationRejected {
             reachability = .authenticationRejected
             confirmedState = nil
+        } catch .localNetworkDenied {
+            reachability = .localNetworkDenied
+            confirmedState = nil
         } catch {
             reachability = .unreachable
             confirmedState = nil
@@ -74,6 +77,9 @@ actor MediaTargetSession {
             return nil
         } catch .authenticationRejected {
             reachability = .authenticationRejected
+            confirmedState = nil
+        } catch .localNetworkDenied {
+            reachability = .localNetworkDenied
             confirmedState = nil
         } catch {
             reachability = .unreachable

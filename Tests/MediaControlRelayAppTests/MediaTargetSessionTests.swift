@@ -70,6 +70,19 @@ struct MediaTargetSessionTests {
         #expect(outcome?.confirmedState == nil)
     }
 
+    @Test("Local-network denial remains distinct")
+    func localNetworkDeniedProbe() async {
+        let target = SessionTargetStub(result: .failure(.localNetworkDenied))
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+
+        let outcome = await session.probe()
+        #expect(outcome?.reachability == .localNetworkDenied)
+        #expect(outcome?.confirmedState == nil)
+    }
+
     @Test("Cancelled probes publish nothing")
     func cancelledProbe() async {
         let target = SessionTargetStub(result: .failure(.cancelled))
@@ -191,6 +204,19 @@ struct MediaTargetSessionTests {
 
         let outcome = await session.execute(.mute)
         #expect(outcome?.reachability == .authenticationRejected)
+        #expect(outcome?.confirmedState == nil)
+    }
+
+    @Test("Command local-network denial remains distinct")
+    func localNetworkDeniedCommand() async {
+        let target = SessionCommandFailureTarget(failure: .localNetworkDenied)
+        let session = MediaTargetSession(
+            target: target,
+            invalidateResolution: { _ in }
+        )
+
+        let outcome = await session.execute(.mute)
+        #expect(outcome?.reachability == .localNetworkDenied)
         #expect(outcome?.confirmedState == nil)
     }
 

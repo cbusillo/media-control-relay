@@ -5,6 +5,34 @@ import Testing
 
 @Suite("UPnP discovery and resolution", .serialized)
 struct UPnPMediaTargetDiscoveryTests {
+    @Test("SSDP multicast send denial remains distinct from offline failures")
+    func classifiesSSDPSendFailures() {
+        #expect(
+            UPnPMediaTargetSSDPSocketFailure.classifySendError(EHOSTUNREACH)
+                == .localNetworkDenied
+        )
+
+        for errorCode in [EPERM, EACCES, ENETDOWN, ENETUNREACH, EADDRNOTAVAIL] {
+            #expect(
+                UPnPMediaTargetSSDPSocketFailure.classifySendError(errorCode)
+                    == .offline
+            )
+        }
+    }
+
+    @Test("Resolver preserves local-network denial from SSDP search")
+    func resolverPreservesLocalNetworkDenial() async {
+        let resolver = UPnPMediaTargetResolver(
+            identity: MediaTargetIdentity(stableIdentifier: "uuid:fixture-target"),
+            searcher: FailingSearcher(error: .localNetworkDenied),
+            descriptorFetcher: SequencedDescriptorFetcher(values: [:])
+        )
+
+        await #expect(throws: UPnPMediaTargetError.localNetworkDenied) {
+            _ = try await resolver.resolve()
+        }
+    }
+
     @Test("SSDP parsing is case-insensitive and exposes only validated fields")
     func parsesResponse() throws {
         let response = try UPnPMediaTargetSSDPResponseParser.parse(

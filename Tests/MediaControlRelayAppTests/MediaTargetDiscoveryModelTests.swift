@@ -43,6 +43,18 @@ struct MediaTargetDiscoveryModelTests {
         #expect(discovery.state == .failed)
     }
 
+    @Test("Local-network denial remains distinct during setup")
+    func localNetworkDenialRemainsDistinct() async {
+        let discovery = MediaTargetDiscoveryModel {
+            throw UPnPMediaTargetError.localNetworkDenied
+        }
+
+        discovery.startScan()
+        await discoveryWaitUntil { discovery.state == .localNetworkDenied }
+
+        #expect(discovery.state == .localNetworkDenied)
+    }
+
     @Test("Cancelled scans discard late results")
     func cancellationDiscardsLateResults() async {
         let scan = DeferredDiscoveryScan()
