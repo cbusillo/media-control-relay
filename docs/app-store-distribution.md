@@ -24,6 +24,12 @@ The `MediaControlRelay` scheme archives with the `AppStore` configuration.
 
 `scripts/check-app-store-export.sh` rejects drift from that policy.
 
+`Config/AppStoreValidationOptions.plist` uses the separate `validation` method.
+Its upload destination permits App Store Connect communication. With Xcode 27,
+the validation method queried account state and stopped before binary delivery.
+Automatic build-number management is disabled, and no account identifiers are
+stored in the repository.
+
 ## Reproducible Procedure
 
 The operator supplies the development team through a private shell variable and
@@ -48,12 +54,20 @@ xcodebuild -exportArchive \
   -exportPath scratch/app-store-export/export \
   -exportOptionsPlist Config/AppStoreExportOptions.plist \
   -allowProvisioningUpdates
+
+xcodebuild -exportArchive \
+  -archivePath scratch/app-store-export/MediaControlRelay.xcarchive \
+  -exportPath scratch/app-store-export/validation \
+  -exportOptionsPlist Config/AppStoreValidationOptions.plist \
+  -allowProvisioningUpdates
 ```
 
 Do not add `-allowProvisioningDeviceRegistration`; this path has no device to
-register. Do not change the export destination to `upload` without a separate
-decision covering the App Store Connect app record, version/build number,
-privacy answers, and TestFlight/App Review intent.
+register. Do not change `Config/AppStoreExportOptions.plist` to use an `upload`
+destination without a separate decision covering the App Store Connect app
+record, version/build number, privacy answers, and TestFlight/App Review intent.
+The validation policy is the narrow exception: its upload destination is pinned
+to the `validation` method.
 
 ## August 28, 2026 Evidence
 
@@ -75,7 +89,7 @@ Privacy-safe inspection confirmed:
 - `PrivacyInfo.xcprivacy` is present and byte-identical to the repository file;
 - the menu-bar agent, Utilities category, and non-exempt-encryption declarations
   are preserved; and
-- no upload was attempted.
+- no upload was attempted during this local export run.
 
 The intermediate archive is development-signed and profile-less; Xcode applies
 the distribution identity and App Store profile during export. That distinction
@@ -87,8 +101,28 @@ distribution artifact.
 Issue #16 remains open for:
 
 - App Store Connect privacy-answer reconciliation;
-- validation or upload against an intentional app record and build number;
+- upload against an intentional app record and build number;
 - TestFlight installation, first-run Input Monitoring, and update behavior; and
 - an App Review feasibility decision for the sandboxed listen-only event tap.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
+
+## App Store Connect Record Probe
+
+On August 28, 2026, the validation method authenticated through the configured
+Xcode account and queried App Store Connect for the Media Control Relay bundle
+identifier. The service returned a successful collection response with zero app
+records, and Xcode stopped with the `missingApp` classification before binary
+delivery.
+
+This proves:
+
+- the configured Xcode account can read App Store Connect state;
+- no App Store Connect app record is visible to the configured account for the
+  bundle identifier; and
+- this validation run did not upload a build or consume build number `1`.
+
+Given the earlier export evidence, the remaining account blocker is app-record
+creation rather than additional signing or profile work. Creation still needs
+three decisions: the globally visible app name, the permanent non-reusable SKU,
+and the primary locale.
