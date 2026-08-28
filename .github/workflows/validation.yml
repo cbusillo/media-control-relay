@@ -21,6 +21,22 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Select Xcode 26
+        run: |
+          set -euo pipefail
+          xcode_app=''
+          for candidate in /Applications/Xcode_26*.app; do
+            if [ -d "$candidate" ]; then
+              xcode_app="$candidate"
+              break
+            fi
+          done
+          if [ -z "$xcode_app" ]; then
+            printf '%s\n' 'Xcode 26+ is required, but no /Applications/Xcode_26*.app was found.' >&2
+            exit 1
+          fi
+          printf 'DEVELOPER_DIR=%s\n' "$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
+          printf 'Selected %s\n' "$xcode_app"
       - name: Install validation tools
         run: brew install actionlint ripgrep shellcheck xcodegen
       - name: Validate foundation

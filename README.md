@@ -55,10 +55,15 @@ navigation, app control, and unqualified model-family claims remain excluded.
 
 Requirements:
 
-- macOS 15 or later
-- Xcode 16 or later
+- macOS 15 or later to run the app (runtime floor)
+- Xcode 26 or later to build the app (build floor)
 - Swift 6
 - Actionlint, ripgrep, ShellCheck, and XcodeGen 2.40 or later
+
+The project keeps macOS 15 as its deployment and runtime floor while using
+Xcode 26 or later as its build floor. CI selects the first installed Xcode 26+
+bundle on the `macos-15` runner so the macOS 15 fallback remains exercised.
+macOS 26+ Glass behavior requires manual qualification on that newer runtime.
 
 Install the command-line validation tools with Homebrew:
 

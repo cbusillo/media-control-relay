@@ -10,6 +10,16 @@ and Mute actions but does not connect to or control a TV or other media device.
 The app is intentionally not a universal remote, smart-home hub, media
 dashboard, streaming service, or cloud relay.
 
+## Toolchain And Platform Floors
+
+The app builds with Xcode 26 or later while retaining macOS 15 as its deployment
+and runtime floor. Validation and CodeQL remain on the explicit `macos-15`
+runner and select the first installed Xcode 26 bundle before invoking project
+generation, tests, or builds. This keeps the macOS 15 fallback in continuous
+integration coverage rather than silently using the runner image's older
+default Xcode. macOS 26+ Glass behavior is not covered by that fallback path
+and requires manual qualification on a macOS 26 or later runtime.
+
 ## Modules
 
 ### MediaControlCore

@@ -29,6 +29,23 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Select Xcode 26
+        run: |
+          set -euo pipefail
+          xcode_app=''
+          for candidate in /Applications/Xcode_26*.app; do
+            if [ -d "$candidate" ]; then
+              xcode_app="$candidate"
+              break
+            fi
+          done
+          if [ -z "$xcode_app" ]; then
+            printf '%s\n' 'Xcode 26+ is required, but no /Applications/Xcode_26*.app was found.' >&2
+            exit 1
+          fi
+          printf 'DEVELOPER_DIR=%s\n' "$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
+          printf 'Selected %s\n' "$xcode_app"
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
