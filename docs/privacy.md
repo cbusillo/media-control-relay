@@ -46,5 +46,11 @@ continuity, while the confirmed target volume remains unchanged and no target
 state is inferred. All retained presentation state is cleared on configuration,
 permission, session, sleep, and route invalidation.
 
+Failed commands may produce one low-priority local accessibility announcement,
+`Volume control unavailable`, for each command entry into the failed
+presentation state. The announcement does not include target identity, failure
+details, addresses, or other protocol data, and a failure cancels any deferred
+volume-value announcement for that command sequence.
+
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.

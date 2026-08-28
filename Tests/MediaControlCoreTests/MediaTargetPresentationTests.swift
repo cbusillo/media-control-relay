@@ -333,6 +333,93 @@ struct MediaTargetPresentationTests {
         expect(!invalidated.shouldAnnounce(at: 1.2))
     }
 
+    @Test("Failures announce exactly once and cancel deferred volume speech")
+    func failuresAnnounceExactlyOnceAndCancelDeferredVolumeSpeech() {
+        var presentation = MediaTargetPresentationModel(
+            timing: MediaTargetPresentationTiming(announcementInterval: 1)
+        )
+        let epoch = presentation.invalidationEpoch
+
+        expect(presentation.receiveProbe(outcome(volume: 40, generation: 1), epoch: epoch, at: 0))
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 0.1))
+        expect(presentation.receive(
+            outcome(volume: 45, generation: 2),
+            requestID: 1,
+            epoch: epoch,
+            at: 0.2
+        ))
+        expect(presentation.shouldAnnounce(at: 0.2))
+
+        expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 0.3))
+        expect(presentation.receive(
+            outcome(volume: 50, generation: 3),
+            requestID: 2,
+            epoch: epoch,
+            at: 0.4
+        ))
+        expect(!presentation.shouldAnnounce(at: 0.4))
+        expect(presentation.pendingAnnouncementDeadline == 1.2)
+
+        expect(presentation.begin(action: .up, requestID: 3, epoch: epoch, at: 0.5))
+        expect(presentation.fail(requestID: 3, epoch: epoch, at: 0.6))
+        expect(presentation.state == .failed(presentation.state.value))
+        expect(presentation.pendingAnnouncementDeadline == nil)
+        expect(presentation.shouldAnnounceFailure())
+        expect(!presentation.shouldAnnounceFailure())
+        expect(!presentation.shouldAnnounce(at: 1.2))
+    }
+
+    @Test("A new command can announce a later failure")
+    func newCommandCanAnnounceLaterFailure() {
+        var presentation = MediaTargetPresentationModel()
+        let epoch = presentation.invalidationEpoch
+
+        expect(presentation.begin(action: .up, requestID: 1, epoch: epoch, at: 0))
+        expect(presentation.fail(requestID: 1, epoch: epoch, at: 0.1))
+        expect(presentation.shouldAnnounceFailure())
+        expect(!presentation.shouldAnnounceFailure())
+
+        expect(presentation.begin(action: .up, requestID: 2, epoch: epoch, at: 0.2))
+        expect(presentation.fail(requestID: 2, epoch: epoch, at: 0.3))
+        expect(presentation.shouldAnnounceFailure())
+        expect(!presentation.shouldAnnounceFailure())
+    }
+
+    @Test("Failure announcement state resets across lifecycle transitions")
+    func failureAnnouncementStateResetsAcrossLifecycleTransitions() {
+        var cancelled = MediaTargetPresentationModel()
+        let cancelledEpoch = cancelled.invalidationEpoch
+        expect(cancelled.begin(action: .up, requestID: 1, epoch: cancelledEpoch, at: 0))
+        expect(cancelled.fail(requestID: 1, epoch: cancelledEpoch, at: 0.1))
+        expect(cancelled.shouldAnnounceFailure())
+        expect(cancelled.begin(action: .up, requestID: 2, epoch: cancelledEpoch, at: 0.2))
+        expect(cancelled.cancel(requestID: 2, epoch: cancelledEpoch))
+        expect(!cancelled.shouldAnnounceFailure())
+
+        var invalidated = MediaTargetPresentationModel()
+        let invalidatedEpoch = invalidated.invalidationEpoch
+        expect(invalidated.begin(action: .up, requestID: 1, epoch: invalidatedEpoch, at: 0))
+        expect(invalidated.fail(requestID: 1, epoch: invalidatedEpoch, at: 0.1))
+        invalidated.invalidate(.session)
+        expect(!invalidated.shouldAnnounceFailure())
+
+        var dismissed = MediaTargetPresentationModel()
+        let dismissedEpoch = dismissed.invalidationEpoch
+        expect(dismissed.begin(action: .up, requestID: 1, epoch: dismissedEpoch, at: 0))
+        expect(dismissed.fail(requestID: 1, epoch: dismissedEpoch, at: 0.1))
+        dismissed.dismiss()
+        expect(!dismissed.shouldAnnounceFailure())
+
+        var advanced = MediaTargetPresentationModel(
+            timing: MediaTargetPresentationTiming(confirmationDisplayDuration: 1)
+        )
+        let advancedEpoch = advanced.invalidationEpoch
+        expect(advanced.begin(action: .up, requestID: 1, epoch: advancedEpoch, at: 0))
+        expect(advanced.fail(requestID: 1, epoch: advancedEpoch, at: 0.1))
+        expect(advanced.advance(to: 1.1))
+        expect(!advanced.shouldAnnounceFailure())
+    }
+
     private func expect(_ condition: Bool) {
         #expect(condition)
     }

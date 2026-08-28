@@ -165,6 +165,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
     private var lastAnnouncementAt: TimeInterval?
     private var lastAnnouncedValue: MediaTargetPresentationValue?
     private var hasPendingAnnouncement = false
+    private var failureAnnouncementPending = false
 
     public init(timing: MediaTargetPresentationTiming = MediaTargetPresentationTiming()) {
         self.timing = timing
@@ -193,6 +194,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastConfirmedAt = timestamp
         state = .hidden
         stateSince = nil
+        failureAnnouncementPending = false
         return true
     }
 
@@ -212,6 +214,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         pendingAction = action
         pendingRequestID = requestID
         hasPendingAnnouncement = false
+        failureAnnouncementPending = false
         if let lastConfirmedAt,
            timestamp >= lastConfirmedAt,
            timestamp - lastConfirmedAt <= timing.baselineFreshness,
@@ -248,6 +251,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
             pendingRequestID = nil
             stateSince = timestamp
             hasPendingAnnouncement = false
+            failureAnnouncementPending = true
             return true
         }
 
@@ -258,6 +262,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         pendingRequestID = nil
         state = stateFor(value: value, action: action)
         stateSince = timestamp
+        failureAnnouncementPending = false
         return true
     }
 
@@ -278,6 +283,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         state = .failed(lastConfirmedValue)
         stateSince = timestamp
         hasPendingAnnouncement = false
+        failureAnnouncementPending = true
         return true
     }
 
@@ -298,6 +304,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
         hasPendingAnnouncement = false
+        failureAnnouncementPending = false
         return true
     }
 
@@ -312,6 +319,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
         hasPendingAnnouncement = false
+        failureAnnouncementPending = false
         switch reason {
         case .sleep:
             state = .suspended
@@ -329,6 +337,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
         hasPendingAnnouncement = false
+        failureAnnouncementPending = false
     }
 
     @discardableResult
@@ -345,6 +354,7 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastAnnouncementAt = nil
         lastAnnouncedValue = nil
         hasPendingAnnouncement = false
+        failureAnnouncementPending = false
         return true
     }
 
@@ -369,6 +379,15 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
             hasPendingAnnouncement = false
             return false
         }
+    }
+
+    public mutating func shouldAnnounceFailure() -> Bool {
+        guard case .failed = state,
+              failureAnnouncementPending else {
+            return false
+        }
+        failureAnnouncementPending = false
+        return true
     }
 
     public var pendingAnnouncementDeadline: TimeInterval? {

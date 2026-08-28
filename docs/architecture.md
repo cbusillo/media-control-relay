@@ -99,9 +99,12 @@ baseline from fresh probes, and accepts a command outcome only for its exact
 in-flight request. Every invalidation clears the confirmed baseline,
 mute-retention value, and announcement throttle, so a fresh session cannot
 display a prior target's state. The app schedules terminal presentation dismissal
-and posts throttled changed-value VoiceOver announcements; held-key release
-cancels queued repeat work before it can animate after release while preserving
-the final already in-flight confirmation.
+and posts throttled changed-value VoiceOver announcements plus one low-priority,
+coarse `Volume control unavailable` announcement for each command that enters
+the failed presentation state. Failure speech is decided independently from
+value speech, so it cancels stale deferred volume speech without duplicating a
+volume announcement. Held-key release cancels queued repeat work before it can
+animate after release while preserving the final already in-flight confirmation.
 
 ### UPnPMediaTarget
 

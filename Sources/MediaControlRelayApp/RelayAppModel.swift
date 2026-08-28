@@ -1001,6 +1001,11 @@ final class RelayAppModel {
     }
 
     private func announcePresentationIfNeeded() {
+        if targetPresentation.shouldAnnounceFailure() {
+            postAccessibilityAnnouncement(String(localized: "Volume control unavailable"))
+            return
+        }
+
         guard targetPresentation.shouldAnnounce(at: presentationTimestamp),
               let value = targetPresentationState.value else {
             return
