@@ -410,6 +410,32 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Overlay receives presentation and route state without target identity")
+    func overlayReceivesRedactedPresentationContext() async {
+        let target = AppModelTargetStub()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let overlayPresenter = AppModelOverlayPresenterRecorder()
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "private-target-identity"),
+            session: session,
+            targetOverlayPresenter: overlayPresenter
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil {
+            overlayPresenter.updates.contains { $0.presentationState.value?.confirmedVolume == 6 }
+        }
+        harness.routeObserver.publish(makeRoute(name: "Different Output"))
+
+        #expect(overlayPresenter.updates.last?.presentationState == .routeLost)
+        #expect(overlayPresenter.updates.last?.activationRule == makeConfiguration(
+            stableIdentifier: "private-target-identity"
+        ).activationRule)
+        #expect(!String(reflecting: overlayPresenter.updates).contains("private-target-identity"))
+        harness.cleanup()
+    }
+
     @Test("Target cancellation does not fail or tear down later command dispatch")
     func cancelledCommandKeepsDispatchAvailable() async {
         let target = CancellationThenSuccessTarget()
@@ -1147,6 +1173,7 @@ private func makeHarness(
     discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
     initialNetworkSnapshot: NetworkPathSnapshot? = nil,
     targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
+    targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
     announcementRecorder: AnnouncementRecorder? = nil,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
@@ -1173,6 +1200,7 @@ private func makeHarness(
         applicationNotificationCenter: applicationNotificationCenter,
         discovery: discovery,
         targetPresentationTiming: targetPresentationTiming,
+        targetOverlayPresenter: targetOverlayPresenter,
         postAccessibilityAnnouncement: { announcement in
             announcementRecorder?.post(announcement)
         },
@@ -1309,6 +1337,29 @@ private final class AppModelRouteObserver: RouteObserving {
         onStateChange?(state)
         onSnapshot?(snapshot)
         onWake?()
+    }
+}
+
+@MainActor
+private final class AppModelOverlayPresenterRecorder: TargetOverlayPresenting {
+    struct Update: Equatable {
+        let presentationState: MediaTargetPresentationState
+        let routeSnapshot: RouteSnapshot
+        let activationRule: ActivationRule?
+    }
+
+    private(set) var updates: [Update] = []
+
+    func update(
+        presentationState: MediaTargetPresentationState,
+        routeSnapshot: RouteSnapshot,
+        activationRule: ActivationRule?
+    ) {
+        updates.append(Update(
+            presentationState: presentationState,
+            routeSnapshot: routeSnapshot,
+            activationRule: activationRule
+        ))
     }
 }
 
