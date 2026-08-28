@@ -48,6 +48,8 @@ targets:
     platform: macOS
     sources:
       - path: Sources/MediaControlRelayApp
+      - path: Config/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - target: MediaControlCore
       - target: UPnPMediaTarget
