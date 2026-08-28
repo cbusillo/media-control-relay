@@ -8,16 +8,17 @@ milestone `0.2 — Samsung Control Proof`. It applies only to Samsung model
 August 27, 2026 from the device's public UPnP `manufacturer`,
 `modelDescription`, and `modelName` fields.
 
-This identification names the tested hardware; it does not complete the
-compatibility claim. No other Samsung model, series, firmware, or RVU feature
-is claimed as supported.
+This identification names the tested hardware. No other Samsung model, series,
+firmware, or RVU feature is claimed as supported.
 
 Power control, navigation, apps, source selection, pairing, credentials, and
 untested Samsung models remain outside this proof.
 
 ## Qualified Artifact
 
-The August 27, 2026 run used the Release build from merged commit `3758c13`.
+The final August 28, 2026 run used the Release build from merged commit
+`4c907bf`. PR #51 added Local Network denial classification, and PR #52
+preserved that denial while the initial network-path snapshot is unsettled.
 The app was installed at `/Applications/Media Control Relay.app` and retained
 its existing bundle identifier and Developer ID identity.
 
@@ -60,6 +61,24 @@ not part of app diagnostics.
   changing app counters. One exact Mac Volume Up then added 2 events, 1 action,
   1 recorded command, 1 dispatched command, and 0 failures. The TV visibly
   advanced one valid step from the independent state.
+- **Discrete mute and unmute:** the keyboard-correct `Fn+Mute` chord visibly
+  muted and unmuted the TV. The initial apparent miss was user input error on a
+  keyboard mode that requires Fn for media keys. An isolated correct press
+  decoded as `Mute`, produced one target dispatch with zero failures, and was
+  confirmed by TV read-back.
+- **Mute read-back:** exact merged-source mute and unmute operations confirmed
+  both requested states, preserved the pre-mute volume, and restored the
+  original state.
+- **Route mismatch:** on built-in audio, one physical Volume Down used native
+  Mac handling, increased `actions_not_recorded` by one, and added zero target
+  dispatches. The configured display route was then restored.
+- **Held input:** a private packet capture of the physical held-volume sample
+  recorded four complete command/response operations at approximately 61.8,
+  63.0, 74.1, and 85.3 ms. The bounded held-key transport p95 was 85.3 ms,
+  below the 150 ms target. The private capture is uncommitted and unpublished.
+- **Source mode:** the qualified source mode is Mac display audio routed to the
+  Samsung display in HDMI/display mode. Other source and input modes are not
+  claimed.
 
 Successful state-changing target commands include the implementation's
 requested-dimension read-back check. A socket write or HTTP completion alone is
@@ -89,15 +108,42 @@ state read produces a client-side no-change plan.
   counters remained otherwise zero, and one exact post-rejoin Volume Down
   succeeded with 2 events, 1 action, 1 recorded command, 1 dispatched command,
   and 0 failures.
+- **Local Network denial:** a Developer ID permission-isolated probe built from
+  exact final commit `4c907bf` was granted temporary Input Monitoring through
+  System Settings. With only that probe's Local Network toggle OFF, a clean
+  route-matched launch reported `needs-local-network-permission` while
+  `network_path=available`; all command, action, dispatch, and failure counters
+  remained zero.
+- **Local Network recovery:** turning the same toggle ON and merely activating
+  the probe returned it automatically to `active` with matched display route,
+  successful target state read-back, no reconfiguration, no manual recovery
+  count, and zero failures. The temporary app, defaults, and Input Monitoring
+  grant were then removed, and the final production build was restored.
+- **TV mains loss and display detach:** removing TV mains power safely removed
+  the Samsung display from macOS, changed the active-display count from 2 to 1,
+  moved audio to the built-in transport, and put the relay in `dormant` with
+  `activation=no-match`. The app did not dispatch work to the absent target.
+- **TV cold boot and display reattach:** restoring mains power returned the
+  display route and `activation=match`. The first early target probe reported
+  `offline` while the TV services were still starting. After a 15-second
+  warm-up, ordinary app activation retried the probe and returned the retained
+  configuration to `active` without pairing, reconfiguration, a manual recovery
+  action, or a target failure.
+- **Post-cold-boot command:** one exact physical Volume Down produced the
+  expected two input events, one action, one recorded command, and one target
+  dispatch. The TV visibly responded, requested-dimension read-back completed,
+  and the target failure count remained zero.
 
 Earlier signed evidence recorded in issue #21 on August 27, 2026 used build
-`1f8722c`. It covers warm Mac restart, TV mains-loss and cold-boot recovery,
-discrete mute, route mismatch with normal Mac volume behavior, and warmed
-held-key p95 latency of 98 ms. Those checks were not re-run after capability
-commit `3758c13`; they remain dated supporting evidence rather than current-
-build measurements. The merged-build run adds renderer-declared range, bounded
-held input without a new latency sample, rail, read-back, standby,
-network-transition, privacy, and rollback evidence.
+`1f8722c`. Warm Mac restart has not been re-run after the capability and
+rediscovery changes; it remains explicitly dated supporting evidence and is the
+remaining lifecycle gate before closure.
+
+Physical mute, route mismatch, and held-key evidence was refreshed on signed
+commit `f802745`. The final `4c907bf` delta changes only Local Network
+reachability classification, its regression test, and matching documentation;
+it does not change media-key decoding, command queueing, UPnP volume/mute
+operations, or successful-command read-back behavior.
 
 ## Privacy Audit
 
@@ -118,20 +164,14 @@ The evidence intentionally omits:
 
 ## Review And Remaining Gate
 
-Issue #37 closed after final Opus review approved the merged capability
-implementation and signed rail/read-back evidence. Repeated Gemini-family runs
-returned no output and were recorded as unavailable rather than approval.
+Opus and Gemini 3.5 Flash approved the final Local Network code changes after
+requested corrections were resolved. JetBrains inspection reported no semantic
+findings; its reported items were spellcheck-only URL schemes, SF Symbol names,
+protocol tokens, and fixture bundle IDs.
 
-The tested model is now named safely, but milestone 0.2 remains open. The
-remaining exit evidence is:
+Milestone 0.2 remains open pending:
 
-- re-run discrete mute/unmute, route mismatch with normal Mac handling, and a
-  held-key p95 sample on the current merged qualification build;
-- record local-network denial/regrant behavior and a source/input-mode sample;
-- record whether mute read-back preserves the pre-mute volume or returns zero;
-- scope the display detach/reattach criterion as unavailable on this hardware
-  unless an actual detach can be produced safely;
-- publish the complete reproducible exit record in issue #21, distinguishing
-  current-build evidence from dated supporting evidence; and
-- obtain final Opus and Gemini-family approval. Empty Gemini-family results are
-  unavailable evidence, not approval.
+- a current signed-build warm Mac restart recovery check;
+- publication of the complete privacy-safe exit record in issue #21; and
+- final non-empty Opus and Gemini-family approval of that completed evidence and
+  bounded compatibility scope.
