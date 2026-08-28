@@ -319,16 +319,9 @@ final class SystemRouteObserver: RouteObserving {
             }
             return DisplayObservation(
                 name: screen.localizedName,
-                stableIdentifier: displayUUID(for: displayID)
+                stableIdentifier: DisplayStableIdentifier.forDisplayID(displayID)
             )
         }
-    }
-
-    private func displayUUID(for displayID: CGDirectDisplayID) -> String? {
-        guard let uuid = CGDisplayCreateUUIDFromDisplayID(displayID) else {
-            return nil
-        }
-        return CFUUIDCreateString(nil, uuid.takeRetainedValue()) as String
     }
 
     private func defaultOutputDeviceID() -> AudioDeviceID? {

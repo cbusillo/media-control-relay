@@ -46,6 +46,14 @@ shell and workflow linting, immutable GitHub Action pin checks, repository
 metadata and Dependabot syntax checks, plist and entitlement validation, diff
 checks, Xcode project generation, Debug tests, and Release and App Store builds.
 
+The repository's build floor is Xcode 26 or later, while its deployment and
+runtime floor remains macOS 15. Both `Validation` and `CodeQL` use a plain shell
+step to select the first usable installed Xcode with major version 26 or later
+and export its `Contents/Developer` directory through `$GITHUB_ENV`; the step
+fails clearly if no compatible bundle is installed. This deliberately exercises
+the macOS 15 fallback in CI. macOS 26+ Glass behavior requires separate manual
+qualification on a macOS 26 or later runtime.
+
 Real-device tests remain opt-in and never block public continuous integration.
 
 ## Security Automation And Reporting

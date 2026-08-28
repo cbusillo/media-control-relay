@@ -5,6 +5,7 @@
     "agentNotes": "AGENTS.md",
     "overview": "README.md",
     "architecture": "docs/architecture.md",
+    "targetOverlay": "docs/target-overlay.md",
     "routing": "docs/relay-routing.md",
     "inputMonitoring": "docs/input-monitoring.md",
     "qualification": "docs/samsung-upnp-qualification.md",

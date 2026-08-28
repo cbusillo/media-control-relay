@@ -10,6 +10,16 @@ and Mute actions but does not connect to or control a TV or other media device.
 The app is intentionally not a universal remote, smart-home hub, media
 dashboard, streaming service, or cloud relay.
 
+## Toolchain And Platform Floors
+
+The app builds with Xcode 26 or later while retaining macOS 15 as its deployment
+and runtime floor. Validation and CodeQL remain on the explicit `macos-15`
+runner and select the first installed Xcode 26 bundle before invoking project
+generation, tests, or builds. This keeps the macOS 15 fallback in continuous
+integration coverage rather than silently using the runner image's older
+default Xcode. macOS 26+ Glass behavior is not covered by that fallback path
+and requires manual qualification on a macOS 26 or later runtime.
+
 ## Modules
 
 ### MediaControlCore
@@ -89,9 +99,19 @@ baseline from fresh probes, and accepts a command outcome only for its exact
 in-flight request. Every invalidation clears the confirmed baseline,
 mute-retention value, and announcement throttle, so a fresh session cannot
 display a prior target's state. The app schedules terminal presentation dismissal
-and posts throttled changed-value VoiceOver announcements; held-key release
-cancels queued repeat work before it can animate after release while preserving
-the final already in-flight confirmation.
+and posts throttled changed-value VoiceOver announcements plus one low-priority,
+coarse `Volume control unavailable` announcement for each command that enters
+the failed presentation state. Failure speech is decided independently from
+value speech, so it cancels stale deferred volume speech without duplicating a
+volume announcement. Held-key release cancels queued repeat work before it can
+animate after release while preserving the final already in-flight confirmation.
+
+The AppKit-backed target-overlay adapter maps that core presentation state into
+a fixed-size, noninteractive SwiftUI HUD. The mapper is deliberately outside
+`MediaControlCore`, bounds display-only levels defensively, and owns neither
+target access nor accessibility announcements. See [Target volume
+overlay](target-overlay.md) for its placement ladder, visual states, display
+accessibility behavior, and device qualification checklist.
 
 ### UPnPMediaTarget
 
@@ -204,6 +224,15 @@ duplicate window. Sleep unregisters platform observers and cancels pending
 refresh work; wake registers them again and publishes one fresh snapshot. Audio
 UIDs and display identifiers remain private in memory for stable equality only.
 They are not included in diagnostics or logs.
+
+Overlay placement remains a Foundation-only core stage. It resolves one active
+route display to a live screen only when the route match and stable identity are
+unambiguous; otherwise it falls back in order to a single screen, the
+pointer-containing screen, the main screen, then the supplied first screen.
+Placement reasons are coarse and never contain display names or identifiers.
+Panel geometry centers against the full display frame, bottom-anchors and
+clamps inside the visible frame, and aligns to the display backing scale. AppKit
+adapters provide live screen descriptors and render the resulting geometry.
 
 ### Future Samsung Adapter
 

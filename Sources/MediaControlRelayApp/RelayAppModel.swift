@@ -54,6 +54,7 @@ final class RelayAppModel {
     private let networkPathObserver: any NetworkPathObserving
     private let configurationStore: RelayConfigurationStore
     private let inputMonitoringAccess: InputMonitoringAccessClient
+    private let targetOverlayPresenter: any TargetOverlayPresenting
     private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
     private let coordinator: RelayCoordinator
     private let preferences: UserDefaults
@@ -99,6 +100,7 @@ final class RelayAppModel {
         applicationNotificationCenter: NotificationCenter = .default,
         discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
         targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
+        targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
         postAccessibilityAnnouncement: @escaping (String) -> Void = {
             NSAccessibility.post(
                 element: NSApp,
@@ -121,6 +123,7 @@ final class RelayAppModel {
         self.configurationStore = configurationStore
         self.volumeKeyMonitor = volumeKeyMonitor
         self.inputMonitoringAccess = inputMonitoringAccess
+        self.targetOverlayPresenter = targetOverlayPresenter
         self.discovery = discovery
         self.mediaTargetSessionFactory = mediaTargetSessionFactory
         self.preferences = configurationStore.defaults
@@ -137,6 +140,7 @@ final class RelayAppModel {
         self.mediaTargetSession = mediaTargetSessionFactory(configuration)
         targetConfiguration = coordinator.configuration
         relayState = coordinator.relayState
+        syncTargetOverlay()
 
         let events = volumeKeyMonitor.events
         volumeKeyTask = Task { @MainActor [weak self] in
@@ -593,6 +597,7 @@ final class RelayAppModel {
         commandsRecorded = coordinator.recordedCommandCount
         commandsSuppressed = coordinator.suppressedCommandCount
         targetConfiguration = coordinator.configuration
+        syncTargetOverlay()
     }
 
     private func refreshTransportState() {
@@ -973,9 +978,18 @@ final class RelayAppModel {
             return
         }
         targetPresentationState = state
+        syncTargetOverlay()
         schedulePresentationDismissal()
         announcePresentationIfNeeded()
         schedulePresentationAnnouncement()
+    }
+
+    private func syncTargetOverlay() {
+        targetOverlayPresenter.update(
+            presentationState: targetPresentationState,
+            routeSnapshot: routeSnapshot,
+            activationRule: targetConfiguration?.activationRule
+        )
     }
 
     private func schedulePresentationDismissal() {
@@ -1001,6 +1015,11 @@ final class RelayAppModel {
     }
 
     private func announcePresentationIfNeeded() {
+        if targetPresentation.shouldAnnounceFailure() {
+            postAccessibilityAnnouncement(String(localized: "Volume control unavailable"))
+            return
+        }
+
         guard targetPresentation.shouldAnnounce(at: presentationTimestamp),
               let value = targetPresentationState.value else {
             return

@@ -47,8 +47,11 @@ separate from session generations, and configuration, permission, session,
 sleep, and route changes clear all cached presentation values before recovery.
 Failed, cancelled, timed-out, mismatched, and superseded results never advance
 it. The app dismisses terminal presentation after the configured duration,
-makes throttled accessibility announcements for changed confirmed state, drops
-held-repeat backlog at release, and still presents the already in-flight final
+makes throttled accessibility announcements for changed confirmed state, and
+posts one low-priority `Volume control unavailable` announcement when a command
+enters `.failed`. Failure speech is coarse and target-agnostic, cancels stale
+deferred volume speech, and never duplicates a volume announcement. Held-repeat
+backlog drops at release, and the app still presents the already in-flight final
 confirmation. Target-declared minimum and maximum values drive normalization,
 exact rail feedback, and mute display retention; `volumeStep` remains capability
 metadata for command planning and validation rather than presentation scaling.

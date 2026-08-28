@@ -410,6 +410,32 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Overlay receives presentation and route state without target identity")
+    func overlayReceivesRedactedPresentationContext() async {
+        let target = AppModelTargetStub()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let overlayPresenter = AppModelOverlayPresenterRecorder()
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "private-target-identity"),
+            session: session,
+            targetOverlayPresenter: overlayPresenter
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil {
+            overlayPresenter.updates.contains { $0.presentationState.value?.confirmedVolume == 6 }
+        }
+        harness.routeObserver.publish(makeRoute(name: "Different Output"))
+
+        #expect(overlayPresenter.updates.last?.presentationState == .routeLost)
+        #expect(overlayPresenter.updates.last?.activationRule == makeConfiguration(
+            stableIdentifier: "private-target-identity"
+        ).activationRule)
+        #expect(!String(reflecting: overlayPresenter.updates).contains("private-target-identity"))
+        harness.cleanup()
+    }
+
     @Test("Target cancellation does not fail or tear down later command dispatch")
     func cancelledCommandKeepsDispatchAvailable() async {
         let target = CancellationThenSuccessTarget()
@@ -549,6 +575,82 @@ struct RelayAppModelTests {
         #expect(!diagnostics.contains(sensitiveIdentifier))
         #expect(!diagnostics.contains("timeout"))
         #expect(!diagnostics.contains("protocolFault"))
+        harness.cleanup()
+    }
+
+    @Test("Command failures emit one privacy-safe accessibility announcement")
+    func commandFailuresEmitOnePrivacySafeAccessibilityAnnouncement() async {
+        let target = FailingCommandTarget(stableIdentifier: "secret-udn-1234")
+        let announcements = AnnouncementRecorder()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "secret-udn-1234"),
+            session: session,
+            announcementRecorder: announcements
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.mute)
+        await waitUntil { harness.model.relayState == .offline }
+        try? await Task.sleep(for: .milliseconds(350))
+
+        #expect(announcements.values == ["Volume control unavailable"])
+        #expect(!announcements.values.joined().contains("secret-udn-1234"))
+        harness.cleanup()
+    }
+
+    @Test("A recovered command failure receives a new announcement")
+    func recoveredCommandFailureReceivesNewAnnouncement() async {
+        let target = FailsTwiceCommandTarget()
+        let announcements = AnnouncementRecorder()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            announcementRecorder: announcements
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.relayState == .offline }
+        #expect(announcements.values == ["Volume control unavailable"])
+
+        harness.networkPathObserver.publish(NetworkPathSnapshot(status: .unavailable))
+        harness.networkPathObserver.publish(availableNetworkSnapshot())
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.targetCommandsFailed == 2 }
+
+        #expect(announcements.values == [
+            "Volume control unavailable",
+            "Volume control unavailable",
+        ])
+        harness.cleanup()
+    }
+
+    @Test("Failure cancels a stale deferred volume announcement")
+    func failureCancelsStaleDeferredVolumeAnnouncement() async {
+        let target = SucceedsThenFailsCommandTarget()
+        let announcements = AnnouncementRecorder()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 1),
+            announcementRecorder: announcements
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { announcements.values == ["Volume 60 percent"] }
+        harness.model.handleVolumeAction(.up)
+        await waitUntil { harness.model.relayState == .offline }
+        try? await Task.sleep(for: .milliseconds(1_100))
+
+        #expect(announcements.values == [
+            "Volume 60 percent",
+            "Volume control unavailable",
+        ])
         harness.cleanup()
     }
 
@@ -1071,6 +1173,7 @@ private func makeHarness(
     discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
     initialNetworkSnapshot: NetworkPathSnapshot? = nil,
     targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
+    targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
     announcementRecorder: AnnouncementRecorder? = nil,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
@@ -1097,6 +1200,7 @@ private func makeHarness(
         applicationNotificationCenter: applicationNotificationCenter,
         discovery: discovery,
         targetPresentationTiming: targetPresentationTiming,
+        targetOverlayPresenter: targetOverlayPresenter,
         postAccessibilityAnnouncement: { announcement in
             announcementRecorder?.post(announcement)
         },
@@ -1236,6 +1340,29 @@ private final class AppModelRouteObserver: RouteObserving {
     }
 }
 
+@MainActor
+private final class AppModelOverlayPresenterRecorder: TargetOverlayPresenting {
+    struct Update: Equatable {
+        let presentationState: MediaTargetPresentationState
+        let routeSnapshot: RouteSnapshot
+        let activationRule: ActivationRule?
+    }
+
+    private(set) var updates: [Update] = []
+
+    func update(
+        presentationState: MediaTargetPresentationState,
+        routeSnapshot: RouteSnapshot,
+        activationRule: ActivationRule?
+    ) {
+        updates.append(Update(
+            presentationState: presentationState,
+            routeSnapshot: routeSnapshot,
+            activationRule: activationRule
+        ))
+    }
+}
+
 private actor AppModelTargetStub: MediaVolumeTarget {
     nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
 
@@ -1337,6 +1464,50 @@ private actor FailingCommandTarget: MediaVolumeTarget {
         _ operation: MediaTargetVolumeOperation
     ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
         throw .timeout
+    }
+}
+
+private actor SucceedsThenFailsCommandTarget: MediaVolumeTarget {
+    nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
+
+    private var currentState = makeVolumeState()
+    private(set) var applyCount = 0
+
+    func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        currentState
+    }
+
+    func apply(
+        _ operation: MediaTargetVolumeOperation
+    ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        applyCount += 1
+        guard applyCount == 1 else {
+            throw .timeout
+        }
+        currentState = applying(operation, to: currentState)
+        return currentState
+    }
+}
+
+private actor FailsTwiceCommandTarget: MediaVolumeTarget {
+    nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
+
+    private var currentState = makeVolumeState()
+    private(set) var applyCount = 0
+
+    func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        currentState
+    }
+
+    func apply(
+        _ operation: MediaTargetVolumeOperation
+    ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        applyCount += 1
+        guard applyCount > 2 else {
+            throw .timeout
+        }
+        currentState = applying(operation, to: currentState)
+        return currentState
     }
 }
 
