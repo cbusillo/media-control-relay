@@ -52,5 +52,10 @@ presentation state. The announcement does not include target identity, failure
 details, addresses, or other protocol data, and a failure cancels any deferred
 volume-value announcement for that command sequence.
 
+The transient target volume overlay renders only that in-memory presentation
+state. It is excluded from the accessibility tree because the app model owns
+the corresponding VoiceOver announcements; the overlay does not add another
+record of values, device state, or user interaction.
+
 Any future telemetry proposal requires an explicit public design decision and
 must remain opt-in.

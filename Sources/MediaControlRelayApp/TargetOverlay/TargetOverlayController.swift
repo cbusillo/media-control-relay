@@ -1,13 +1,6 @@
 import AppKit
 import CoreGraphics
 import MediaControlCore
-import SwiftUI
-
-enum TargetOverlayMetrics {
-    static let panelSize = OverlaySize(width: 224, height: 76)
-    static let bottomInset: Double = 24
-    static let windowLevel = NSWindow.Level.statusBar
-}
 
 @MainActor
 protocol TargetOverlayPresenting: AnyObject {
@@ -77,12 +70,6 @@ struct LiveOverlayScreenProvider: OverlayScreenProviding {
 }
 
 @MainActor
-protocol TargetOverlayPanelPresenting: AnyObject {
-    func show(state: MediaTargetPresentationState, frame: OverlayRect)
-    func hide()
-}
-
-@MainActor
 final class TargetOverlayController: NSObject, TargetOverlayPresenting {
     private let screenProvider: any OverlayScreenProviding
     private let panelPresenter: any TargetOverlayPanelPresenting
@@ -145,88 +132,5 @@ final class TargetOverlayController: NSObject, TargetOverlayPresenting {
 
     @objc private func screenParametersChanged() {
         refreshPresentation()
-    }
-}
-
-@MainActor
-final class TargetOverlayPanelPresenter: TargetOverlayPanelPresenting {
-    let panel: TargetOverlayPanel
-    private let contentView: NSHostingView<TargetOverlayContentView>
-
-    init(panel: TargetOverlayPanel = TargetOverlayPanel()) {
-        self.panel = panel
-        contentView = NSHostingView(rootView: TargetOverlayContentView(state: .hidden))
-        panel.contentView = contentView
-    }
-
-    func show(state: MediaTargetPresentationState, frame: OverlayRect) {
-        contentView.rootView = TargetOverlayContentView(state: state)
-        panel.setFrame(nsRect(frame), display: true)
-        panel.orderFrontRegardless()
-    }
-
-    func hide() {
-        panel.orderOut(nil)
-    }
-
-    private func nsRect(_ rect: OverlayRect) -> NSRect {
-        NSRect(
-            x: rect.origin.x,
-            y: rect.origin.y,
-            width: rect.size.width,
-            height: rect.size.height
-        )
-    }
-}
-
-@MainActor
-final class TargetOverlayPanel: NSPanel {
-    init() {
-        super.init(
-            contentRect: NSRect(
-                x: 0,
-                y: 0,
-                width: TargetOverlayMetrics.panelSize.width,
-                height: TargetOverlayMetrics.panelSize.height
-            ),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        level = TargetOverlayMetrics.windowLevel
-        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        isReleasedWhenClosed = false
-        isOpaque = false
-        backgroundColor = .clear
-        ignoresMouseEvents = true
-        setAccessibilityElement(false)
-    }
-
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
-}
-
-private struct TargetOverlayContentView: View {
-    let state: MediaTargetPresentationState
-
-    var body: some View {
-        Text(label)
-            .frame(
-                width: TargetOverlayMetrics.panelSize.width,
-                height: TargetOverlayMetrics.panelSize.height
-            )
-    }
-
-    private var label: String {
-        switch state {
-        case .hidden, .suspended, .routeLost:
-            ""
-        case .pendingCold, .pendingBaseline:
-            "Adjusting volume"
-        case let .confirmed(value), let .muted(value), let .rail(_, value), let .failed(value?):
-            value.isMuted ? "Muted" : "Volume \(value.percentage)%"
-        case .failed(nil):
-            "Volume unavailable"
-        }
     }
 }

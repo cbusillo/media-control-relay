@@ -162,9 +162,14 @@ struct TargetOverlayControllerTests {
     func panelConfiguration() {
         let panel = TargetOverlayPanel()
 
+        #expect(panel.frame.size == NSSize(
+            width: TargetOverlayMetrics.panelSize.width,
+            height: TargetOverlayMetrics.panelSize.height
+        ))
         #expect(panel.styleMask.contains(.borderless))
         #expect(panel.styleMask.contains(.nonactivatingPanel))
         #expect(panel.level == TargetOverlayMetrics.windowLevel)
+        #expect(panel.isFloatingPanel)
         #expect(panel.collectionBehavior.contains(.canJoinAllSpaces))
         #expect(panel.collectionBehavior.contains(.fullScreenAuxiliary))
         #expect(panel.collectionBehavior.contains(.stationary))
@@ -172,10 +177,130 @@ struct TargetOverlayControllerTests {
         #expect(!panel.canBecomeKey)
         #expect(!panel.canBecomeMain)
         #expect(panel.ignoresMouseEvents)
+        #expect(!panel.isMovable)
         #expect(!panel.isOpaque)
         #expect(panel.backgroundColor == .clear)
         #expect(!panel.isReleasedWhenClosed)
+        #expect(!panel.hidesOnDeactivate)
+        #expect(panel.animationBehavior == .none)
+        #expect(panel.isExcludedFromWindowsMenu)
         #expect(!panel.isAccessibilityElement())
+        #expect(!panel.isVisible)
+    }
+
+    @Test("Visual state mapping covers every presentation state")
+    func visualStateMapping() {
+        let value = makePresentationValue()
+        let mutedValue = makePresentationValue(isMuted: true)
+
+        let hiddenStates: [MediaTargetPresentationState] = [.hidden, .suspended, .routeLost]
+        for state in hiddenStates {
+            let visualState = TargetOverlayVisualState(presentationState: state)
+            #expect(!visualState.isVisible)
+            #expect(visualState.glyph == nil)
+            #expect(visualState.level == nil)
+            #expect(visualState.caption == nil)
+        }
+
+        let pendingCold = TargetOverlayVisualState(presentationState: .pendingCold(.up))
+        #expect(pendingCold.isVisible)
+        #expect(pendingCold.glyph == .speaker)
+        #expect(pendingCold.level == nil)
+        #expect(pendingCold.levelTreatment == .none)
+        #expect(pendingCold.caption == .adjusting)
+
+        let pendingBaseline = TargetOverlayVisualState(
+            presentationState: .pendingBaseline(.down, value)
+        )
+        #expect(pendingBaseline.glyph == .speaker)
+        #expect(pendingBaseline.level == 0.5)
+        #expect(pendingBaseline.levelTreatment == .pending)
+        #expect(pendingBaseline.caption == .adjusting)
+
+        let confirmed = TargetOverlayVisualState(presentationState: .confirmed(value))
+        #expect(confirmed.glyph == .speaker)
+        #expect(confirmed.level == 0.5)
+        #expect(confirmed.levelTreatment == .confirmed)
+        #expect(confirmed.caption == .percentage(0.5))
+
+        for rail in [MediaTargetPresentationRail.minimum, .maximum] {
+            let visualState = TargetOverlayVisualState(presentationState: .rail(rail, value))
+            #expect(visualState.glyph == .speaker)
+            #expect(visualState.level == 0.5)
+            #expect(visualState.levelTreatment == .confirmed)
+            #expect(visualState.caption == .percentage(0.5))
+        }
+
+        let muted = TargetOverlayVisualState(presentationState: .muted(mutedValue))
+        #expect(muted.glyph == .muted)
+        #expect(muted.level == 0.5)
+        #expect(muted.levelTreatment == .muted)
+        #expect(muted.caption == .muted)
+
+        let failedWithValue = TargetOverlayVisualState(presentationState: .failed(value))
+        #expect(failedWithValue.glyph == .warning)
+        #expect(failedWithValue.level == 0.5)
+        #expect(failedWithValue.levelTreatment == .frozen)
+        #expect(failedWithValue.caption == .unavailable)
+
+        let failedWithoutValue = TargetOverlayVisualState(presentationState: .failed(nil))
+        #expect(failedWithoutValue.glyph == .warning)
+        #expect(failedWithoutValue.level == nil)
+        #expect(failedWithoutValue.levelTreatment == .none)
+        #expect(failedWithoutValue.caption == .unavailable)
+    }
+
+    @Test("Visual state bounds levels and percentage semantics")
+    func visualStateBoundsLevels() {
+        let belowMinimum = makePresentationValue(normalizedLevel: -0.25)
+        let aboveMaximum = makePresentationValue(normalizedLevel: 1.25)
+
+        let minimumVisualState = TargetOverlayVisualState(
+            presentationState: .confirmed(belowMinimum)
+        )
+        let maximumVisualState = TargetOverlayVisualState(
+            presentationState: .confirmed(aboveMaximum)
+        )
+
+        #expect(minimumVisualState.level == 0)
+        #expect(minimumVisualState.caption == .percentage(0))
+        #expect(maximumVisualState.level == 1)
+        #expect(maximumVisualState.caption == .percentage(1))
+    }
+
+    @Test("Accessibility display changes refresh the presenter without ordering a panel")
+    func accessibilityDisplayOptionsRefresh() {
+        let notificationCenter = NotificationCenter()
+        let optionsProvider = OverlayAccessibilityDisplayOptionsProviderStub(
+            options: TargetOverlayAccessibilityDisplayOptions(
+                reduceTransparency: false,
+                increaseContrast: false,
+                reduceMotion: false
+            )
+        )
+        let panel = TargetOverlayPanel()
+        let presenter = TargetOverlayPanelPresenter(
+            panel: panel,
+            accessibilityDisplayOptionsProvider: optionsProvider,
+            notificationCenter: notificationCenter
+        )
+
+        #expect(panel.hasShadow)
+        #expect(!panel.isAccessibilityElement())
+        #expect(!panel.isVisible)
+
+        optionsProvider.options = TargetOverlayAccessibilityDisplayOptions(
+            reduceTransparency: true,
+            increaseContrast: true,
+            reduceMotion: true
+        )
+        notificationCenter.post(
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil
+        )
+
+        #expect(presenter.accessibilityDisplayOptions == optionsProvider.options)
+        #expect(!panel.hasShadow)
         #expect(!panel.isVisible)
     }
 }
@@ -209,9 +334,27 @@ private final class OverlayPanelPresenterSpy: TargetOverlayPanelPresenting {
     }
 }
 
-private func makePresentationValue(isMuted: Bool = false) -> MediaTargetPresentationValue {
+@MainActor
+private final class OverlayAccessibilityDisplayOptionsProviderStub:
+    TargetOverlayAccessibilityDisplayOptionsProviding
+{
+    var options: TargetOverlayAccessibilityDisplayOptions
+
+    init(options: TargetOverlayAccessibilityDisplayOptions) {
+        self.options = options
+    }
+
+    var accessibilityDisplayOptions: TargetOverlayAccessibilityDisplayOptions {
+        options
+    }
+}
+
+private func makePresentationValue(
+    isMuted: Bool = false,
+    normalizedLevel: Double = 0.5
+) -> MediaTargetPresentationValue {
     MediaTargetPresentationValue(
-        normalizedLevel: 0.5,
+        normalizedLevel: normalizedLevel,
         confirmedVolume: 5,
         displayedVolume: 5,
         isMuted: isMuted,

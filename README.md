@@ -92,6 +92,7 @@ scripts/generate-project.sh
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Target volume overlay](docs/target-overlay.md)
 - [Relay routing](docs/relay-routing.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
 - [Samsung UPnP qualification](docs/samsung-upnp-qualification.md)

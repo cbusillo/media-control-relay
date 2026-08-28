@@ -106,6 +106,13 @@ value speech, so it cancels stale deferred volume speech without duplicating a
 volume announcement. Held-key release cancels queued repeat work before it can
 animate after release while preserving the final already in-flight confirmation.
 
+The AppKit-backed target-overlay adapter maps that core presentation state into
+a fixed-size, noninteractive SwiftUI HUD. The mapper is deliberately outside
+`MediaControlCore`, bounds display-only levels defensively, and owns neither
+target access nor accessibility announcements. See [Target volume
+overlay](target-overlay.md) for its placement ladder, visual states, display
+accessibility behavior, and device qualification checklist.
+
 ### UPnPMediaTarget
 
 The separate UPnP transport module is intentionally narrow and outbound-only:
