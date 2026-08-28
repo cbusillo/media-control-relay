@@ -87,6 +87,11 @@ state read produces a client-side no-change plan.
 
 ## Lifecycle And Recovery Evidence
 
+App relaunch, sleep/wake, standby, standby recovery, and network-transition
+evidence below was collected on the signed merged build at commit `3758c13`.
+Local Network and TV mains-loss/cold-boot evidence names the later build where
+it was collected.
+
 - **App relaunch:** clean relaunches preserved the configured target, Input
   Monitoring grant, active route match, and target reachability.
 - **Sleep and wake:** a controlled software sleep entered deep idle and woke
@@ -136,10 +141,10 @@ state read produces a client-side no-change plan.
 
 Earlier signed evidence recorded in issue #21 on August 27, 2026 used build
 `1f8722c`. Warm Mac restart passed on that signed build and has not been re-run
-after the capability and rediscovery changes. It remains explicitly dated
-supporting evidence. A current-build rerun is deferred until immediately before
-milestone closure and is needed only if final review finds the dated evidence
-insufficient or restart-relevant implementation changes land.
+after the capability, rediscovery, route-observation, and startup Local Network
+changes. Final Opus and Gemini-family review determined that those changes are
+restart-relevant, so one current-build rerun is required. It is deferred until
+the final possible point before milestone closure.
 
 Physical mute, route mismatch, and held-key evidence was refreshed on signed
 commit `f802745`. The final `4c907bf` delta changes only Local Network
@@ -167,15 +172,19 @@ The evidence intentionally omits:
 ## Review And Remaining Gate
 
 Opus and Gemini 3.5 Flash approved the final Local Network code changes after
-requested corrections were resolved. JetBrains inspection reported no semantic
-findings; its reported items were spellcheck-only URL schemes, SF Symbol names,
-protocol tokens, and fixture bundle IDs.
+requested corrections were resolved. Final evidence review approved the bounded
+claim except for current-build warm-restart evidence and explicit build
+attribution for older lifecycle checks; the attribution is corrected above.
+JetBrains inspection reported no semantic findings; its reported items were
+spellcheck-only URL schemes, SF Symbol names, protocol tokens, and fixture
+bundle IDs.
 
 Milestone 0.2 remains open pending:
 
+- one current signed-build warm Mac restart recovery check;
 - publication of the complete privacy-safe exit record in issue #21; and
 - final non-empty Opus and Gemini-family approval of that completed evidence and
   bounded compatibility scope.
 
-The warm-restart rerun is the last-resort final gate. It will not run without
+The warm-restart rerun is the last physical gate. It will not run without
 renewed explicit user approval.
