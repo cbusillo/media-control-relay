@@ -115,10 +115,8 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- first-run Input Monitoring and Local Network behavior in the qualified
-  TestFlight build;
-- clean reinstall behavior, if it remains necessary after the successful
-  TestFlight update path; and
+- clean-install first-run Input Monitoring and Local Network consent behavior;
+- physical volume-key capture under build `4`; and
 - an App Review feasibility decision for the sandboxed listen-only event tap.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
@@ -258,6 +256,54 @@ that isolated probe, so this evidence does not claim post-grant discovery.
 
 Build `4` adds the network-server entitlement only to the `AppStore`
 configuration, advances the build number, and extends repository validation to
-pin the exact entitlement files, configuration override, and contents. App
-Store Connect upload, explicit assignment to **Owner Validation**, and
-TestFlight Local Network qualification remain pending.
+pin the exact entitlement files, configuration override, and contents. PR #66
+merged that change as commit `3add125`; the upload and runtime result are
+recorded below.
+
+## August 29, 2026 Build 4 Upload and Local Network Result
+
+Post-merge Validation and CodeQL passed on commit `3add125`. The
+operator-selected Xcode 26.6 build `17F113` archived that exact merged commit
+and exported one installer package. Privacy-safe local inspection confirmed:
+
+- valid installer and app signatures under the Mac App Store installer and
+  Apple Distribution identity classes with hardened runtime;
+- version `0.1.0`, build `4`;
+- effective entitlements containing only the application and team identifiers,
+  App Sandbox, outbound network-client, and inbound network-server access, with
+  `get-task-allow` absent;
+- an embedded, unexpired App Store profile whose application identifier matches
+  the bundle identifier; and
+- byte-identical `AppIcon.icns` and `PrivacyInfo.xcprivacy` resources.
+
+Apple's validation-only endpoint accepted the package, and the explicitly
+authorized upload completed without errors. Read-only API read-back returned one
+matching valid, unexpired macOS build `4` in `IN_BETA_TESTING`. Build `4` belongs
+to exactly one beta group: the one-tester internal **Owner Validation** group,
+which does not receive future builds automatically. No external group, public
+link, App Review submission, or storefront release exists.
+
+TestFlight displayed build `4` as an update to the installed build `3`; after
+installation it displayed build `4` as ready to open. The installed
+`/Applications` bundle reports `0.1.0 (4)`, carries its TestFlight receipt,
+passes strict deep signature verification, and has App Sandbox,
+network-client, and network-server access plus TestFlight's
+`beta-reports-active`, with `get-task-allow` absent. Apple re-signs the installed
+build, so the embedded-profile evidence applies to the exported package rather
+than the TestFlight-installed bundle.
+
+In the installed build, General reports volume-key access ready, inherited from
+the build `3` grant. No physical key press was exercised under build `4`, and
+its session counter remained zero. A Media Target scan returned a generic
+renderer result instead of the prior discovery failure, and no target was
+selected. No fresh macOS Local Network prompt appeared during that scan, so the
+existing consent state was not re-established. The result qualifies that the
+network-server entitlement lets the sandboxed SSDP socket produce real
+discovery results in an App Store-signed TestFlight build with the inherited
+permission state.
+
+This result does not claim fresh-install Input Monitoring or Local Network
+consent behavior, post-selection volume control, discovery completeness, or App
+Review acceptance. Issue #16 remains open for clean-install first-run consent,
+physical volume-key capture under build `4`, and the App Review feasibility
+decision for the sandboxed listen-only event tap.
