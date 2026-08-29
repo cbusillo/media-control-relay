@@ -3,9 +3,9 @@
 ## Scope
 
 This record covers the local Mac App Store archive and export path, App Store
-Connect app-record creation, and privacy-answer reconciliation for Media Control
-Relay. It does not claim binary ingestion, TestFlight launch, App Review
-acceptance, storefront availability, or update behavior.
+Connect app-record creation, privacy-answer reconciliation, and the first binary
+ingestion for Media Control Relay. It does not claim TestFlight launch, App
+Review acceptance, storefront availability, or update behavior.
 
 The procedure may contact the Apple Developer service and create or download
 signing assets when `-allowProvisioningUpdates` is present. It never commits or
@@ -106,8 +106,6 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- a public privacy-policy URL;
-- upload against the created app record and an intentional build number;
 - TestFlight installation, first-run Input Monitoring, and update behavior; and
 - an App Review feasibility decision for the sandboxed listen-only event tap.
 
@@ -144,6 +142,32 @@ packages, and empty collected-data declaration.
 App Store Connect reported that its explicit user-access setting could not be
 saved, but confirmed that all account users currently have access to the app.
 This matches the approved full-access intent and requires no follow-up unless
-access is deliberately restricted later. No binary was uploaded, and build
-number `1` remains unused. The first TestFlight upload remains a separate
-explicit decision.
+access is deliberately restricted later. The public privacy-policy URL now
+points to the repository's version-controlled `docs/privacy.md` policy.
+
+## August 28, 2026 First Upload
+
+The first server-side validation of the August 28 package stopped before upload.
+Apple rejected the Xcode 27 beta toolchain and reported that the app lacked the
+required 512-point @2x icon representation. Build number `1` remained unused.
+
+PR #59 added the complete generated `AppIcon.icns` and source/built-artifact
+checks. Xcode 26.6 build `17F113` then archived merged commit `43a7581` and
+exported a fresh installer package. Privacy-safe local inspection reconfirmed:
+
+- valid installer and app signatures;
+- version `0.1.0`, build `1`;
+- the expected App Sandbox and outbound network-client entitlements with no
+  `get-task-allow`;
+- a valid matching App Store provisioning profile;
+- a byte-identical privacy manifest; and
+- a byte-identical icon containing all ten macOS representations through the
+  required 1024-pixel image.
+
+Apple's validation-only endpoint accepted that package. The subsequent
+explicitly authorized upload completed without errors. A subsequent read-only App
+Store Connect API query returned one matching unexpired macOS build with version
+`0.1.0`, build `1`, and processing state `VALID`.
+
+The build is ingested for TestFlight qualification only. It has not been
+submitted for App Review or released to the storefront.
