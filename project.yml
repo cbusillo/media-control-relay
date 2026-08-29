@@ -50,6 +50,8 @@ targets:
       - path: Sources/MediaControlRelayApp
       - path: Config/PrivacyInfo.xcprivacy
         buildPhase: resources
+      - path: Resources/AppIcon.icns
+        buildPhase: resources
     dependencies:
       - target: MediaControlCore
       - target: UPnPMediaTarget

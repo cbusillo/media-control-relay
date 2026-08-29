@@ -25,6 +25,11 @@ The `MediaControlRelay` scheme archives with the `AppStore` configuration.
 
 `scripts/check-app-store-export.sh` rejects drift from that policy.
 
+The complete macOS icon ladder and compiled `AppIcon.icns` are generated from
+original vector geometry by running `swift scripts/generate-app-icon.swift`.
+`scripts/check-app-icon.sh` verifies every source and built icon representation,
+including the required 512-point @2x image.
+
 `Config/AppStoreValidationOptions.plist` uses the separate `validation` method.
 Its upload destination permits App Store Connect communication. With Xcode 27,
 the validation method queried account state and stopped before binary delivery.
