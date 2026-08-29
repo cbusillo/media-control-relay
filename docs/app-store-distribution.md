@@ -106,7 +106,8 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- TestFlight installation, first-run Input Monitoring, and update behavior; and
+- TestFlight invitation acceptance, installation, first-run Input Monitoring,
+  and update behavior; and
 - an App Review feasibility decision for the sandboxed listen-only event tap.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
@@ -171,3 +172,19 @@ Store Connect API query returned one matching unexpired macOS build with version
 
 The build is ingested for TestFlight qualification only. It has not been
 submitted for App Review or released to the storefront.
+
+## August 29, 2026 Internal Distribution
+
+Build `1` is assigned to the internal **Owner Validation** group. The group is
+limited to the Account Holder, has access only to the explicitly assigned build,
+and does not automatically receive future builds. Feedback collection is
+enabled.
+
+App Store Connect API read-back confirmed one internal group, one tester, and
+one associated build. The build remains valid and unexpired, and its internal
+beta state is `IN_BETA_TESTING`. The TestFlight website shows the tester as
+invited.
+
+No external-testing group or public link exists, and no App Review submission or
+storefront release was initiated. The next qualification step requires accepting
+the invitation and installing build `1` through TestFlight on the target Mac.
