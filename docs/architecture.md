@@ -296,9 +296,12 @@ Input Monitoring approval survives updates. The foundation has no self-updater.
 
 ### Mac App Store
 
-The App Store configuration enables App Sandbox and outbound network access.
-It remains experimental until a signed sandbox probe proves that the passive
-media-key path works with Input Monitoring on supported macOS versions.
+The App Store configuration enables App Sandbox with outbound client and
+inbound server network access. The server entitlement permits the bound UDP
+socket used to receive SSDP discovery replies; it does not change routing or
+target protocol behavior. The signed TestFlight path has qualified the passive
+media-key flow with Input Monitoring, while Local Network discovery remains
+pending build `4` qualification on the target Mac.
 
 The App Store app must remain useful without third-party integrations and must
 not write into another application's support directory.

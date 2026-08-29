@@ -23,7 +23,16 @@ The `MediaControlRelay` scheme archives with the `AppStore` configuration.
 - Xcode cannot change the marketing or build number; and
 - no team or provisioning-profile identifier is stored in the repository.
 
-`scripts/check-app-store-export.sh` rejects drift from that policy.
+Direct Debug and Release builds use the empty
+`Config/MediaControlRelay.entitlements` file. Only the `AppStore` configuration
+may override that setting, and it must use
+`Config/MediaControlRelayAppStore.entitlements` with exactly App Sandbox,
+outbound network-client, and inbound network-server access. The server access
+permits the bound UDP socket that receives SSDP discovery replies.
+
+`scripts/check-app-store-export.sh` rejects drift in the archive configuration,
+entitlement-file wiring, exact entitlement contents, and local-only export and
+validation options.
 
 The complete macOS icon ladder and compiled `AppIcon.icns` are generated from
 original vector geometry by running `swift scripts/generate-app-icon.swift`.
@@ -232,3 +241,23 @@ This qualifies setup-window fit and the build `2` to build `3` TestFlight update
 path. First-run Input Monitoring, Local Network behavior, and the App Review
 feasibility decision remain open under issue #16, along with clean reinstall
 behavior if it remains necessary after the successful update path.
+
+## August 29, 2026 Build 4 Local Network Preparation
+
+TestFlight build `3` qualified Input Monitoring after an app-scoped permission
+reset and a fresh macOS consent flow. The app reported volume-key access ready
+and detected one physical Volume Up, Volume Down, and Mute press.
+
+Its first Local Network scan showed no macOS consent prompt and ended with a
+generic discovery failure. A separately identified, signed sandbox probe built
+from the same source reproduced that result with only the network-client
+entitlement. Adding the network-server entitlement to an otherwise equivalent
+probe reached the genuine macOS Local Network prompt, proving that the SSDP
+socket advanced past the sandboxed bind boundary. Consent was not granted to
+that isolated probe, so this evidence does not claim post-grant discovery.
+
+Build `4` adds the network-server entitlement only to the `AppStore`
+configuration, advances the build number, and extends repository validation to
+pin the exact entitlement files, configuration override, and contents. App
+Store Connect upload, explicit assignment to **Owner Validation**, and
+TestFlight Local Network qualification remain pending.
