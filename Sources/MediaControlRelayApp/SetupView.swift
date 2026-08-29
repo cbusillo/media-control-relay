@@ -64,7 +64,14 @@ struct SetupView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(28)
         }
-        .frame(minWidth: 460, minHeight: 360)
+        .frame(
+            minWidth: 460,
+            idealWidth: 560,
+            maxWidth: 720,
+            minHeight: 360,
+            idealHeight: 520,
+            maxHeight: 600
+        )
     }
 }
 
