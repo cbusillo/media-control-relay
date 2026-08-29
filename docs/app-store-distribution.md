@@ -4,8 +4,8 @@
 
 This record covers the local Mac App Store archive and export path, App Store
 Connect app-record creation, privacy-answer reconciliation, and the first binary
-ingestion for Media Control Relay. It does not claim TestFlight launch, App
-Review acceptance, storefront availability, or update behavior.
+ingestion and internal TestFlight qualification for Media Control Relay. It does
+not claim App Review acceptance or storefront availability.
 
 The procedure may contact the Apple Developer service and create or download
 signing assets when `-allowProvisioningUpdates` is present. It never commits or
@@ -106,8 +106,10 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- TestFlight invitation acceptance, installation, first-run Input Monitoring,
-  and update behavior; and
+- first-run Input Monitoring and Local Network behavior in the qualified
+  TestFlight build;
+- clean reinstall behavior, if it remains necessary after the successful
+  TestFlight update path; and
 - an App Review feasibility decision for the sandboxed listen-only event tap.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
@@ -186,5 +188,47 @@ beta state is `IN_BETA_TESTING`. The TestFlight website shows the tester as
 invited.
 
 No external-testing group or public link exists, and no App Review submission or
-storefront release was initiated. The next qualification step requires accepting
-the invitation and installing build `1` through TestFlight on the target Mac.
+storefront release was initiated. At that point, the next qualification step was
+accepting the invitation and installing build `1` through TestFlight on the
+target Mac; both completed before the setup-window qualification below.
+
+## August 29, 2026 Setup Window Qualification
+
+The first launch of TestFlight build `1` exposed a release-blocking setup-window
+defect. Its unbounded intrinsic content size produced a 560-by-6,650-point
+window, making the setup flow taller than the display.
+
+PR #62 made the setup content scrollable, changed the window to use its content
+minimum, and advanced the build number to `2`. Build `2` passed local export and
+Apple validation, processed as `VALID`, and was explicitly added to the same
+one-tester **Owner Validation** group. The TestFlight update installed with a
+valid signature and receipt.
+
+Build `2` then exposed the stateful remainder of the defect: macOS restored the
+oversized scene frame saved by build `1`, reopening the setup window at
+560-by-2,066 points despite the new scroll view. Build `2` therefore failed the
+setup-window qualification and was not used for permission qualification.
+
+PR #64 bounded the setup content to a native resizable range with a 560-by-520
+ideal content size, a 460-by-360 minimum, and a 720-by-600 maximum, then advanced
+the build number to `3`. Local validation confirmed that the stale oversized
+state could no longer exceed the bounded range, launching at 560 by 520 points
+in the debug build while forced resizing remained bounded and scrollable.
+
+Merged build `3` passed the complete repository checks, local App Store package
+inspection, and Apple's validation endpoint. App Store Connect reported the
+uploaded build as valid and unexpired. It was explicitly added to **Owner
+Validation** without enabling automatic future-build access, external testing,
+or a public link.
+
+The TestFlight update from build `2` to build `3` completed successfully. The
+installed app reports version `0.1.0`, build `3`, includes its TestFlight receipt,
+and passes strict deep signature verification. On the target Mac, the actual
+TestFlight build restored the prior window state at 560 by 632 points, safely
+inside the visible screen, instead of build `2`'s 560-by-2,066-point result.
+Forced enlargement remained capped at 720 by 632 points including window chrome.
+
+This qualifies setup-window fit and the build `2` to build `3` TestFlight update
+path. First-run Input Monitoring, Local Network behavior, and the App Review
+feasibility decision remain open under issue #16, along with clean reinstall
+behavior if it remains necessary after the successful update path.
