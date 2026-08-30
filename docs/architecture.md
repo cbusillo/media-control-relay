@@ -300,8 +300,9 @@ The App Store configuration enables App Sandbox with outbound client and
 inbound server network access. The server entitlement permits the bound UDP
 socket used to receive SSDP discovery replies; it does not change routing or
 target protocol behavior. The signed TestFlight path has qualified the passive
-media-key flow with Input Monitoring, while Local Network discovery remains
-pending build `4` qualification on the target Mac.
+media-key flow with Input Monitoring and sandboxed SSDP discovery on both the
+update path and a separate clean-Mac build-`4` installation. App Review
+feasibility for the listen-only event tap remains unresolved.
 
 The App Store app must remain useful without third-party integrations and must
 not write into another application's support directory.

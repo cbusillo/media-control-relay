@@ -1,6 +1,6 @@
 # Input Monitoring Probe
 
-Last updated: August 29, 2026.
+Last updated: August 30, 2026.
 
 This probe determines whether Media Control Relay can passively observe Volume
 Up, Volume Down, and Mute in both direct and sandboxed macOS builds. The
@@ -26,7 +26,8 @@ recorded by the in-process preview sink; they are never sent to a device.
 | Release | No | Developer ID Application, team `MM5YXC7T6E` | Fresh grant/recovery completed under the current identity and survived signed rebuilds, relaunches, one warm host reboot, and real sleep/wake | Yes | 8 isolated physical events produced 4 actions and 4 recorded commands; physical holds stopped after release; synthetic missed release stopped at 25 actions | Signed direct physical integration path is viable for milestone 0.1 |
 | AppStore local probe | Yes | Developer ID Application with AppStore entitlements and probe bundle ID | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands | Local sandbox integration path is viable; physical keys and App Store distribution remain unproven |
 | TestFlight build `3` | Yes | TestFlight Beta Distribution | Fresh app-scoped reset and grant under the production bundle identity | Yes | One physical Volume Up, Volume Down, and Mute press produced 3 detected presses with Mute last | The App Store-signed physical event path is viable on the tested Mac |
-| TestFlight build `4` | Yes | TestFlight Beta Distribution | Build `3` grant survived the TestFlight update | Yes | No physical input was exercised; the new session remained at 0 detected presses | The update preserved authorization and tap creation; build `4` physical capture remains open |
+| TestFlight build `4` | Yes | TestFlight Beta Distribution | Build `3` grant survived the TestFlight update | Yes | No physical input was exercised; the new session remained at 0 detected presses | The update preserved authorization and tap creation; physical capture later passed in the clean-Mac row below |
+| TestFlight build `4`, clean Mac | Yes | TestFlight Beta Distribution | Fresh install, request, enable, and relaunch on a second Mac with no prior app state or permission record | Yes | One physical Volume Up, Volume Down, and Mute press produced 3 detected presses with Mute last | Clean-install App Store-signed Input Monitoring and physical capture are viable |
 
 ## Test Environment
 
@@ -55,6 +56,10 @@ recorded by the in-process preview sink; they are never sent to a device.
 - TestFlight builds `3` and `4` use the production bundle identifier and
   TestFlight Beta Distribution signing. Build `4` was installed as an update
   over build `3`.
+- On August 30, build `4` was also installed on a separate Apple silicon Mac
+  running macOS 27.0 build `26A5421a` with no prior app bundle, container,
+  preferences, or permission record. Fresh Input Monitoring consent and
+  physical volume-key capture passed there.
 
 ## Product Identity Migration
 
@@ -159,7 +164,9 @@ recorded by the in-process preview sink; they are never sent to a device.
 - TestFlight build `3` completed a fresh Input Monitoring grant and observed one
   physical Volume Up, Volume Down, and Mute press.
 - The TestFlight update to build `4` preserved the grant and recreated the
-  listen-only event tap. No physical key input was repeated under build `4`.
+  listen-only event tap.
+- A separate clean-Mac build-`4` installation completed a fresh grant and
+  observed one physical Volume Up, Volume Down, and Mute press.
 - App Review has not been submitted. Technical TestFlight viability does not
   prove that App Review will accept the sandboxed listen-only event tap.
 
@@ -167,10 +174,10 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 The signed direct path and the App Store-signed TestFlight path are **viable on
 the tested macOS build**. Physical keys passed under TestFlight build `3`, and
-the grant survived the update to build `4`. The current evidence does not cover
-a clean-install first-run permission flow under build `4`, physical key capture
-under build `4`, App Review acceptance, or behavior after a storefront update.
-Those checks remain part of issue #16 distribution qualification.
+the grant survived the update to build `4`. A separate clean-Mac build-`4`
+installation also passed fresh consent, relaunch, tap creation, and physical
+key capture. App Review acceptance and behavior after a storefront update are
+not established. Both remain in issue #16.
 
 ## Required Checks
 
@@ -209,6 +216,9 @@ Those checks remain part of issue #16 distribution qualification.
 - Completed: a matching App Store profile produced an Apple Distribution export
   and TestFlight builds `3` and `4`; build `3` observed physical volume keys,
   and build `4` preserved authorization and tap creation across the update.
+- Completed: a separate clean-Mac build-`4` installation completed fresh Input
+  Monitoring consent, relaunch, tap creation, and physical Volume Up, Volume
+  Down, and Mute capture.
 - Not physically meaningful: holding a HID key while requesting sleep can
   prevent or immediately wake the Mac. Sleep cancellation of an active held
   gesture remains covered by the app's `onSleep` cancellation path and
@@ -218,9 +228,9 @@ Those checks remain part of issue #16 distribution qualification.
   available, and optional display-absent diagnostics. These remain
   first-release checks but do not determine the milestone-0.1 Mac integration
   boundary.
-- Remaining issue #16 evidence: clean-install first-run Input Monitoring and
-  Local Network consent, physical volume-key capture under build `4`, and the
-  App Review feasibility decision for the sandboxed listen-only event tap.
+- Remaining issue #16 evidence: the App Review feasibility decision for the
+  sandboxed listen-only event tap and post-storefront update behavior when a
+  storefront build becomes available.
 - Verified: real sleep/wake preserved exact counters and a post-wake physical
   pair emitted the expected increments, confirming that event timestamps and
   system-uptime deadline scheduling remain aligned across wake.

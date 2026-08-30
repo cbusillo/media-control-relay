@@ -115,9 +115,9 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- clean-install first-run Input Monitoring and Local Network consent behavior;
-- physical volume-key capture under build `4`; and
-- an App Review feasibility decision for the sandboxed listen-only event tap.
+- an App Review feasibility decision for the sandboxed listen-only event tap;
+  and
+- post-storefront update behavior when a storefront build becomes available.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
 
@@ -238,7 +238,9 @@ Forced enlargement remained capped at 720 by 632 points including window chrome.
 This qualifies setup-window fit and the build `2` to build `3` TestFlight update
 path. First-run Input Monitoring, Local Network behavior, and the App Review
 feasibility decision remain open under issue #16, along with clean reinstall
-behavior if it remains necessary after the successful update path.
+behavior if it remains necessary after the successful update path. The
+clean-install permission and physical-input gaps were addressed by the August
+30 run below.
 
 ## August 29, 2026 Build 4 Local Network Preparation
 
@@ -306,4 +308,39 @@ This result does not claim fresh-install Input Monitoring or Local Network
 consent behavior, post-selection volume control, discovery completeness, or App
 Review acceptance. Issue #16 remains open for clean-install first-run consent,
 physical volume-key capture under build `4`, and the App Review feasibility
-decision for the sandboxed listen-only event tap.
+decision for the sandboxed listen-only event tap. The clean-install and physical
+capture gaps were addressed by the August 30 run below.
+
+## August 30, 2026 Clean-Mac First-Run Qualification
+
+A separate Apple silicon Mac running macOS 27.0 build `26A5421a` began without
+Media Control Relay installed. The application bundle, sandbox container,
+preferences, receipt, running process, and Spotlight registration were absent.
+App-scoped Input Monitoring and Local Network resets reported no existing
+permission records. TestFlight was already installed.
+
+TestFlight installed build `4` into `/Applications`. The installed app reported
+version `0.1.0 (4)`, carried its TestFlight receipt, and passed strict deep
+signature verification before first launch. Its first launch created the
+sandbox container and opened the setup window.
+
+The operator completed the fresh Input Monitoring request, enabled Media Control
+Relay in Privacy & Security, and relaunched the app. General then reported
+volume-key access ready. One physical Volume Up, Volume Down, and Mute press
+produced exactly 3 detected presses with Mute last.
+
+The first **Find Media Renderers** action produced a genuine macOS Local Network
+prompt. After the operator allowed access, discovery completed without the
+generic failure state, reaching results or an empty list. No target was
+selected. This qualifies clean-install first-run Input Monitoring, physical
+build-`4` media-key capture, and fresh Local Network consent in the App
+Store-signed TestFlight artifact.
+
+This run does not claim discovery completeness, post-selection volume control,
+non-author usability, App Review acceptance, or storefront update behavior.
+
+The operator remained the author, so this is clean-Mac technical evidence rather
+than the milestone's separate non-author usability proof. Issue #16 remains open
+for the App Review feasibility decision and post-storefront update behavior when
+available. No external testing, public link, App Review submission, or
+storefront release was initiated.
