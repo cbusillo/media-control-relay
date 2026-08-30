@@ -337,10 +337,13 @@ build-`4` media-key capture, and fresh Local Network consent in the App
 Store-signed TestFlight artifact.
 
 This run does not claim discovery completeness, post-selection volume control,
-non-author usability, App Review acceptance, or storefront update behavior.
+beta-tester feedback, App Review acceptance, or storefront update behavior.
 
-The operator remained the author, so this is clean-Mac technical evidence rather
-than the milestone's separate non-author usability proof. Issue #16 remains open
-for the App Review feasibility decision and post-storefront update behavior when
-available. No external testing, public link, App Review submission, or
-storefront release was initiated.
+The clean-Mac result satisfies the milestone's installation and first-run
+permission criterion regardless of operator identity. Milestone 0.4 now seeks a
+separate usability signal through focused TestFlight **What to Test** guidance
+and an enabled feedback channel rather than requiring another person to repeat
+the same installation proof. Issue #16 remains open for that beta-feedback
+request, the App Review feasibility decision, and post-storefront update
+behavior when available. No external testing, public link, App Review
+submission, or storefront release was initiated.
