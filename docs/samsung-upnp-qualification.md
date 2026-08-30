@@ -16,11 +16,11 @@ untested Samsung models remain outside this proof.
 
 ## Qualified Artifact
 
-The final August 28, 2026 run used the Release build from merged commit
-`4c907bf`. PR #51 added Local Network denial classification, and PR #52
-preserved that denial while the initial network-path snapshot is unsettled.
-The app was installed at `/Applications/Media Control Relay.app` and retained
-its existing bundle identifier and Developer ID identity.
+The August 28 and August 30, 2026 qualification runs used the Release build from
+merged commit `4c907bf`. PR #51 added Local Network denial classification, and
+PR #52 preserved that denial while the initial network-path snapshot is
+unsettled. The app was installed at `/Applications/Media Control Relay.app` and
+retained its existing bundle identifier and Developer ID identity.
 
 The artifact passed:
 
@@ -140,11 +140,40 @@ it was collected.
   and the target failure count remained zero.
 
 Earlier signed evidence recorded in issue #21 on August 27, 2026 used build
-`1f8722c`. Warm Mac restart passed on that signed build and has not been re-run
-after the capability, rediscovery, route-observation, and startup Local Network
-changes. Final Opus and Gemini-family review determined that those changes are
-restart-relevant, so one current-build rerun is required. It is deferred until
-the final possible point before milestone closure.
+`1f8722c`. The restart check was repeated on August 30 with the strict-valid,
+Gatekeeper-accepted Developer ID build from final implementation commit
+`4c907bf`. Before restart, the retained configuration was `active` and
+route-matched with Input Monitoring granted, local-network target connection,
+and zero event, action, command, dispatch, failure, and recovery counters. The
+boot time advanced from August 27 at 17:47:35 local time to August 30 at
+12:31:32 local time.
+
+The one-shot login observer's first attempt stopped before app launch because
+its minimal environment could not find the Homebrew `rg` helper. That missing
+command made the Gatekeeper pipeline return false and the local log recorded
+`gatekeeper-not-developer-id`; this was an observer false negative, not an
+artifact result. Strict verification and Gatekeeper assessment passed before
+restart and in the corrected manual check on the new boot.
+
+After the observer was changed to use the system `/usr/bin/grep`, it was invoked
+manually during the same login, about 15 minutes after boot. It issued an app
+open request, verified that exactly one app process was running afterward, and
+recorded retained configuration, Input Monitoring, route match, local-network
+target connection, and `active` state with all counters still zero. The evidence
+does not establish whether the app was already running before that request. It
+proves warm-boot recovery of retained configuration, permission, route match,
+and target reachability following a manual observer invocation; it does not
+claim automatic launch-at-login behavior, which remains part of signed
+local-alpha cutover qualification.
+
+An accidental post-restart media-key hold then produced 20 events, 10 actions,
+10 recorded commands, and 10 target dispatches with no unrecorded action,
+failure, or recovery attempt. One subsequent exact physical Volume Down added
+the expected two events, one action, one recorded command, and one target
+dispatch. Volume Down was the last detected action, the relay remained
+`active`, and all failure and recovery counters remained zero. A filtered local
+accessibility read-back recorded **Last Detected** as **Volume Down** without
+capturing target or host details.
 
 Physical mute, route mismatch, and held-key evidence was refreshed on signed
 commit `f802745`. The final `4c907bf` delta changes only Local Network
@@ -154,7 +183,7 @@ operations, or successful-command read-back behavior.
 
 ## Privacy Audit
 
-Copied diagnostics matched the exact allowlist documented in
+Copied diagnostics matched the enforced diagnostics allowlist summarized in
 `docs/relay-routing.md`. An additional pattern check found no URL, IP address,
 UUID, host, device identifier, model field, control URL, or SCPD content. The
 manual procedure names generic Ethernet and Wi-Fi transport types, but those
@@ -171,20 +200,15 @@ The evidence intentionally omits:
 
 ## Review And Remaining Gate
 
-Opus and Gemini 3.5 Flash approved the final Local Network code changes after
-requested corrections were resolved. Final evidence review approved the bounded
-claim except for current-build warm-restart evidence and explicit build
-attribution for older lifecycle checks; the attribution is corrected above.
-JetBrains inspection reported no semantic findings; its reported items were
-spellcheck-only URL schemes, SF Symbol names, protocol tokens, and fixture
-bundle IDs.
+Opus and a Gemini-family reviewer approved the final Local Network code changes
+after requested corrections were resolved. The current-build warm-restart
+evidence and explicit build attribution for older lifecycle checks are now
+recorded above and await final evidence review. JetBrains inspection reported no
+semantic findings; its reported items were spellcheck-only URL schemes, SF
+Symbol names, protocol tokens, and fixture bundle IDs.
 
 Milestone 0.2 remains open pending:
 
-- one current signed-build warm Mac restart recovery check;
 - publication of the complete privacy-safe exit record in issue #21; and
 - final non-empty Opus and Gemini-family approval of that completed evidence and
   bounded compatibility scope.
-
-The warm-restart rerun is the last physical gate. It will not run without
-renewed explicit user approval.
