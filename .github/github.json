@@ -11,6 +11,7 @@
     "qualification": "docs/samsung-upnp-qualification.md",
     "provenance": "docs/provenance-audit.md",
     "privacy": "docs/privacy.md",
+    "appStoreDistribution": "docs/app-store-distribution.md",
     "security": "SECURITY.md",
     "repoSettings": "docs/repo-settings.md"
   },

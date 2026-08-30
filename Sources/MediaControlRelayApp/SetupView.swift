@@ -6,63 +6,72 @@ struct SetupView: View {
     let model: RelayAppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            HStack(alignment: .top, spacing: 16) {
-                Image(systemName: "record.circle")
-                    .font(.system(size: 42, weight: .medium))
-                    .foregroundStyle(.tint)
-                    .accessibilityHidden(true)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(alignment: .top, spacing: 16) {
+                    Image(systemName: "record.circle")
+                        .font(.system(size: 42, weight: .medium))
+                        .foregroundStyle(.tint)
+                        .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Media Control Relay")
-                        .font(.largeTitle.weight(.semibold))
-                    Text("Route Mac volume controls to a preview target or compatible local media renderer")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Media Control Relay")
+                            .font(.largeTitle.weight(.semibold))
+                        Text("Route Mac volume controls to a preview target or compatible local media renderer")
+                            .foregroundStyle(.secondary)
+                        Label {
+                            Text(model.productStatus)
+                        } icon: {
+                            Image(systemName: "hammer")
+                        }
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
-                    Label {
-                        Text(model.productStatus)
-                    } icon: {
-                        Image(systemName: "hammer")
                     }
-                    .font(.caption.weight(.semibold))
+                }
+
+                StatusCard(model: model)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("How setup will work")
+                        .font(.headline)
+
+                    SetupStepRow(
+                        number: 1,
+                        title: "Choose a media target",
+                        detail: "Open Settings to create an in-process preview target or explicitly select a compatible renderer discovered on your local network."
+                    )
+                    SetupStepRow(
+                        number: 2,
+                        title: "Allow volume key access",
+                        detail: model.inputMonitoringSetupDetail
+                    )
+                    Button("Open Volume Key Settings") {
+                        openSettings()
+                    }
+                    .buttonStyle(.link)
+                    SetupStepRow(
+                        number: 3,
+                        title: "Verify volume routing",
+                        detail: "Use Settings to review activation matching, command counts, and the selected target's connection status."
+                    )
+                }
+
+                Text("Configuration stays on this Mac. Local-network discovery shows generic renderer labels only, and Media Control Relay contacts only the renderer you explicitly select for volume control.")
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
-                }
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            StatusCard(model: model)
-
-            VStack(alignment: .leading, spacing: 14) {
-                Text("How setup will work")
-                    .font(.headline)
-
-                SetupStepRow(
-                    number: 1,
-                    title: "Choose a media target",
-                    detail: "Open Settings to create an in-process preview target or explicitly select a compatible renderer discovered on your local network."
-                )
-                SetupStepRow(
-                    number: 2,
-                    title: "Allow volume key access",
-                    detail: model.inputMonitoringSetupDetail
-                )
-                Button("Open Volume Key Settings") {
-                    openSettings()
-                }
-                .buttonStyle(.link)
-                SetupStepRow(
-                    number: 3,
-                    title: "Verify volume routing",
-                    detail: "Use Settings to review activation matching, command counts, and the selected target's connection status."
-                )
-            }
-
-            Spacer()
-
-            Text("Configuration stays on this Mac. Local-network discovery shows generic renderer labels only, and Media Control Relay contacts only the renderer you explicitly select for volume control.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(28)
         }
-        .padding(28)
+        .frame(
+            minWidth: 460,
+            idealWidth: 560,
+            maxWidth: 720,
+            minHeight: 360,
+            idealHeight: 520,
+            maxHeight: 600
+        )
     }
 }
 

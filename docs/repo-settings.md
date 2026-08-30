@@ -43,8 +43,11 @@ or pull request and are not replaced by the branch rule.
 The stable required build check is the `validation` job in the `Validation`
 workflow. It runs `scripts/check.sh`, which includes Swift tests, secret checks,
 shell and workflow linting, immutable GitHub Action pin checks, repository
-metadata and Dependabot syntax checks, plist and entitlement validation, diff
-checks, Xcode project generation, Debug tests, and Release and App Store builds.
+metadata and Dependabot syntax checks, privacy-manifest schema and source-drift
+checks, local-only App Store export-policy checks, App Store validation-option
+checks, plist and entitlement validation, diff checks, Xcode project generation,
+Debug tests, and Release and App Store builds. Hosted app tests also prove that
+the privacy manifest is present in the built application bundle.
 
 The repository's build floor is Xcode 26 or later, while its deployment and
 runtime floor remains macOS 15. Both `Validation` and `CodeQL` use a plain shell
@@ -112,5 +115,7 @@ after the replacement image produces a green run.
   code-owner review requirement.
 - A pull-request template is not required while the repository has one stable
   validation command and plan issues carry device-evidence requirements.
-- Release and distribution workflows remain out of scope until the product has
-  a downloadable release candidate.
+- Automated release and distribution workflows remain out of scope until the
+  product has a downloadable release candidate. The reproducible local App Store
+  archive/export procedure is documented separately and never uploads by
+  default.
