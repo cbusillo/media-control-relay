@@ -158,6 +158,10 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
         lastConfirmedAt
     }
 
+    public var confirmedValue: MediaTargetPresentationValue? {
+        lastConfirmedValue
+    }
+
     private var newestOutcomeGeneration: UInt64 = 0
     private var pendingAction: VolumeAction?
     private var pendingRequestID: UInt64?

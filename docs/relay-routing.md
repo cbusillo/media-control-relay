@@ -39,20 +39,21 @@ requested, and publishes state and activity for SwiftUI. It does not decide
 whether a command is eligible.
 
 Physical target work also feeds the pure `MediaTargetPresentationModel`. A
-fresh probe establishes a hidden confirmed baseline and never announces; an
+fresh probe establishes a hidden confirmed baseline; an
 action enters pending-cold or pending-with-baseline, and only the reachable
 outcome correlated to that exact in-flight action may move the confirmed level.
 Its local invalidation epoch is
 separate from session generations, and configuration, permission, session,
 sleep, and route changes clear all cached presentation values before recovery.
 Failed, cancelled, timed-out, mismatched, and superseded results never advance
-it. The app dismisses terminal presentation after the configured duration,
-makes throttled accessibility announcements for changed confirmed state, and
-posts one low-priority `Volume control unavailable` announcement when a command
-enters `.failed`. Failure speech is coarse and target-agnostic, cancels stale
-deferred volume speech, and never duplicates a volume announcement. Held-repeat
-backlog drops at release, and the app still presents the already in-flight final
-confirmation. Target-declared minimum and maximum values drive normalization,
+it. The app dismisses terminal presentation after the configured duration while
+keeping a throttled, target-agnostic accessible status on the menu-bar item and
+menu window. A failed command replaces that value with `Volume control
+unavailable`; a later successful command or probe replaces the failure status,
+while non-command loss of the active target clears the last confirmed value.
+Presentation invalidation also clears it. Held-repeat backlog drops at release,
+and the app still presents the already in-flight final confirmation. Target-declared
+minimum and maximum values drive normalization,
 exact rail feedback, and mute display retention; `volumeStep` remains capability
 metadata for command planning and validation rather than presentation scaling.
 The presentation model has no AppKit, transport, target identity, or hardware

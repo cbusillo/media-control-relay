@@ -11,22 +11,25 @@ struct RelayAppModelTests {
     @Test("Matching UPnP configuration becomes active after a successful probe")
     func successfulProbeBecomesActive() async {
         let target = AppModelTargetStub()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(
             target: target,
             invalidateResolution: { _ in }
         )
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
-            session: session,
-            announcementRecorder: announcements
+            session: session
         )
 
         await waitUntil { harness.model.relayState == .active }
 
         #expect(harness.model.relayState == .active)
+        #expect(harness.model.targetControlsEnabled)
         #expect(harness.model.targetPresentationState == .hidden)
-        #expect(announcements.values.isEmpty)
+        #expect(harness.model.accessibleTargetStatus == "Volume 50 percent")
+        #expect(
+            harness.model.menuBarAccessibilityLabel ==
+                "Media Control Relay, Controlling media volume, Volume 50 percent"
+        )
         harness.cleanup()
     }
 
@@ -463,6 +466,7 @@ struct RelayAppModelTests {
         await waitUntil { harness.model.targetPresentationState == .hidden }
 
         #expect(harness.model.targetPresentationState == .hidden)
+        #expect(harness.model.accessibleTargetStatus == "Volume 60 percent")
         harness.cleanup()
     }
 
@@ -634,15 +638,13 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
-    @Test("Command failures emit one privacy-safe accessibility announcement")
-    func commandFailuresEmitOnePrivacySafeAccessibilityAnnouncement() async {
+    @Test("Command failures publish one privacy-safe accessible status")
+    func commandFailuresPublishOnePrivacySafeAccessibleStatus() async {
         let target = FailingCommandTarget(stableIdentifier: "secret-udn-1234")
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "secret-udn-1234"),
-            session: session,
-            announcementRecorder: announcements
+            session: session
         )
 
         await waitUntil { harness.model.relayState == .active }
@@ -650,63 +652,54 @@ struct RelayAppModelTests {
         await waitUntil { harness.model.relayState == .offline }
         try? await Task.sleep(for: .milliseconds(350))
 
-        #expect(announcements.values == ["Volume control unavailable"])
-        #expect(!announcements.values.joined().contains("secret-udn-1234"))
+        #expect(harness.model.accessibleTargetStatus == "Volume control unavailable")
+        #expect(!(harness.model.accessibleTargetStatus ?? "").contains("secret-udn-1234"))
         harness.cleanup()
     }
 
-    @Test("A recovered command failure receives a new announcement")
-    func recoveredCommandFailureReceivesNewAnnouncement() async {
+    @Test("Recovery refreshes accessible status before a later failure")
+    func recoveryRefreshesAccessibleStatusBeforeLaterFailure() async {
         let target = FailsTwiceCommandTarget()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
-            session: session,
-            announcementRecorder: announcements
+            session: session
         )
 
         await waitUntil { harness.model.relayState == .active }
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.relayState == .offline }
-        #expect(announcements.values == ["Volume control unavailable"])
+        #expect(harness.model.accessibleTargetStatus == "Volume control unavailable")
 
         harness.networkPathObserver.publish(NetworkPathSnapshot(status: .unavailable))
         harness.networkPathObserver.publish(availableNetworkSnapshot())
         await waitUntil { harness.model.relayState == .active }
+        #expect(harness.model.accessibleTargetStatus == "Volume 50 percent")
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.targetCommandsFailed == 2 }
 
-        #expect(announcements.values == [
-            "Volume control unavailable",
-            "Volume control unavailable",
-        ])
+        #expect(harness.model.accessibleTargetStatus == "Volume control unavailable")
         harness.cleanup()
     }
 
-    @Test("Failure cancels a stale deferred volume announcement")
-    func failureCancelsStaleDeferredVolumeAnnouncement() async {
+    @Test("Failure cancels a stale deferred accessible status")
+    func failureCancelsStaleDeferredAccessibleStatus() async {
         let target = SucceedsThenFailsCommandTarget()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
             session: session,
-            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 1),
-            announcementRecorder: announcements
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 1)
         )
 
         await waitUntil { harness.model.relayState == .active }
         harness.model.handleVolumeAction(.up)
-        await waitUntil { announcements.values == ["Volume 60 percent"] }
+        await waitUntil { harness.model.accessibleTargetStatus == "Volume 60 percent" }
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.relayState == .offline }
         try? await Task.sleep(for: .milliseconds(1_100))
 
-        #expect(announcements.values == [
-            "Volume 60 percent",
-            "Volume control unavailable",
-        ])
+        #expect(harness.model.accessibleTargetStatus == "Volume control unavailable")
         harness.cleanup()
     }
 
@@ -726,6 +719,22 @@ struct RelayAppModelTests {
         #expect(harness.model.commandsSuppressed == 0)
         #expect(harness.model.targetCommandsDispatched == 0)
         #expect(harness.model.targetCommandsFailed == 0)
+        harness.cleanup()
+    }
+
+    @Test("Menu controls do not masquerade as detected media-key input")
+    func menuControlsDoNotPolluteInputDiagnostics() async {
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleMenuVolumeAction(.up)
+
+        #expect(harness.model.commandsRecorded == 1)
+        #expect(harness.model.observedVolumeActionCount == 0)
+        #expect(harness.model.lastObservedVolumeAction == nil)
         harness.cleanup()
     }
 
@@ -878,27 +887,25 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
-    @Test("Muted presentation announces only the confirmed mute state")
-    func mutedPresentationAnnouncementIsAccurate() async {
+    @Test("Muted presentation publishes only the confirmed mute state")
+    func mutedPresentationStatusIsAccurate() async {
         let target = AppModelTargetStub()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
-            session: session,
-            announcementRecorder: announcements
+            session: session
         )
 
         await waitUntil { harness.model.relayState == .active }
         harness.model.handleVolumeAction(.mute)
         await waitUntil { harness.model.targetPresentationState.value?.isMuted == true }
 
-        #expect(announcements.values == ["Muted"])
+        #expect(harness.model.accessibleTargetStatus == "Muted")
         harness.cleanup()
     }
 
-    @Test("Same-value command results do not repeat accessibility announcements")
-    func sameValuePresentationDoesNotRepeatAnnouncement() async {
+    @Test("Same-value command results preserve the confirmed accessible status")
+    func sameValuePresentationPreservesAccessibleStatus() async {
         let target = AppModelTargetStub(
             initialState: MediaTargetVolumeState(
                 absoluteVolume: 100,
@@ -908,13 +915,11 @@ struct RelayAppModelTests {
                 volumeStep: 1
             )
         )
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
             session: session,
-            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0),
-            announcementRecorder: announcements
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0)
         )
 
         await waitUntil { harness.model.relayState == .active }
@@ -923,53 +928,47 @@ struct RelayAppModelTests {
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.targetCommandsDispatched == 2 }
 
-        #expect(announcements.values == ["Volume 100 percent"])
+        #expect(harness.model.accessibleTargetStatus == "Volume 100 percent")
         harness.cleanup()
     }
 
-    @Test("Rapid confirmed presentations emit the latest trailing announcement")
-    func rapidConfirmedPresentationsCoalesceAccessibilityAnnouncements() async {
+    @Test("Rapid confirmed presentations publish the latest trailing accessible status")
+    func rapidConfirmedPresentationsCoalesceAccessibleStatus() async {
         let target = AppModelTargetStub()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
             session: session,
-            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0.3),
-            announcementRecorder: announcements
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0.3)
         )
 
         await waitUntil { harness.model.relayState == .active }
         harness.model.handleVolumeAction(.up)
-        await waitUntil { announcements.values == ["Volume 60 percent"] }
+        await waitUntil { harness.model.accessibleTargetStatus == "Volume 60 percent" }
 
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 7 }
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 8 }
 
-        #expect(announcements.values == ["Volume 60 percent"])
-        await waitUntil {
-            announcements.values == ["Volume 60 percent", "Volume 80 percent"]
-        }
+        #expect(harness.model.accessibleTargetStatus == "Volume 60 percent")
+        await waitUntil { harness.model.accessibleTargetStatus == "Volume 80 percent" }
         harness.cleanup()
     }
 
-    @Test("Presentation invalidation cancels a deferred accessibility announcement")
-    func presentationInvalidationCancelsDeferredAccessibilityAnnouncement() async {
+    @Test("Presentation invalidation cancels a deferred accessible status")
+    func presentationInvalidationCancelsDeferredAccessibleStatus() async {
         let target = AppModelTargetStub()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
             session: session,
-            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0.3),
-            announcementRecorder: announcements
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 0.3)
         )
 
         await waitUntil { harness.model.relayState == .active }
         harness.model.handleVolumeAction(.up)
-        await waitUntil { announcements.values == ["Volume 60 percent"] }
+        await waitUntil { harness.model.accessibleTargetStatus == "Volume 60 percent" }
         harness.model.handleVolumeAction(.up)
         await waitUntil { harness.model.targetPresentationState.value?.confirmedVolume == 7 }
 
@@ -977,7 +976,7 @@ struct RelayAppModelTests {
         await waitUntil { harness.model.targetPresentationState == .suspended }
         try? await Task.sleep(for: .milliseconds(350))
 
-        #expect(announcements.values == ["Volume 60 percent"])
+        #expect(harness.model.accessibleTargetStatus == nil)
         harness.cleanup()
     }
 
@@ -1018,27 +1017,29 @@ struct RelayAppModelTests {
     @Test("Route gain and wake hide presentation until a fresh probe completes")
     func routeGainAndWakeStartWithHiddenPresentation() async {
         let target = AppModelTargetStub()
-        let announcements = AnnouncementRecorder()
         let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
-            session: session,
-            announcementRecorder: announcements
+            session: session
         )
 
         await waitUntil { harness.model.relayState == .active }
+        #expect(harness.model.accessibleTargetStatus == "Volume 50 percent")
         harness.routeObserver.publish(makeRoute(name: "Different Output"))
         #expect(harness.model.targetPresentationState == .routeLost)
+        #expect(harness.model.accessibleTargetStatus == nil)
 
         harness.routeObserver.publish(makeRoute())
         await waitUntil { harness.model.relayState == .active }
         #expect(harness.model.targetPresentationState == .hidden)
+        #expect(harness.model.accessibleTargetStatus == "Volume 50 percent")
 
         harness.routeObserver.sleep()
+        #expect(harness.model.accessibleTargetStatus == nil)
         harness.routeObserver.wake(makeRoute())
         await waitUntil { harness.model.relayState == .active }
         #expect(harness.model.targetPresentationState == .hidden)
-        #expect(announcements.values.isEmpty)
+        #expect(harness.model.accessibleTargetStatus == "Volume 50 percent")
         harness.cleanup()
     }
 
@@ -1192,6 +1193,39 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Keepalive probes refresh the persistent accessible target status")
+    func keepaliveProbeRefreshesAccessibleStatus() async {
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            volumeKeySuppressionTiming: VolumeKeySuppressionTiming(
+                targetFreshness: 0.2,
+                keepaliveInterval: 0.05,
+                maximumLatchIdle: 0.1
+            ),
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(harness.model.accessibleTargetStatus == "Volume 50 percent")
+        await target.setState(MediaTargetVolumeState(
+            absoluteVolume: 8,
+            isMuted: false,
+            minimumVolume: 0,
+            maximumVolume: 10
+        ))
+        await waitUntil { harness.model.accessibleTargetStatus == "Volume 80 percent" }
+
+        harness.cleanup()
+    }
+
     @Test("A failed keepalive revokes suppression and marks the target offline")
     func failedKeepaliveFailsOpen() async {
         let target = KeepaliveFailureTarget()
@@ -1217,6 +1251,8 @@ struct RelayAppModelTests {
         await waitUntil { harness.model.relayState == .offline }
 
         #expect(monitor.authority == nil)
+        #expect(!harness.model.targetControlsEnabled)
+        #expect(harness.model.accessibleTargetStatus == nil)
         harness.cleanup()
     }
 
@@ -1417,15 +1453,6 @@ private struct AppModelHarness {
 }
 
 @MainActor
-private final class AnnouncementRecorder {
-    private(set) var values: [String] = []
-
-    func post(_ value: String) {
-        values.append(value)
-    }
-}
-
-@MainActor
 private func makeHarness(
     configuration: RelayConfiguration?,
     session: MediaTargetSession?,
@@ -1434,7 +1461,6 @@ private func makeHarness(
     initialNetworkSnapshot: NetworkPathSnapshot? = nil,
     targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
     targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
-    announcementRecorder: AnnouncementRecorder? = nil,
     volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
     inputMonitoringAccess: InputMonitoringAccessClient = InputMonitoringAccessClient(
         preflight: { true },
@@ -1466,9 +1492,6 @@ private func makeHarness(
         targetPresentationTiming: targetPresentationTiming,
         volumeKeySuppressionTiming: volumeKeySuppressionTiming,
         targetOverlayPresenter: targetOverlayPresenter,
-        postAccessibilityAnnouncement: { announcement in
-            announcementRecorder?.post(announcement)
-        },
         mediaTargetSessionFactory: { configuration in
             sessionFactory?(configuration) ?? session
         }
@@ -1699,6 +1722,10 @@ private actor AppModelTargetStub: MediaVolumeTarget {
         appliedOperations.append(operation)
         currentState = applying(operation, to: currentState)
         return currentState
+    }
+
+    func setState(_ state: MediaTargetVolumeState) {
+        currentState = state
     }
 }
 

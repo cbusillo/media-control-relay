@@ -59,8 +59,13 @@ state uses a static presentation so Reduce Motion needs no alternate spinner.
 ## Accessibility
 
 The overlay and its hosting view are excluded from the accessibility tree.
-`RelayAppModel` remains the single owner of throttled VoiceOver announcements,
-so the visible HUD cannot duplicate them.
+The app does not post unsolicited VoiceOver announcements from the HUD. A
+background-only, nonactivating app has no focused accessibility context that can
+reliably own those announcements without moving the VoiceOver cursor or
+activating the app. Instead, `RelayAppModel` publishes the latest confirmed
+target status to the accessible menu-bar item and menu window, where VoiceOver
+users can inspect it and use explicit volume controls whenever the configured
+target is active. Disabled controls explain that active-target requirement.
 
 The panel observes `NSWorkspace.accessibilityDisplayOptionsDidChangeNotification`
 while it exists. Reduce Transparency chooses an opaque
@@ -108,8 +113,12 @@ without clipping. All colors are system colors.
   a retained value.
 - Confirm the visible title matches the current audio output, and keep any
   screenshot containing that title local or redact it before public evidence.
-- With VoiceOver enabled, confirm only the app-model announcement is spoken;
-  navigating the accessibility tree must not expose the overlay.
+- With VoiceOver enabled, confirm the overlay remains absent from the
+  accessibility tree, never moves the VoiceOver cursor, and never activates the
+  app. Confirm the menu-bar item exposes the latest confirmed target status and
+  the menu window's Volume Down, Mute, and Volume Up controls operate the target
+  while the relay is active. In inactive states, confirm the controls are
+  disabled and explain that an active configured target is required.
 - Toggle Reduce Transparency and Increase Contrast while the HUD is visible;
   confirm the surface, borders, and track/title contrast update without a new
   command and no hard window-shadow contour appears.

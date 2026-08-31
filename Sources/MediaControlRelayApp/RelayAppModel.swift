@@ -66,6 +66,7 @@ final class RelayAppModel {
     var networkPathSnapshot = NetworkPathSnapshot.unknown
     var targetConfiguration: RelayConfiguration?
     private(set) var targetPresentationState: MediaTargetPresentationState = .hidden
+    private(set) var accessibleTargetStatus: String?
     var presentationInvalidationEpoch: UInt64 { targetPresentation.invalidationEpoch }
 
     let productStatus: LocalizedStringResource = "Preview build"
@@ -101,15 +102,14 @@ final class RelayAppModel {
     private var activeHoldGeneration: UInt64 = 0
     private var activePresentationRequest: PendingPresentationRequest?
     private var presentationDismissalTask: Task<Void, Never>?
-    private var presentationAnnouncementTask: Task<Void, Never>?
-    private var presentationAnnouncementGeneration: UInt64 = 0
+    private var accessibilityStatusPublicationTask: Task<Void, Never>?
+    private var accessibilityStatusPublicationGeneration: UInt64 = 0
     private var awaitingWakeCompletion = false
     private var hasReceivedNetworkPathSnapshot = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
     private let accessibilityRequestedKey = "accessibilityAccessRequested"
     private var requestedAccessibilityThisLaunch = false
-    private let postAccessibilityAnnouncement: (String) -> Void
 
     private struct TargetCommandRequest: Sendable {
         let command: RelayCommand
@@ -133,16 +133,6 @@ final class RelayAppModel {
         targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
         volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
         targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
-        postAccessibilityAnnouncement: @escaping (String) -> Void = {
-            NSAccessibility.post(
-                element: NSApp,
-                notification: .announcementRequested,
-                userInfo: [
-                    .announcement: $0,
-                    .priority: NSAccessibilityPriorityLevel.low.rawValue,
-                ]
-            )
-        },
         mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
             MediaTargetSessionFactory.make(configuration: $0)
         }
@@ -162,7 +152,6 @@ final class RelayAppModel {
         self.discovery = discovery
         self.mediaTargetSessionFactory = mediaTargetSessionFactory
         self.preferences = configurationStore.defaults
-        self.postAccessibilityAnnouncement = postAccessibilityAnnouncement
         self.targetPresentation = MediaTargetPresentationModel(
             timing: targetPresentationTiming
         )
@@ -292,6 +281,18 @@ final class RelayAppModel {
             for: relayState,
             targetKind: targetConfiguration?.target.kind
         )
+    }
+
+    var menuBarAccessibilityLabel: String {
+        let status = "Media Control Relay, \(statusCopy.title)"
+        guard let accessibleTargetStatus else {
+            return status
+        }
+        return "\(status), \(accessibleTargetStatus)"
+    }
+
+    var targetControlsEnabled: Bool {
+        relayState == .active
     }
 
     var configuredDeviceName: String {
@@ -769,11 +770,17 @@ final class RelayAppModel {
     }
 
     private func syncCoordinatorState() {
+        let previousRelayState = relayState
         relayState = coordinator.relayState
         activationMatches = coordinator.activationMatches
         commandsRecorded = coordinator.recordedCommandCount
         commandsSuppressed = coordinator.suppressedCommandCount
         targetConfiguration = coordinator.configuration
+        if previousRelayState == .active,
+           relayState != .active,
+           accessibleTargetStatus != String(localized: "Volume control unavailable") {
+            accessibleTargetStatus = nil
+        }
         syncTargetOverlay()
         syncVolumeKeySuppressionAuthority()
     }
@@ -927,11 +934,14 @@ final class RelayAppModel {
             }
             let reachability = effectiveReachability(outcome.reachability)
             if reachability == .reachable {
-                _ = targetPresentation.receiveProbe(
+                let accepted = targetPresentation.receiveProbe(
                     outcome,
                     epoch: presentationEpoch,
                     at: presentationTimestamp
                 )
+                if accepted {
+                    updateAccessibleTargetStatus(from: targetPresentation.confirmedValue)
+                }
                 syncPresentationState()
                 startCommandDispatch(for: mediaTargetSession)
             } else {
@@ -1023,11 +1033,14 @@ final class RelayAppModel {
             targetKeepaliveTask = nil
             let reachability = effectiveReachability(outcome.reachability)
             if reachability == .reachable {
-                _ = targetPresentation.receiveProbe(
+                let accepted = targetPresentation.receiveProbe(
                     outcome,
                     epoch: presentationEpoch,
                     at: presentationTimestamp
                 )
+                if accepted {
+                    updateAccessibleTargetStatus(from: targetPresentation.confirmedValue)
+                }
                 syncPresentationState()
             }
             apply(.transportReachability(reachability))
@@ -1155,8 +1168,30 @@ final class RelayAppModel {
         _ action: VolumeAction,
         isHeldRepeat: Bool = false
     ) {
-        observedVolumeActionCount += 1
-        lastObservedVolumeAction = action
+        dispatchVolumeAction(
+            action,
+            isHeldRepeat: isHeldRepeat,
+            recordAsObservedInput: true
+        )
+    }
+
+    func handleMenuVolumeAction(_ action: VolumeAction) {
+        dispatchVolumeAction(
+            action,
+            isHeldRepeat: false,
+            recordAsObservedInput: false
+        )
+    }
+
+    private func dispatchVolumeAction(
+        _ action: VolumeAction,
+        isHeldRepeat: Bool,
+        recordAsObservedInput: Bool
+    ) {
+        if recordAsObservedInput {
+            observedVolumeActionCount += 1
+            lastObservedVolumeAction = action
+        }
         guard let command = apply(.volumeAction(action)) else {
             return
         }
@@ -1264,6 +1299,7 @@ final class RelayAppModel {
     ) {
         targetPresentation.invalidate(reason)
         activePresentationRequest = nil
+        accessibleTargetStatus = nil
         syncPresentationState()
     }
 
@@ -1292,8 +1328,8 @@ final class RelayAppModel {
         targetPresentationState = state
         syncTargetOverlay()
         schedulePresentationDismissal()
-        announcePresentationIfNeeded()
-        schedulePresentationAnnouncement()
+        publishAccessibilityStatusIfNeeded()
+        scheduleAccessibilityStatusPublication()
     }
 
     private func syncTargetOverlay() {
@@ -1326,34 +1362,54 @@ final class RelayAppModel {
         }
     }
 
-    private func announcePresentationIfNeeded() {
+    private func publishAccessibilityStatusIfNeeded() {
         if targetPresentation.shouldAnnounceFailure() {
-            postAccessibilityAnnouncement(String(localized: "Volume control unavailable"))
+            publishAccessibilityStatus(String(localized: "Volume control unavailable"))
             return
         }
 
-        guard targetPresentation.shouldAnnounce(at: presentationTimestamp),
-              let value = targetPresentationState.value else {
+        guard let value = targetPresentationState.value else {
             return
         }
 
-        let announcement = value.isMuted
-            ? "Muted"
-            : "Volume \(value.percentage) percent"
-        postAccessibilityAnnouncement(announcement)
+        let wasUnavailable = accessibleTargetStatus == String(localized: "Volume control unavailable")
+        let shouldPublish = targetPresentation.shouldAnnounce(at: presentationTimestamp)
+        if shouldPublish || wasUnavailable {
+            publishAccessibilityStatus(accessibilityStatus(for: value))
+        }
     }
 
-    private func schedulePresentationAnnouncement() {
-        presentationAnnouncementGeneration &+= 1
-        presentationAnnouncementTask?.cancel()
+    private func publishAccessibilityStatus(_ status: String) {
+        guard accessibleTargetStatus != status else {
+            return
+        }
+        accessibleTargetStatus = status
+    }
+
+    private func updateAccessibleTargetStatus(from value: MediaTargetPresentationValue?) {
+        guard let value else {
+            return
+        }
+        publishAccessibilityStatus(accessibilityStatus(for: value))
+    }
+
+    private func accessibilityStatus(for value: MediaTargetPresentationValue) -> String {
+        value.isMuted
+            ? String(localized: "Muted")
+            : String(localized: "Volume \(value.percentage) percent")
+    }
+
+    private func scheduleAccessibilityStatusPublication() {
+        accessibilityStatusPublicationGeneration &+= 1
+        accessibilityStatusPublicationTask?.cancel()
         guard let deadline = targetPresentation.pendingAnnouncementDeadline else {
-            presentationAnnouncementTask = nil
+            accessibilityStatusPublicationTask = nil
             return
         }
 
-        let generation = presentationAnnouncementGeneration
+        let generation = accessibilityStatusPublicationGeneration
         let delay = max(0, deadline - presentationTimestamp)
-        presentationAnnouncementTask = Task { @MainActor [weak self] in
+        accessibilityStatusPublicationTask = Task { @MainActor [weak self] in
             do {
                 try await Task.sleep(for: .seconds(delay))
             } catch {
@@ -1361,12 +1417,12 @@ final class RelayAppModel {
             }
             guard let self,
                   !Task.isCancelled,
-                  presentationAnnouncementGeneration == generation else {
+                  accessibilityStatusPublicationGeneration == generation else {
                 return
             }
-            presentationAnnouncementTask = nil
-            announcePresentationIfNeeded()
-            schedulePresentationAnnouncement()
+            accessibilityStatusPublicationTask = nil
+            publishAccessibilityStatusIfNeeded()
+            scheduleAccessibilityStatusPublication()
         }
     }
 }

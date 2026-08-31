@@ -21,6 +21,31 @@ struct MenuBarStatusView: View {
             }
             .accessibilityElement(children: .combine)
 
+            if let accessibleTargetStatus = model.accessibleTargetStatus {
+                Text(accessibleTargetStatus)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Confirmed target status")
+                    .accessibilityValue(accessibleTargetStatus)
+            }
+
+            HStack {
+                Button("Volume Down", systemImage: "speaker.minus") {
+                    model.handleMenuVolumeAction(.down)
+                }
+                .accessibilityHint(targetControlAccessibilityHint)
+                Button("Mute", systemImage: "speaker.slash") {
+                    model.handleMenuVolumeAction(.mute)
+                }
+                .accessibilityHint(targetControlAccessibilityHint)
+                Button("Volume Up", systemImage: "speaker.plus") {
+                    model.handleMenuVolumeAction(.up)
+                }
+                .accessibilityHint(targetControlAccessibilityHint)
+            }
+            .labelStyle(.iconOnly)
+            .disabled(!model.targetControlsEnabled)
+
             Divider()
 
             Button("See Setup Preview…") {
@@ -39,5 +64,11 @@ struct MenuBarStatusView: View {
             }
         }
         .frame(width: 280)
+    }
+
+    private var targetControlAccessibilityHint: LocalizedStringKey {
+        model.targetControlsEnabled
+            ? "Controls the configured media target."
+            : "Available when the configured media target is active."
     }
 }
