@@ -54,16 +54,18 @@ continuity, while the confirmed target volume remains unchanged and no target
 state is inferred. All retained presentation state is cleared on configuration,
 permission, session, sleep, and route invalidation.
 
-Failed commands may produce one low-priority local accessibility announcement,
-`Volume control unavailable`, for each command entry into the failed
-presentation state. The announcement does not include target identity, failure
-details, addresses, or other protocol data, and a failure cancels any deferred
-volume-value announcement for that command sequence.
+Failed commands replace the local accessible target status with `Volume control
+unavailable`. The status does not include target identity, failure details,
+addresses, or other protocol data. A later confirmed value replaces it, and
+configuration, permission, session, sleep, and route invalidation clear it.
 
 The transient target volume overlay renders only that in-memory presentation
-state. It is excluded from the accessibility tree because the app model owns
-the corresponding VoiceOver announcements; the overlay does not add another
-record of values, device state, or user interaction.
+state and remains excluded from the accessibility tree. The latest confirmed
+target status also appears in the menu-bar item's accessibility label and menu
+window until it is replaced, the relay leaves its active state, or presentation
+state is invalidated. This persistent local surface is
+limited to target-agnostic volume, mute, or unavailable text; it does not add a
+record of target identity, addresses, protocol state, or user interaction.
 
 ## Privacy Manifest
 

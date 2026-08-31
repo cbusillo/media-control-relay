@@ -26,7 +26,7 @@ struct RelayApp: App {
         } label: {
             Image(systemName: model.statusCopy.systemImage)
                 .accessibilityLabel(
-                    "Media Control Relay, \(model.statusCopy.title)"
+                    model.menuBarAccessibilityLabel
                 )
         }
         .menuBarExtraStyle(.window)

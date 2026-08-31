@@ -101,14 +101,18 @@ cancelled requests are discarded. `MediaTargetPresentationModel` keeps a local
 invalidation epoch separate from session request generations, seeds a hidden
 baseline from fresh probes, and accepts a command outcome only for its exact
 in-flight request. Every invalidation clears the confirmed baseline,
-mute-retention value, and announcement throttle, so a fresh session cannot
-display a prior target's state. The app schedules terminal presentation dismissal
-and posts throttled changed-value VoiceOver announcements plus one low-priority,
-coarse `Volume control unavailable` announcement for each command that enters
-the failed presentation state. Failure speech is decided independently from
-value speech, so it cancels stale deferred volume speech without duplicating a
-volume announcement. Held-key release cancels queued repeat work before it can
-animate after release while preserving the final already in-flight confirmation.
+mute-retention value, and accessibility-status throttle, so a fresh session
+cannot display or expose a prior target's state. The app schedules terminal
+presentation dismissal and publishes throttled changed-value status plus one
+coarse `Volume control unavailable` status for each command that enters the
+failed presentation state. The latest published status remains available on the
+accessible menu-bar item after the transient HUD dismisses and is cleared on
+session invalidation or non-command loss of the active target. Background
+announcement APIs are intentionally not used: the app never activates or moves
+the VoiceOver cursor, so it exposes status and explicit volume controls through
+the user-navigated menu-bar interface instead.
+Held-key release cancels queued repeat work before it can animate after release
+while preserving the final already in-flight confirmation.
 
 Conditional native-HUD replacement is split across a pure policy and a thin
 AppKit adapter. `RelayAppModel` may issue an immutable suppression authority only
@@ -134,8 +138,8 @@ The AppKit-backed target-overlay adapter maps that core presentation state into
 a fixed-size, noninteractive SwiftUI HUD hosted inside public AppKit Liquid
 Glass on macOS 26 and later, with regular material and opaque accessibility
 fallbacks. The mapper is deliberately outside `MediaControlCore`, bounds
-display-only levels defensively, and owns neither target access nor
-accessibility announcements. See [Target volume
+display-only levels defensively, and owns neither target access nor accessible
+status publication. See [Target volume
 overlay](target-overlay.md) for its placement ladder, visual states, display
 accessibility behavior, and device qualification checklist.
 
