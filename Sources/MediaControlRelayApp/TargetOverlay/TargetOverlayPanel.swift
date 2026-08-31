@@ -149,8 +149,9 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
         glass.cornerRadius = TargetOverlayMetrics.cornerRadius
         glass.tintColor = nil
         glass.autoresizingMask = []
-        if #available(macOS 27.0, *) {
-            glass.effectIsInteractive = false
+        let interactiveSetter = NSSelectorFromString("setEffectIsInteractive:")
+        if #available(macOS 27.0, *), glass.responds(to: interactiveSetter) {
+            glass.setValue(false, forKey: "effectIsInteractive")
         }
         return glass
     }

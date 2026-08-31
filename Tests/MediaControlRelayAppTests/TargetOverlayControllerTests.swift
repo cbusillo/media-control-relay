@@ -358,8 +358,9 @@ struct TargetOverlayControllerTests {
             #expect(glass?.cornerRadius == CGFloat(TargetOverlayMetrics.cornerRadius))
             #expect(glass?.tintColor == nil)
             #expect(glass?.contentView === presenter.contentView)
-            if #available(macOS 27.0, *) {
-                #expect(glass?.effectIsInteractive == false)
+            let interactiveSetter = NSSelectorFromString("setEffectIsInteractive:")
+            if #available(macOS 27.0, *), glass?.responds(to: interactiveSetter) == true {
+                #expect(glass?.value(forKey: "effectIsInteractive") as? Bool == false)
             }
         }
 
