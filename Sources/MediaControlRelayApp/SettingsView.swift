@@ -113,6 +113,46 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Native Volume HUD") {
+                    LabeledContent("Status") {
+                        Label {
+                            Text(model.accessibilityTitle)
+                        } icon: {
+                            Image(systemName: model.accessibilitySystemImage)
+                        }
+                    }
+                    Text(model.accessibilityDetail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+
+                    switch model.accessibilityAuthorization {
+                    case .notDetermined:
+                        Button("Allow Native HUD Replacement") {
+                            model.requestAccessibility()
+                        }
+                    case .requested:
+                        Button("Quit to Apply Access") {
+                            model.quitApplication()
+                        }
+                        Button("Open Accessibility Settings") {
+                            model.openAccessibilitySettings()
+                        }
+                    case .denied:
+                        Button("Open Accessibility Settings") {
+                            model.openAccessibilitySettings()
+                        }
+                        Button("Quit After Changing Access") {
+                            model.quitApplication()
+                        }
+                    case .granted:
+                        if model.volumeKeySuppressionMode != .conditional {
+                            Button("Quit and Reopen Media Control Relay") {
+                                model.quitApplication()
+                            }
+                        }
+                    }
+                }
+
                 Section("General") {
                     Toggle("Launch at login", isOn: $model.launchAtLogin)
                         .disabled(true)

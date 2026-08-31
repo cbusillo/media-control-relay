@@ -1,17 +1,39 @@
-# Input Monitoring Probe
+# Volume Key Monitoring And Conditional Suppression
 
-Last updated: August 30, 2026.
+Last updated: August 31, 2026.
 
-This probe determines whether Media Control Relay can passively observe Volume
-Up, Volume Down, and Mute in both direct and sandboxed macOS builds. The
-listen-only monitor does not suppress normal macOS behavior. When the explicit
-preview target is configured and active, the resulting internal actions are
-recorded by the in-process preview sink; they are never sent to a device.
+The original probe determined whether Media Control Relay could passively
+observe Volume Up, Volume Down, and Mute in direct and sandboxed macOS builds.
+Issue #38 extends that boundary with conditional suppression of native Mac
+volume handling and the native HUD only while a matched media target has a
+fresh confirmed state and a live command path. Every uncertain, stale,
+inactive, or failed state remains pass-through.
 
 ## Implementation Boundary
 
-- The event tap is restricted to system-defined events and uses listen-only
-  mode.
+- The event tap is restricted to system-defined events. It uses `.defaultTap`
+  only when Accessibility access is granted and otherwise uses `.listenOnly`.
+- Active-tap creation failure automatically falls back to listen-only behavior.
+- A pure `MediaControlCore` policy requires active routing, fresh route
+  observation, Input Monitoring and Accessibility grants, a live target
+  session, a live dispatch pump, no pending wake completion, and a confirmed
+  target state no older than eight seconds.
+- While the matched target stays active and idle, a cancellable,
+  generation-guarded state read runs every five seconds. A physical action
+  cancels that keepalive before command dispatch, stale completion is discarded,
+  and a failed keepalive revokes authority and marks the target unavailable.
+- Suppression authority is an immutable expiring snapshot evaluated
+  synchronously in the event-tap callback. The callback performs no networking,
+  actor hop, UI work, or unbounded wait.
+- A consumed press latches its repeats and matching release. A passed press
+  keeps its release pass-through even if authority appears mid-gesture. Latches
+  expire after one second without a matching repeat or release, so a lost
+  release cannot permanently consume a key.
+- Tap timeout or user-input disable revokes authority before re-enabling the
+  tap and clears gesture latches. Tap rebuild, stop, and app termination do the
+  same.
+- Shift-, Option-, Command-, and Control-modified volume events remain entirely
+  native unless they are completing a gesture that the app already consumed.
 - Typed keys are never delivered to the app.
 - `MediaControlCore` decodes plain event payloads and bounds repeat behavior;
   the app adapter drives those deadlines before emitting `VolumeAction` values.
@@ -21,13 +43,99 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 ## Runtime Matrix
 
-| Build | Sandbox | Signing | Permission | Tap created | Keys observed | Result |
-| --- | --- | --- | --- | --- | --- | --- |
-| Release | No | Developer ID Application, team `MM5YXC7T6E` | Fresh grant/recovery completed under the current identity and survived signed rebuilds, relaunches, one warm host reboot, and real sleep/wake | Yes | 8 isolated physical events produced 4 actions and 4 recorded commands; physical holds stopped after release; synthetic missed release stopped at 25 actions | Signed direct physical integration path is viable for milestone 0.1 |
-| AppStore local probe | Yes | Developer ID Application with AppStore entitlements and probe bundle ID | Prior fresh grant survived the current signed rebuild and relaunch | Yes | 8 synthetic events produced 4 actions and 4 recorded commands | Local sandbox integration path is viable; physical keys and App Store distribution remain unproven |
-| TestFlight build `3` | Yes | TestFlight Beta Distribution | Fresh app-scoped reset and grant under the production bundle identity | Yes | One physical Volume Up, Volume Down, and Mute press produced 3 detected presses with Mute last | The App Store-signed physical event path is viable on the tested Mac |
-| TestFlight build `4` | Yes | TestFlight Beta Distribution | Build `3` grant survived the TestFlight update | Yes | No physical input was exercised; the new session remained at 0 detected presses | The update preserved authorization and tap creation; physical capture later passed in the clean-Mac row below |
-| TestFlight build `4`, clean Mac | Yes | TestFlight Beta Distribution | Fresh install, request, enable, and relaunch on a second Mac with no prior app state or permission record | Yes | One physical Volume Up, Volume Down, and Mute press produced 3 detected presses with Mute last | Clean-install App Store-signed Input Monitoring and physical capture are viable |
+- **Release:** Unsandboxed Developer ID Application for team `MM5YXC7T6E`.
+  Fresh permission recovery survived signed rebuilds, relaunches, one warm host
+  reboot, and real sleep/wake. Eight isolated physical events produced four
+  actions and four recorded commands; physical holds stopped after release and
+  a synthetic missed release stopped at 25 actions. The signed direct physical
+  integration path is viable for milestone 0.1.
+- **AppStore local probe:** Sandboxed Developer ID Application with AppStore
+  entitlements and a probe bundle ID. A prior fresh grant survived the signed
+  rebuild and relaunch. Eight synthetic events produced four actions and four
+  recorded commands. Local sandbox integration is viable; physical keys and
+  App Store distribution were not established by this row.
+- **TestFlight build `3`:** Sandboxed TestFlight Beta Distribution build. A
+  fresh app-scoped reset and grant produced one detected Volume Up, Volume Down,
+  and Mute press. The App Store-signed physical event path is viable on the
+  tested Mac.
+- **TestFlight build `4`:** The build `3` grant survived the TestFlight update
+  and recreated the event tap. Physical capture later passed on the clean Mac.
+- **TestFlight build `4`, clean Mac:** A fresh sandboxed install on a second Mac
+  completed request, enable, and relaunch with no prior app or permission state.
+  One Volume Up, Volume Down, and Mute press was detected. Clean-install App
+  Store-signed Input Monitoring and physical capture are viable.
+
+## Conditional Suppression Qualification
+
+Signed disposable probes were run on August 30, 2026 before the production
+adapter was integrated.
+
+- **Direct Developer ID:** Accessibility granted; Input Monitoring not granted.
+  The pass-through press produced `2 observed / 0 consumed` and the native HUD
+  appeared. The armed-window press produced `4 observed / 2 consumed` and no
+  native HUD. The post-expiry press produced `6 observed / 2 consumed` and the
+  native HUD returned. `.defaultTap` suppression and expiry are viable under the
+  direct identity.
+- **Sandboxed Developer ID:** Accessibility and Input Monitoring granted; App
+  Sandbox enabled. The pass-through press produced `2 observed / 0 consumed`
+  and the native HUD appeared. The armed-window press produced
+  `4 observed / 2 consumed` and no native HUD. The post-expiry press produced
+  `6 observed / 2 consumed` and the native HUD returned. `.defaultTap`
+  suppression and expiry are viable under the sandbox identity.
+
+Neither run recorded a tap-disable recovery. Returning `nil` for the decoded
+press and release removed the otherwise empty native Samsung HUD; allowing the
+authority to expire restored native handling immediately.
+
+## Integrated Adapter Qualification
+
+The production adapter was qualified on August 31, 2026 using the exact local
+issue-#38 worktree build.
+
+- The direct Release app was signed with the Developer ID Application identity,
+  installed at `/Applications/Media Control Relay.app`, passed strict deep code-
+  sign verification, and contained an empty entitlement dictionary. A stale
+  Accessibility record was reset only for this bundle ID, then freshly granted;
+  the existing Input Monitoring grant remained intact.
+- With target status `Controlling media volume`, the SAMSUNG route matched, and
+  the app idle for more than ten seconds, two physical Volume Down presses
+  changed the target, produced exactly two detected presses and two routed
+  commands, and showed no native Mac/Samsung HUD. This proves the five-second
+  keepalive prevented the prior first-press-after-idle gap.
+- The app-owned confirmed-volume overlay appeared for both presses. Its bottom-
+  center placement did not match the owner's expected native-style top-right
+  location; that visual requirement is recorded in issue #41 and is not changed
+  by this interception qualification.
+- After terminating the app, one physical Volume Down press immediately showed
+  the native HUD, proving quit restores normal Mac handling.
+- After switching audio output from SAMSUNG to the built-in route, one physical
+  Volume Down press showed the native HUD, left the TV unchanged, and produced
+  exactly one `Actions Not Recorded` increment. Restoring SAMSUNG returned the
+  app automatically to `Controlling media volume` with activation `Match`.
+- A separate AppStore-configuration artifact with bundle ID
+  `com.shinycomputers.media-control-relay.suppression-sandbox` passed strict deep
+  verification and contained only App Sandbox plus network client/server
+  entitlements. It had no `get-task-allow`. The integrated sandbox artifact was
+  not installed for a duplicate physical matrix; the signed sandbox disposable
+  probe above already proved `.defaultTap`, suppression, and expiry feasibility.
+- Final `scripts/check.sh`, app tests, Release/AppStore builds, Opus review, and
+  Gemini-family review passed. JetBrains inspection returned only spellcheck
+  hits on literal bundle IDs, Apple Settings URL schemes, and SF Symbol names.
+
+### Permission Boundary
+
+- Input Monitoring remains the app's established volume-key observation and
+  routing permission.
+- Accessibility is a separate optional permission used only for conditional
+  active filtering. Denial or revocation preserves routing in listen-only mode
+  and leaves the native Mac HUD visible.
+- Settings presents both permissions independently and links to their distinct
+  Privacy & Security panes.
+- The direct probe showed that Accessibility is the critical `.defaultTap`
+  permission. The shipping app still requires its established Input Monitoring
+  grant before starting either tap mode.
+- App Review acceptance of the active sandbox tap is not established by local
+  signed feasibility.
 
 ## Test Environment
 
@@ -172,12 +280,14 @@ recorded by the in-process preview sink; they are never sent to a device.
 
 ## Decision
 
-The signed direct path and the App Store-signed TestFlight path are **viable on
-the tested macOS build**. Physical keys passed under TestFlight build `3`, and
-the grant survived the update to build `4`. A separate clean-Mac build-`4`
-installation also passed fresh consent, relaunch, tap creation, and physical
-key capture. App Review acceptance and behavior after a storefront update are
-not established. Both remain in issue #16.
+The signed direct path and the App Store-signed TestFlight listen-only path are
+**viable on the tested macOS build**. Conditional active filtering is also
+technically viable under direct and sandboxed Developer ID identities, so the
+signed local alpha integrates it behind expiring fail-open authority.
+Accessibility denial, stale target confirmation, active-tap creation failure,
+route loss, sleep, target failure, dispatch loss, and shutdown all retain or
+restore normal Mac handling. App Review acceptance and behavior after a
+storefront update are not established. Both remain in issue #16.
 
 ## Required Checks
 
@@ -188,6 +298,18 @@ not established. Both remain in issue #16.
   settling, queue backpressure, and missed-release bounds.
 - Completed: the live app adapter feeds decoded events through the bounded
   gesture tracker before emitting internal `VolumeAction` values.
+- Completed: direct and sandboxed `.defaultTap` probes suppressed the native HUD
+  only during an explicit authority window and restored it after expiry.
+- Completed: the installed integrated Developer ID adapter suppressed the native
+  HUD after more than ten seconds idle, routed two physical target commands,
+  restored the native HUD immediately on quit and route mismatch, and recovered
+  automatically when the matched route returned.
+- Completed: the production adapter falls back to `.listenOnly` if active-tap
+  creation fails and exposes separate Accessibility recovery in Settings.
+- Completed: pure policy and app-model tests cover fresh authority, idle
+  keepalive refresh, keepalive failure, stale authority, lost-release latch
+  expiry, press/release latching, route loss, Input Monitoring loss,
+  Accessibility loss, sleep/wake, command failure, and termination revocation.
 - Runtime note: the missed-release repeat limit is live. Preview recording is
   local and synchronous, so the app sink completes each command immediately
   and does not accumulate pending depth; synthetic tests retain queue-policy

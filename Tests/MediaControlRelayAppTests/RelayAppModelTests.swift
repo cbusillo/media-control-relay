@@ -1108,6 +1108,210 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Fresh matched target arms suppression and route loss revokes it")
+    func suppressionTracksFreshMatchedTarget() async {
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.suppressionMode == .conditional)
+        #expect(monitor.authority?.isValid(at: ProcessInfo.processInfo.systemUptime) == true)
+
+        harness.routeObserver.publish(makeRoute(name: "Different Output"))
+
+        #expect(harness.model.relayState == .dormant)
+        #expect(monitor.authority == nil)
+        harness.cleanup()
+    }
+
+    @Test("Accessibility loss downgrades to listen-only without disabling routing")
+    func accessibilityLossFailsOpen() async {
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let accessibility = MutableAuthorizationStub(isGranted: true)
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { accessibility.isGranted },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.authority != nil)
+        accessibility.isGranted = false
+        harness.applicationNotificationCenter.post(
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
+        #expect(harness.model.relayState == .active)
+        #expect(harness.model.accessibilityAuthorization == .denied)
+        #expect(monitor.suppressionMode == .listenOnly)
+        #expect(monitor.authority == nil)
+        harness.cleanup()
+    }
+
+    @Test("Active keepalives keep suppression armed across idle time")
+    func activeKeepaliveRefreshesSuppressionAuthority() async {
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            volumeKeySuppressionTiming: VolumeKeySuppressionTiming(
+                targetFreshness: 0.2,
+                keepaliveInterval: 0.05,
+                maximumLatchIdle: 0.1
+            ),
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        await waitUntilAsync { await target.readCount >= 3 }
+
+        #expect(monitor.authority?.isValid(at: ProcessInfo.processInfo.systemUptime) == true)
+        harness.cleanup()
+    }
+
+    @Test("A failed keepalive revokes suppression and marks the target offline")
+    func failedKeepaliveFailsOpen() async {
+        let target = KeepaliveFailureTarget()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            volumeKeySuppressionTiming: VolumeKeySuppressionTiming(
+                targetFreshness: 0.2,
+                keepaliveInterval: 0.05,
+                maximumLatchIdle: 0.1
+            ),
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.authority != nil)
+        await waitUntil { harness.model.relayState == .offline }
+
+        #expect(monitor.authority == nil)
+        harness.cleanup()
+    }
+
+    @Test("Input Monitoring loss stops interception and revokes authority")
+    func inputMonitoringLossStopsInterception() async {
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let inputMonitoring = MutableAuthorizationStub(isGranted: true)
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            inputMonitoringAccess: InputMonitoringAccessClient(
+                preflight: { inputMonitoring.isGranted },
+                request: {}
+            ),
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.authority != nil)
+        inputMonitoring.isGranted = false
+        harness.applicationNotificationCenter.post(
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+
+        #expect(harness.model.relayState == .needsPermission)
+        #expect(monitor.suppressionMode == .listenOnly)
+        #expect(monitor.authority == nil)
+        #expect(monitor.stopCount > 0)
+        harness.cleanup()
+    }
+
+    @Test("Sleep revokes suppression until a fresh wake probe completes")
+    func sleepRequiresFreshProbeBeforeRearmingSuppression() async {
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.authority != nil)
+        harness.routeObserver.sleep()
+        #expect(monitor.authority == nil)
+
+        harness.routeObserver.wake(makeRoute())
+        await waitUntil {
+            harness.model.relayState == .active && monitor.authority != nil
+        }
+        harness.cleanup()
+    }
+
+    @Test("Command failure and termination revoke suppression authority")
+    func commandFailureAndTerminationRevokeSuppression() async {
+        let target = FailingCommandTarget(stableIdentifier: "fixture-target")
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let session = MediaTargetSession(target: target, invalidateResolution: { _ in })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            volumeKeyMonitor: monitor,
+            accessibilityAccess: AccessibilityAccessClient(
+                preflight: { true },
+                request: {}
+            )
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.authority != nil)
+        harness.model.handleVolumeAction(.mute)
+        await waitUntil { harness.model.relayState == .offline }
+        #expect(monitor.authority == nil)
+
+        harness.applicationNotificationCenter.post(
+            name: NSApplication.willTerminateNotification,
+            object: nil
+        )
+        #expect(monitor.stopCount > 0)
+        #expect(monitor.authority == nil)
+        harness.cleanup()
+    }
+
     @Test("Preview target recovers after event tap failure")
     func previewRecoversAfterEventTapFailure() async {
         let monitor = FlakyVolumeKeyMonitor()
@@ -1231,6 +1435,12 @@ private func makeHarness(
     targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
     targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
     announcementRecorder: AnnouncementRecorder? = nil,
+    volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
+    inputMonitoringAccess: InputMonitoringAccessClient = InputMonitoringAccessClient(
+        preflight: { true },
+        request: {}
+    ),
+    accessibilityAccess: AccessibilityAccessClient = .denied,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
     let suiteName = "com.shinycomputers.media-control-relay.app-model-tests.\(UUID().uuidString)"
@@ -1249,13 +1459,12 @@ private func makeHarness(
         networkPathObserver: networkPathObserver,
         configurationStore: configurationStore,
         volumeKeyMonitor: volumeKeyMonitor,
-        inputMonitoringAccess: InputMonitoringAccessClient(
-            preflight: { true },
-            request: {}
-        ),
+        inputMonitoringAccess: inputMonitoringAccess,
+        accessibilityAccess: accessibilityAccess,
         applicationNotificationCenter: applicationNotificationCenter,
         discovery: discovery,
         targetPresentationTiming: targetPresentationTiming,
+        volumeKeySuppressionTiming: volumeKeySuppressionTiming,
         targetOverlayPresenter: targetOverlayPresenter,
         postAccessibilityAnnouncement: { announcement in
             announcementRecorder?.post(announcement)
@@ -1354,6 +1563,55 @@ private final class ControllableVolumeKeyMonitor: VolumeKeyMonitoring {
 }
 
 @MainActor
+private final class SuppressionTrackingVolumeKeyMonitor: VolumeKeyMonitoring {
+    let events = AsyncStream<VolumeKeyEvent> { _ in }
+    private(set) var suppressionMode: VolumeKeySuppressionMode = .listenOnly
+    private(set) var authority: VolumeKeySuppressionAuthority?
+    private(set) var stopCount = 0
+
+    func setSuppressionMode(_ mode: VolumeKeySuppressionMode) {
+        suppressionMode = mode
+        if mode == .listenOnly {
+            authority = nil
+        }
+    }
+
+    func updateSuppressionAuthority(_ authority: VolumeKeySuppressionAuthority?) {
+        self.authority = authority
+    }
+
+    func revokeSuppressionAuthority() {
+        authority = nil
+    }
+
+    func start() throws {}
+
+    func stop() {
+        stopCount += 1
+        suppressionMode = .listenOnly
+        authority = nil
+    }
+}
+
+private final class MutableAuthorizationStub: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Bool
+
+    init(isGranted: Bool) {
+        value = isGranted
+    }
+
+    var isGranted: Bool {
+        get {
+            lock.withLock { value }
+        }
+        set {
+            lock.withLock { value = newValue }
+        }
+    }
+}
+
+@MainActor
 private final class AppModelRouteObserver: RouteObserving {
     var onSnapshot: ((RouteSnapshot) -> Void)?
     var onStateChange: ((RouteObservationState) -> Void)?
@@ -1441,6 +1699,26 @@ private actor AppModelTargetStub: MediaVolumeTarget {
         appliedOperations.append(operation)
         currentState = applying(operation, to: currentState)
         return currentState
+    }
+}
+
+private actor KeepaliveFailureTarget: MediaVolumeTarget {
+    nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
+
+    private var readCount = 0
+
+    func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        readCount += 1
+        guard readCount == 1 else {
+            throw .offline
+        }
+        return makeVolumeState()
+    }
+
+    func apply(
+        _ operation: MediaTargetVolumeOperation
+    ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        throw .offline
     }
 }
 

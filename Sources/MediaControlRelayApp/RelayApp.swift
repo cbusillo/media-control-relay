@@ -51,7 +51,8 @@ struct RelayApp: App {
             networkPathObserver: InactiveNetworkPathObserver(),
             configurationStore: RelayConfigurationStore(defaults: defaults),
             volumeKeyMonitor: InactiveVolumeKeyMonitor(),
-            inputMonitoringAccess: .denied
+            inputMonitoringAccess: .denied,
+            accessibilityAccess: .denied
         )
 #else
         RelayAppModel(targetOverlayPresenter: TargetOverlayController())
