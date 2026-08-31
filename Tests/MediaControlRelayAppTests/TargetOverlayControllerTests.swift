@@ -358,6 +358,7 @@ struct TargetOverlayControllerTests {
             #expect(glass?.cornerRadius == CGFloat(TargetOverlayMetrics.cornerRadius))
             #expect(glass?.tintColor == nil)
             #expect(glass?.contentView === presenter.contentView)
+            #expect(glass?.isAccessibilityElement() == false)
             let interactiveSetter = NSSelectorFromString("setEffectIsInteractive:")
             if #available(macOS 27.0, *), glass?.responds(to: interactiveSetter) == true {
                 #expect(glass?.value(forKey: "effectIsInteractive") as? Bool == false)
@@ -375,7 +376,11 @@ struct TargetOverlayControllerTests {
         )
 
         #expect(presenter.surfaceView === initialSurfaceView)
-        #expect(presenter.contentView.rootView.surfaceStyle == .contentOnly)
+        if #available(macOS 26.0, *) {
+            #expect(presenter.contentView.rootView.surfaceStyle == .contentOnly)
+        } else {
+            #expect(presenter.contentView.rootView.surfaceStyle == .regularMaterial)
+        }
 
         optionsProvider.options = TargetOverlayAccessibilityDisplayOptions(
             reduceTransparency: true,
