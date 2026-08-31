@@ -1,6 +1,6 @@
 import Foundation
 
-public enum VolumeAction: String, CaseIterable, Codable, Equatable, Sendable {
+public enum VolumeAction: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
     case up
     case down
     case mute

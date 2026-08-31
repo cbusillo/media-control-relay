@@ -154,6 +154,10 @@ public struct MediaTargetPresentationModel: Equatable, Sendable {
 
     public private(set) var invalidationEpoch: UInt64 = 0
 
+    public var lastConfirmationTimestamp: TimeInterval? {
+        lastConfirmedAt
+    }
+
     private var newestOutcomeGeneration: UInt64 = 0
     private var pendingAction: VolumeAction?
     private var pendingRequestID: UInt64?

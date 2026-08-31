@@ -1,4 +1,5 @@
 import AppKit
+@preconcurrency import ApplicationServices
 import CoreGraphics
 import MediaControlCore
 import Observation
@@ -20,6 +21,26 @@ struct InputMonitoringAccessClient: Sendable {
     )
 }
 
+struct AccessibilityAccessClient: Sendable {
+    let preflight: @Sendable () -> Bool
+    let request: @Sendable () -> Void
+
+    static let live = AccessibilityAccessClient(
+        preflight: AXIsProcessTrusted,
+        request: {
+            let options = [
+                kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true,
+            ] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+        }
+    )
+
+    static let denied = AccessibilityAccessClient(
+        preflight: { false },
+        request: {}
+    )
+}
+
 @MainActor
 @Observable
 final class RelayAppModel {
@@ -27,6 +48,8 @@ final class RelayAppModel {
     var launchAtLogin = false
     var inputMonitoringAuthorization: InputMonitoringAuthorization = .notDetermined
     var inputMonitoringUnavailable = false
+    var accessibilityAuthorization: AccessibilityAuthorization = .notDetermined
+    private(set) var volumeKeySuppressionMode: VolumeKeySuppressionMode = .listenOnly
     var observedVolumeKeyEventCount = 0
     var observedVolumeKeyPressCount = 0
     var observedVolumeActionCount = 0
@@ -54,6 +77,8 @@ final class RelayAppModel {
     private let networkPathObserver: any NetworkPathObserving
     private let configurationStore: RelayConfigurationStore
     private let inputMonitoringAccess: InputMonitoringAccessClient
+    private let accessibilityAccess: AccessibilityAccessClient
+    private let volumeKeySuppressionTiming: VolumeKeySuppressionTiming
     private let targetOverlayPresenter: any TargetOverlayPresenting
     private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
     private let coordinator: RelayCoordinator
@@ -61,10 +86,13 @@ final class RelayAppModel {
     private var mediaTargetSession: MediaTargetSession?
     private var targetPresentation: MediaTargetPresentationModel
     private var applicationActivationToken: NSObjectProtocol?
+    private var applicationTerminationToken: NSObjectProtocol?
     private var volumeKeyTask: Task<Void, Never>?
     private var volumeActionTask: Task<Void, Never>?
     private var targetProbeTask: Task<Void, Never>?
     private var targetProbeGeneration: UInt64 = 0
+    private var targetKeepaliveTask: Task<Void, Never>?
+    private var targetKeepaliveGeneration: UInt64 = 0
     private var commandContinuation: AsyncStream<TargetCommandRequest>.Continuation?
     private var commandPumpTask: Task<Void, Never>?
     private var commandGeneration: UInt64 = 0
@@ -79,6 +107,8 @@ final class RelayAppModel {
     private var hasReceivedNetworkPathSnapshot = false
     private let inputMonitoringRequestedKey = "inputMonitoringAccessRequested"
     private var requestedInputMonitoringThisLaunch = false
+    private let accessibilityRequestedKey = "accessibilityAccessRequested"
+    private var requestedAccessibilityThisLaunch = false
     private let postAccessibilityAnnouncement: (String) -> Void
 
     private struct TargetCommandRequest: Sendable {
@@ -97,9 +127,11 @@ final class RelayAppModel {
         configurationStore: RelayConfigurationStore = RelayConfigurationStore(),
         volumeKeyMonitor: any VolumeKeyMonitoring = EventTapVolumeKeyMonitor(),
         inputMonitoringAccess: InputMonitoringAccessClient = .live,
+        accessibilityAccess: AccessibilityAccessClient = .live,
         applicationNotificationCenter: NotificationCenter = .default,
         discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
         targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
+        volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
         targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
         postAccessibilityAnnouncement: @escaping (String) -> Void = {
             NSAccessibility.post(
@@ -123,6 +155,9 @@ final class RelayAppModel {
         self.configurationStore = configurationStore
         self.volumeKeyMonitor = volumeKeyMonitor
         self.inputMonitoringAccess = inputMonitoringAccess
+        self.accessibilityAccess = accessibilityAccess
+        self.volumeKeySuppressionTiming = volumeKeySuppressionTiming
+        volumeKeyMonitor.setSuppressionTiming(volumeKeySuppressionTiming)
         self.targetOverlayPresenter = targetOverlayPresenter
         self.discovery = discovery
         self.mediaTargetSessionFactory = mediaTargetSessionFactory
@@ -222,11 +257,22 @@ final class RelayAppModel {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.networkPathObserver.refresh()
+                self?.resolveAccessibilityAuthorization()
                 self?.refreshInputMonitoring()
+            }
+        }
+        applicationTerminationToken = applicationNotificationCenter.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.shutdown()
             }
         }
         routeObserver.start()
         networkPathObserver.start()
+        resolveAccessibilityAuthorization()
         refreshInputMonitoring()
         refreshTransportState()
     }
@@ -275,6 +321,10 @@ final class RelayAppModel {
             "app_version": buildDescription,
             "relay_state": relayState.diagnosticName,
             "input_monitoring": inputMonitoringDiagnosticName,
+            "accessibility": accessibilityDiagnosticName,
+            "volume_key_suppression": volumeKeySuppressionMode == .conditional
+                ? "conditional"
+                : "listen-only",
             "macos_version": ProcessInfo.processInfo.operatingSystemVersionString,
             "product_status": "preview",
             "setup_complete": targetConfiguration == nil ? "no" : "yes",
@@ -297,6 +347,8 @@ final class RelayAppModel {
             "app_version",
             "relay_state",
             "input_monitoring",
+            "accessibility",
+            "volume_key_suppression",
             "macos_version",
             "product_status",
             "setup_complete",
@@ -386,9 +438,37 @@ final class RelayAppModel {
         NSApplication.shared.terminate(nil)
     }
 
+    func shutdown() {
+        volumeKeyMonitor.revokeSuppressionAuthority()
+        volumeKeyMonitor.stop()
+        volumeKeySuppressionMode = .listenOnly
+        volumeKeyGestureMonitor.cancel()
+        cancelTargetProbe()
+        discovery.cancelScan()
+        routeObserver.stop()
+        networkPathObserver.stop()
+        volumeKeyTask?.cancel()
+        volumeKeyTask = nil
+        volumeActionTask?.cancel()
+        volumeActionTask = nil
+    }
+
     func openInputMonitoringSettings() {
         openSystemSettings(
             "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+        )
+    }
+
+    func requestAccessibility() {
+        preferences.set(true, forKey: accessibilityRequestedKey)
+        requestedAccessibilityThisLaunch = true
+        accessibilityAccess.request()
+        refreshAccessibility()
+    }
+
+    func openAccessibilitySettings() {
+        openSystemSettings(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         )
     }
 
@@ -440,17 +520,66 @@ final class RelayAppModel {
             startTargetProbeIfNeeded()
         }
 
+        refreshVolumeKeyMonitor()
+    }
+
+    func refreshAccessibility() {
+        resolveAccessibilityAuthorization()
+        refreshVolumeKeyMonitor()
+    }
+
+    @discardableResult
+    private func resolveAccessibilityAuthorization() -> Bool {
+        let previousAuthorization = accessibilityAuthorization
+        let preflightGranted = accessibilityAccess.preflight()
+        if preflightGranted {
+            preferences.set(true, forKey: accessibilityRequestedKey)
+        }
+        accessibilityAuthorization = AccessibilityDecision.resolve(
+            preflightGranted: preflightGranted,
+            hasRequestedAccess: preferences.bool(forKey: accessibilityRequestedKey),
+            requestedThisLaunch: requestedAccessibilityThisLaunch
+        )
+        return accessibilityAuthorization != previousAuthorization
+    }
+
+    private func refreshVolumeKeyMonitor() {
         guard inputMonitoringAuthorization == .granted else {
+            volumeKeyMonitor.revokeSuppressionAuthority()
             volumeKeyMonitor.stop()
+            volumeKeySuppressionMode = .listenOnly
             volumeKeyGestureMonitor.cancel()
             inputMonitoringUnavailable = false
             return
         }
 
+        let preferredMode: VolumeKeySuppressionMode =
+            accessibilityAuthorization == .granted ? .conditional : .listenOnly
+        volumeKeyMonitor.setSuppressionMode(preferredMode)
         do {
             try volumeKeyMonitor.start()
+            volumeKeySuppressionMode = volumeKeyMonitor.suppressionMode
             inputMonitoringUnavailable = false
+            syncVolumeKeySuppressionAuthority()
+            if volumeKeySuppressionMode == .conditional,
+               relayState == .active,
+               let mediaTargetSession,
+               commandContinuation != nil,
+               commandPumpTask != nil {
+                let targetAge = targetPresentation.lastConfirmationTimestamp.map {
+                    presentationTimestamp - $0
+                }
+                let needsImmediateKeepalive = targetAge.map {
+                    $0 > volumeKeySuppressionTiming.targetFreshness
+                } ?? true
+                scheduleTargetKeepalive(
+                    for: mediaTargetSession,
+                    immediate: needsImmediateKeepalive
+                )
+            }
         } catch {
+            volumeKeyMonitor.revokeSuppressionAuthority()
+            volumeKeySuppressionMode = .listenOnly
             inputMonitoringUnavailable = true
             inputMonitoringAuthorization = .denied
             apply(.inputMonitoringAuthorization(.denied))
@@ -515,6 +644,45 @@ final class RelayAppModel {
         }
     }
 
+    var accessibilityTitle: LocalizedStringResource {
+        switch accessibilityAuthorization {
+        case .notDetermined: return "Native HUD replacement is not set up"
+        case .requested: return "Native HUD replacement needs a restart"
+        case .denied: return "Native HUD replacement needs attention"
+        case .granted:
+            return volumeKeySuppressionMode == .conditional
+                ? "Native HUD replacement is ready"
+                : "Native HUD replacement is unavailable"
+        }
+    }
+
+    var accessibilityDetail: LocalizedStringResource {
+        switch accessibilityAuthorization {
+        case .notDetermined:
+            return "Allow Accessibility access to hide the Mac volume HUD only while the confirmed media target is ready."
+        case .requested:
+            return "Quit and reopen Media Control Relay to apply your choice."
+        case .denied:
+            return "Turn on Accessibility access in Privacy & Security. Until then, normal Mac handling remains enabled."
+        case .granted:
+            return volumeKeySuppressionMode == .conditional
+                ? "The Mac volume HUD is replaced only for fresh, matched, healthy target commands."
+                : "Volume keys remain pass-through because active filtering could not start."
+        }
+    }
+
+    var accessibilitySystemImage: String {
+        switch accessibilityAuthorization {
+        case .notDetermined: return "rectangle.on.rectangle.slash"
+        case .requested: return "arrow.clockwise.circle"
+        case .denied: return "hand.raised.slash"
+        case .granted:
+            return volumeKeySuppressionMode == .conditional
+                ? "checkmark.circle.fill"
+                : "exclamationmark.triangle"
+        }
+    }
+
     var lastObservedVolumeActionTitle: LocalizedStringResource? {
         switch lastObservedVolumeAction {
         case .up: return "Volume Up"
@@ -529,6 +697,15 @@ final class RelayAppModel {
             return "unavailable"
         }
         switch inputMonitoringAuthorization {
+        case .notDetermined: return "not-determined"
+        case .requested: return "requested"
+        case .denied: return "denied"
+        case .granted: return "granted"
+        }
+    }
+
+    private var accessibilityDiagnosticName: String {
+        switch accessibilityAuthorization {
         case .notDetermined: return "not-determined"
         case .requested: return "requested"
         case .denied: return "denied"
@@ -598,6 +775,41 @@ final class RelayAppModel {
         commandsSuppressed = coordinator.suppressedCommandCount
         targetConfiguration = coordinator.configuration
         syncTargetOverlay()
+        syncVolumeKeySuppressionAuthority()
+    }
+
+    private func syncVolumeKeySuppressionAuthority() {
+        volumeKeySuppressionMode = volumeKeyMonitor.suppressionMode
+        let timestamp = presentationTimestamp
+        let maximumTargetAge = volumeKeySuppressionTiming.targetFreshness
+        let confirmedTargetAge = targetPresentation.lastConfirmationTimestamp.map {
+            timestamp - $0
+        }
+        let inputs = VolumeKeySuppressionReadinessInputs(
+            relayState: relayState,
+            routeObservationIsFresh: routeObservationState == .observing && activationMatches,
+            inputMonitoringGranted: inputMonitoringAuthorization == .granted,
+            accessibilityGranted: accessibilityAuthorization == .granted,
+            dispatchReady: commandContinuation != nil && commandPumpTask != nil,
+            sessionReady: mediaTargetSession != nil,
+            awaitingWakeCompletion: awaitingWakeCompletion,
+            confirmedTargetAge: confirmedTargetAge,
+            maximumTargetAge: maximumTargetAge
+        )
+        guard volumeKeySuppressionMode == .conditional,
+              VolumeKeySuppressionPolicy.isArmed(inputs),
+              let confirmedTargetAge else {
+            volumeKeyMonitor.revokeSuppressionAuthority()
+            return
+        }
+
+        volumeKeyMonitor.updateSuppressionAuthority(
+            VolumeKeySuppressionAuthority(
+                issuedAt: timestamp,
+                validFor: maximumTargetAge - confirmedTargetAge,
+                isArmed: true
+            )
+        )
     }
 
     private func refreshTransportState() {
@@ -726,6 +938,9 @@ final class RelayAppModel {
                 cancelCommandDispatch()
             }
             apply(.transportReachability(reachability))
+            if reachability == .reachable {
+                scheduleTargetKeepalive(for: mediaTargetSession)
+            }
         }
     }
 
@@ -756,6 +971,80 @@ final class RelayAppModel {
         cancelCommandDispatch()
     }
 
+    private func scheduleTargetKeepalive(
+        for mediaTargetSession: MediaTargetSession,
+        immediate: Bool = false
+    ) {
+        cancelTargetKeepalive()
+        guard volumeKeySuppressionMode == .conditional,
+              inputMonitoringAuthorization == .granted,
+              accessibilityAuthorization == .granted,
+              volumeKeySuppressionTiming.targetFreshness > 0,
+              volumeKeySuppressionTiming.keepaliveInterval > 0 else {
+            return
+        }
+
+        targetKeepaliveGeneration &+= 1
+        let generation = targetKeepaliveGeneration
+        targetKeepaliveTask = Task { @MainActor [weak self, mediaTargetSession] in
+            defer {
+                if let self, self.targetKeepaliveGeneration == generation {
+                    self.targetKeepaliveTask = nil
+                }
+            }
+            do {
+                try await Task.sleep(
+                    for: .seconds(
+                        immediate ? 0 : self?.volumeKeySuppressionTiming.keepaliveInterval ?? 0
+                    )
+                )
+            } catch {
+                return
+            }
+            guard let self,
+                  !Task.isCancelled,
+                  targetKeepaliveGeneration == generation,
+                  self.mediaTargetSession === mediaTargetSession,
+                  relayState == .active,
+                  commandContinuation != nil,
+                  commandPumpTask != nil,
+                  activePresentationRequest == nil else {
+                return
+            }
+
+            let presentationEpoch = targetPresentation.invalidationEpoch
+            guard let outcome = await mediaTargetSession.probe(),
+                  !Task.isCancelled,
+                  targetKeepaliveGeneration == generation,
+                  self.mediaTargetSession === mediaTargetSession else {
+                return
+            }
+
+            targetKeepaliveTask = nil
+            let reachability = effectiveReachability(outcome.reachability)
+            if reachability == .reachable {
+                _ = targetPresentation.receiveProbe(
+                    outcome,
+                    epoch: presentationEpoch,
+                    at: presentationTimestamp
+                )
+                syncPresentationState()
+            }
+            apply(.transportReachability(reachability))
+            if reachability == .reachable {
+                scheduleTargetKeepalive(for: mediaTargetSession)
+            } else {
+                cancelCommandDispatch()
+            }
+        }
+    }
+
+    private func cancelTargetKeepalive() {
+        targetKeepaliveGeneration &+= 1
+        targetKeepaliveTask?.cancel()
+        targetKeepaliveTask = nil
+    }
+
     private func startCommandDispatch(for mediaTargetSession: MediaTargetSession) {
         cancelCommandDispatch()
         let stream = AsyncStream<TargetCommandRequest>.makeStream()
@@ -781,6 +1070,7 @@ final class RelayAppModel {
                     request.holdGeneration == activeHoldGeneration else {
                     coordinator.completeCommand()
                     syncCoordinatorState()
+                    scheduleTargetKeepalive(for: mediaTargetSession)
                     continue
                 }
                 targetCommandsDispatched += 1
@@ -796,6 +1086,7 @@ final class RelayAppModel {
                 syncCoordinatorState()
                 guard let outcome else {
                     cancelPresentationRequest(presentationRequest)
+                    scheduleTargetKeepalive(for: mediaTargetSession)
                     continue
                 }
                 receivePresentationOutcome(outcome, for: presentationRequest)
@@ -808,11 +1099,13 @@ final class RelayAppModel {
                     cancelCommandDispatch()
                     return
                 }
+                scheduleTargetKeepalive(for: mediaTargetSession)
             }
         }
     }
 
     private func cancelCommandDispatch() {
+        cancelTargetKeepalive()
         commandGeneration &+= 1
         commandContinuation?.finish()
         commandContinuation = nil
@@ -873,6 +1166,7 @@ final class RelayAppModel {
             coordinator.completeCommand()
             syncCoordinatorState()
         case .upnpMediaRenderer:
+            cancelTargetKeepalive()
             if isHeldRepeat,
                repeatedVolumeAction != action {
                 activeHoldGeneration &+= 1

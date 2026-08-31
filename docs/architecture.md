@@ -39,6 +39,8 @@ Pure Swift logic with a Foundation-only dependency:
   transport-neutral failure taxonomy;
 - sendable confirmed-session outcomes and pure, epoch- and request-correlated
   target-presentation normalization and state transitions;
+- pure expiring volume-key suppression authority, readiness evaluation, and
+  press/release latching;
 - target-aware status copy;
 - diagnostics redaction.
 
@@ -51,6 +53,8 @@ The native macOS shell owns:
 
 - menu-bar, setup, and settings scenes;
 - permission presentation;
+- listen-only and conditional active event-tap adaptation with automatic
+  fail-open fallback;
 - read-only Core Audio default-output and active-display observation;
 - sleep/wake observer registration and volume-gesture cancellation;
 - local preview configuration in UserDefaults; the preview has no secrets;
@@ -62,11 +66,11 @@ Future control-surface and target adapters remain optional boundaries around
 the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
 integration must not make the core app depend on that device.
 
-The current foundation UI reports only facts that are implemented. It records
-preview commands locally, clearly identifies the sink as a preview, and states
-that no media device is connected or controlled and normal Mac volume behavior
-is preserved. It does not simulate discovery, pairing, network connectivity, or
-hardware control.
+The current UI reports only facts that are implemented. Preview commands remain
+local, compatible selected renderers use the real local-network target adapter,
+and Settings distinguishes Input Monitoring from the optional Accessibility
+grant used for native-HUD replacement. It does not simulate discovery, pairing,
+network connectivity, or hardware control.
 
 The asynchronous `MediaVolumeTarget` contract reads current volume/mute state
 and applies exactly one absolute-volume or mute operation. Apply returns the
@@ -105,6 +109,26 @@ the failed presentation state. Failure speech is decided independently from
 value speech, so it cancels stale deferred volume speech without duplicating a
 volume announcement. Held-key release cancels queued repeat work before it can
 animate after release while preserving the final already in-flight confirmation.
+
+Conditional native-HUD replacement is split across a pure policy and a thin
+AppKit adapter. `RelayAppModel` may issue an immutable suppression authority only
+while the relay is active, route observation and target confirmation are fresh,
+both volume-key permissions are granted, wake processing is complete, and the
+target session and command pump are live. A dedicated eight-second suppression
+freshness window is refreshed by cancellable, generation-guarded five-second
+target-state keepalives while the matched route is idle. Physical actions cancel
+the keepalive before entering the command pump, and any stale keepalive result
+is discarded. The event-tap callback evaluates only the
+current snapshot and its local gesture latch; it never waits on networking,
+actors, or UI work. Consumed presses keep their repeats and release consumed
+after ordinary authority revocation, while passed presses keep their release
+pass-through. A latch expires after one second without another event and is
+cleared on tap disablement or rebuild, preventing a lost release from consuming
+one key indefinitely. Modified volume chords remain native. Accessibility loss,
+stale confirmation, keepalive failure, route or network invalidation, sleep,
+command failure, dispatch cancellation, tap disablement, stop, and termination
+revoke authority. If `.defaultTap` creation fails, the adapter creates a
+`.listenOnly` tap instead and normal Mac handling continues.
 
 The AppKit-backed target-overlay adapter maps that core presentation state into
 a fixed-size, noninteractive SwiftUI HUD. The mapper is deliberately outside

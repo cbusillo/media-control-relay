@@ -8,8 +8,10 @@ Media Control Relay is designed to operate locally.
   supported media target on the local network.
 - Stable target identity is tracked separately from ephemeral locator data so
   diagnostics and reconciliation can avoid coupling to changing addresses.
-- Input Monitoring uses a listen-only event tap restricted to macOS
-  system-defined events. Typed characters are never delivered to the app.
+- Volume-key monitoring uses a system-defined-event tap. It remains listen-only
+  without Accessibility access and conditionally filters only supported volume
+  gestures while a fresh selected target is ready. Typed characters are never
+  delivered to the app.
 - During the current app run, the app keeps only aggregate event and action
   counts plus the most recently detected Volume Up, Volume Down, or Mute action
   for local setup feedback. It does not persist key histories or raw event
@@ -36,6 +38,12 @@ types may be compared in memory to detect a path change, but interface names,
 addresses, gateways, endpoints, and path descriptions are never copied to
 diagnostics. Empty discovery is not treated as evidence that macOS denied Local
 Network access.
+
+While a selected target's route remains active and conditional filtering is
+available, the app performs a local target-state read every five seconds to keep
+the volume-key decision fresh. The read is cancellable and generation-guarded,
+retains only the same bounded confirmed volume/mute presentation state, and
+stops on route, permission, lifecycle, network, session, or target failure.
 
 Confirmed presentation state contains only volume bounds, step, mute, normalized
 level, coarse pending/failure/rail/lifecycle state, and local request/epoch
