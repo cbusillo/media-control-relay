@@ -26,13 +26,6 @@ enum TargetOverlayGlyph: Equatable {
     }
 }
 
-enum TargetOverlayCaption: Equatable {
-    case adjusting
-    case percentage(Double)
-    case muted
-    case unavailable
-}
-
 enum TargetOverlayLevelTreatment: Equatable {
     case none
     case confirmed
@@ -46,20 +39,17 @@ struct TargetOverlayVisualState: Equatable {
     let glyph: TargetOverlayGlyph?
     let level: Double?
     let levelTreatment: TargetOverlayLevelTreatment
-    let caption: TargetOverlayCaption?
 
     private init(
         isVisible: Bool,
         glyph: TargetOverlayGlyph?,
         level: Double?,
-        levelTreatment: TargetOverlayLevelTreatment,
-        caption: TargetOverlayCaption?
+        levelTreatment: TargetOverlayLevelTreatment
     ) {
         self.isVisible = isVisible
         self.glyph = glyph
         self.level = level
         self.levelTreatment = levelTreatment
-        self.caption = caption
     }
 
     init(presentationState: MediaTargetPresentationState) {
@@ -71,8 +61,7 @@ struct TargetOverlayVisualState: Equatable {
                 isVisible: true,
                 glyph: .speaker,
                 level: nil,
-                levelTreatment: .none,
-                caption: .adjusting
+                levelTreatment: .none
             )
         case let .pendingBaseline(_, value):
             let level = Self.boundedLevel(for: value)
@@ -80,8 +69,7 @@ struct TargetOverlayVisualState: Equatable {
                 isVisible: true,
                 glyph: Self.speakerGlyph(for: level),
                 level: level,
-                levelTreatment: .pending,
-                caption: .adjusting
+                levelTreatment: .pending
             )
         case let .confirmed(value), let .rail(_, value):
             let level = Self.boundedLevel(for: value)
@@ -89,24 +77,21 @@ struct TargetOverlayVisualState: Equatable {
                 isVisible: true,
                 glyph: Self.speakerGlyph(for: level),
                 level: level,
-                levelTreatment: .confirmed,
-                caption: .percentage(level)
+                levelTreatment: .confirmed
             )
         case let .muted(value):
             self = Self(
                 isVisible: true,
                 glyph: .muted,
                 level: Self.boundedLevel(for: value),
-                levelTreatment: .muted,
-                caption: .muted
+                levelTreatment: .muted
             )
         case let .failed(value):
             self = Self(
                 isVisible: true,
                 glyph: .warning,
                 level: value.map { Self.boundedLevel(for: $0) },
-                levelTreatment: value == nil ? .none : .frozen,
-                caption: .unavailable
+                levelTreatment: value == nil ? .none : .frozen
             )
         }
     }
@@ -115,8 +100,7 @@ struct TargetOverlayVisualState: Equatable {
         isVisible: false,
         glyph: nil,
         level: nil,
-        levelTreatment: .none,
-        caption: nil
+        levelTreatment: .none
     )
 
     private static func boundedLevel(for value: MediaTargetPresentationValue) -> Double {

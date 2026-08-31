@@ -4,18 +4,20 @@ import SwiftUI
 
 @MainActor
 protocol TargetOverlayPanelPresenting: AnyObject {
-    func show(state: MediaTargetPresentationState, frame: OverlayRect)
+    func show(state: MediaTargetPresentationState, outputName: String, frame: OverlayRect)
     func hide()
 }
 
 @MainActor
 final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting {
     let panel: TargetOverlayPanel
-    private let contentView: NSHostingView<TargetOverlayContentView>
+    private(set) var surfaceView: NSView?
+    private(set) var contentView: NSHostingView<TargetOverlayContentView>
     private let accessibilityDisplayOptionsProvider: any TargetOverlayAccessibilityDisplayOptionsProviding
     private let notificationCenter: NotificationCenter
     private(set) var accessibilityDisplayOptions: TargetOverlayAccessibilityDisplayOptions
     private var currentVisualState = TargetOverlayVisualState(presentationState: .hidden)
+    private var currentOutputName = "Media Volume"
 
     init(
         panel: TargetOverlayPanel = TargetOverlayPanel(),
@@ -30,16 +32,18 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
         contentView = NSHostingView(
             rootView: TargetOverlayContentView(
                 visualState: currentVisualState,
-                accessibilityDisplayOptions: accessibilityDisplayOptions
+                outputName: currentOutputName,
+                accessibilityDisplayOptions: accessibilityDisplayOptions,
+                surfaceStyle: .contentOnly
             )
         )
         super.init()
         contentView.sizingOptions = []
-        contentView.frame = panel.contentRect(forFrameRect: panel.frame)
+        contentView.clipsToBounds = false
         contentView.autoresizingMask = [.width, .height]
-        panel.contentView = contentView
         contentView.setAccessibilityElement(false)
-        panel.apply(accessibilityDisplayOptions: accessibilityDisplayOptions)
+        installSurface()
+        updateContentView()
         notificationCenter.addObserver(
             self,
             selector: #selector(accessibilityDisplayOptionsChanged),
@@ -52,10 +56,11 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
         notificationCenter.removeObserver(self)
     }
 
-    func show(state: MediaTargetPresentationState, frame: OverlayRect) {
+    func show(state: MediaTargetPresentationState, outputName: String, frame: OverlayRect) {
         currentVisualState = TargetOverlayVisualState(presentationState: state)
+        currentOutputName = outputName
         updateContentView()
-        panel.setFrame(nsRect(frame), display: true)
+        panel.setFrame(nsRect(TargetOverlayMetrics.windowFrame(containing: frame)), display: true)
         panel.orderFrontRegardless()
     }
 
@@ -64,8 +69,15 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
     }
 
     private func refreshAccessibilityDisplayOptions() {
-        accessibilityDisplayOptions = accessibilityDisplayOptionsProvider.accessibilityDisplayOptions
-        panel.apply(accessibilityDisplayOptions: accessibilityDisplayOptions)
+        let newOptions = accessibilityDisplayOptionsProvider.accessibilityDisplayOptions
+        guard newOptions != accessibilityDisplayOptions else {
+            return
+        }
+        let previousSurfaceStyle = surfaceStyle
+        accessibilityDisplayOptions = newOptions
+        if surfaceStyle != previousSurfaceStyle {
+            installSurface()
+        }
         updateContentView()
     }
 
@@ -76,8 +88,71 @@ final class TargetOverlayPanelPresenter: NSObject, TargetOverlayPanelPresenting 
     private func updateContentView() {
         contentView.rootView = TargetOverlayContentView(
             visualState: currentVisualState,
-            accessibilityDisplayOptions: accessibilityDisplayOptions
+            outputName: currentOutputName,
+            accessibilityDisplayOptions: accessibilityDisplayOptions,
+            surfaceStyle: surfaceStyle
         )
+    }
+
+    private var surfaceStyle: TargetOverlaySurfaceStyle {
+        if accessibilityDisplayOptions.reduceTransparency {
+            return .opaque
+        }
+        if #available(macOS 26.0, *) {
+            return .contentOnly
+        }
+        return .regularMaterial
+    }
+
+    private func installSurface() {
+        if #available(macOS 26.0, *), let glass = surfaceView as? NSGlassEffectView {
+            glass.contentView = nil
+        }
+        contentView.removeFromSuperview()
+        surfaceView?.removeFromSuperview()
+
+        let rootView = NSView(frame: NSRect(
+            origin: .zero,
+            size: NSSize(
+                width: TargetOverlayMetrics.windowSize.width,
+                height: TargetOverlayMetrics.windowSize.height
+            )
+        ))
+        rootView.autoresizingMask = [.width, .height]
+        rootView.clipsToBounds = false
+        rootView.setAccessibilityElement(false)
+        panel.contentView = rootView
+
+        let visualFrame = NSRect(
+            x: TargetOverlayMetrics.surfaceMargin,
+            y: TargetOverlayMetrics.surfaceMargin,
+            width: TargetOverlayMetrics.panelSize.width,
+            height: TargetOverlayMetrics.panelSize.height
+        )
+        if surfaceStyle == .contentOnly, #available(macOS 26.0, *) {
+            let glass = makeGlassEffectView(frame: visualFrame)
+            contentView.frame = glass.bounds
+            glass.contentView = contentView
+            rootView.addSubview(glass)
+            surfaceView = glass
+        } else {
+            contentView.frame = visualFrame
+            rootView.addSubview(contentView)
+            surfaceView = contentView
+        }
+    }
+
+    @available(macOS 26.0, *)
+    private func makeGlassEffectView(frame: NSRect) -> NSGlassEffectView {
+        let glass = NSGlassEffectView(frame: frame)
+        glass.style = .regular
+        glass.cornerRadius = TargetOverlayMetrics.cornerRadius
+        glass.tintColor = nil
+        glass.autoresizingMask = []
+        if #available(macOS 27.0, *) {
+            glass.effectIsInteractive = false
+        }
+        return glass
     }
 
     private func nsRect(_ rect: OverlayRect) -> NSRect {
@@ -97,8 +172,8 @@ final class TargetOverlayPanel: NSPanel {
             contentRect: NSRect(
                 x: 0,
                 y: 0,
-                width: TargetOverlayMetrics.panelSize.width,
-                height: TargetOverlayMetrics.panelSize.height
+                width: TargetOverlayMetrics.windowSize.width,
+                height: TargetOverlayMetrics.windowSize.height
             ),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
@@ -114,14 +189,11 @@ final class TargetOverlayPanel: NSPanel {
         isExcludedFromWindowsMenu = true
         isOpaque = false
         backgroundColor = .clear
+        hasShadow = false
         ignoresMouseEvents = true
         setAccessibilityElement(false)
     }
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
-
-    func apply(accessibilityDisplayOptions: TargetOverlayAccessibilityDisplayOptions) {
-        hasShadow = !accessibilityDisplayOptions.increaseContrast
-    }
 }

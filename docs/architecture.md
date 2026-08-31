@@ -131,9 +131,11 @@ revoke authority. If `.defaultTap` creation fails, the adapter creates a
 `.listenOnly` tap instead and normal Mac handling continues.
 
 The AppKit-backed target-overlay adapter maps that core presentation state into
-a fixed-size, noninteractive SwiftUI HUD. The mapper is deliberately outside
-`MediaControlCore`, bounds display-only levels defensively, and owns neither
-target access nor accessibility announcements. See [Target volume
+a fixed-size, noninteractive SwiftUI HUD hosted inside public AppKit Liquid
+Glass on macOS 26 and later, with regular material and opaque accessibility
+fallbacks. The mapper is deliberately outside `MediaControlCore`, bounds
+display-only levels defensively, and owns neither target access nor
+accessibility announcements. See [Target volume
 overlay](target-overlay.md) for its placement ladder, visual states, display
 accessibility behavior, and device qualification checklist.
 
@@ -253,9 +255,9 @@ route display to a live screen only when the route match and stable identity are
 unambiguous; otherwise it falls back in order to a single screen, the
 pointer-containing screen, the main screen, then the supplied first screen.
 Placement reasons are coarse and never contain display names or identifiers.
-Panel geometry centers against the full display frame, bottom-anchors and
-clamps inside the visible frame, and aligns to the display backing scale. AppKit
-adapters provide live screen descriptors and render the resulting geometry.
+Panel geometry anchors to the top-trailing corner of the visible frame, clamps
+inside it, and aligns to the display backing scale. AppKit adapters provide live
+screen descriptors and render the resulting geometry.
 
 ### Future Samsung Adapter
 

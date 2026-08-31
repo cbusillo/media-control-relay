@@ -172,20 +172,21 @@ struct OverlayPlacementTests {
         ) == nil)
     }
 
-    @Test("Geometry centers full frame and respects a bottom Dock visible frame")
-    func bottomDockGeometry() {
+    @Test("Geometry anchors to the visible frame top trailing corner")
+    func topTrailingGeometry() {
         let screen = screen(
             frame: OverlayRect(x: -1440, y: 0, width: 1440, height: 900),
             visibleFrame: OverlayRect(x: -1440, y: 84, width: 1440, height: 816)
         )
 
-        let rect = OverlayPanelGeometry.bottomCenterRect(
+        let rect = OverlayPanelGeometry.topTrailingRect(
             panelSize: OverlaySize(width: 300, height: 120),
             on: screen,
-            bottomInset: 24
+            topInset: 24,
+            trailingInset: 24
         )
 
-        #expect(rect == OverlayRect(x: -870, y: 108, width: 300, height: 120))
+        #expect(rect == OverlayRect(x: -324, y: 756, width: 300, height: 120))
     }
 
     @Test("Geometry clamps against a side Dock visible frame")
@@ -195,13 +196,14 @@ struct OverlayPlacementTests {
             visibleFrame: OverlayRect(x: 96, y: 0, width: 1344, height: 900)
         )
 
-        let rect = OverlayPanelGeometry.bottomCenterRect(
+        let rect = OverlayPanelGeometry.topTrailingRect(
             panelSize: OverlaySize(width: 1400, height: 100),
             on: screen,
-            bottomInset: 20
+            topInset: 20,
+            trailingInset: 20
         )
 
-        #expect(rect == OverlayRect(x: 96, y: 20, width: 1344, height: 100))
+        #expect(rect == OverlayRect(x: 96, y: 780, width: 1344, height: 100))
     }
 
     @Test("Oversized panels are fully contained by the visible frame")
@@ -211,10 +213,11 @@ struct OverlayPlacementTests {
             visibleFrame: OverlayRect(x: -480, y: -260, width: 440, height: 240)
         )
 
-        let rect = OverlayPanelGeometry.bottomCenterRect(
+        let rect = OverlayPanelGeometry.topTrailingRect(
             panelSize: OverlaySize(width: 700, height: 500),
             on: screen,
-            bottomInset: 30
+            topInset: 30,
+            trailingInset: 30
         )
 
         #expect(rect == OverlayRect(x: -480, y: -260, width: 440, height: 240))
@@ -228,13 +231,31 @@ struct OverlayPlacementTests {
             backingScaleFactor: 1.25
         )
 
-        let rect = OverlayPanelGeometry.bottomCenterRect(
+        let rect = OverlayPanelGeometry.topTrailingRect(
             panelSize: OverlaySize(width: 200, height: 99),
             on: screen,
-            bottomInset: 17
+            topInset: 17,
+            trailingInset: 17
         )
 
-        #expect(rect == OverlayRect(x: 100.8, y: 16.8, width: 200, height: 99.2))
+        #expect(rect == OverlayRect(x: 184, y: 584, width: 200, height: 99.2))
+    }
+
+    @Test("Geometry treats invalid and negative insets as zero")
+    func invalidInsetsGeometry() {
+        let screen = screen(
+            frame: OverlayRect(x: -500, y: -300, width: 500, height: 300),
+            visibleFrame: OverlayRect(x: -480, y: -260, width: 440, height: 240)
+        )
+
+        let rect = OverlayPanelGeometry.topTrailingRect(
+            panelSize: OverlaySize(width: 100, height: 50),
+            on: screen,
+            topInset: -20,
+            trailingInset: .nan
+        )
+
+        #expect(rect == OverlayRect(x: -140, y: -70, width: 100, height: 50))
     }
 
     private func rule() -> ActivationRule {

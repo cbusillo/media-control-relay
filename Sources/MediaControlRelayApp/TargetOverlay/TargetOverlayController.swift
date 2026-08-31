@@ -122,12 +122,27 @@ final class TargetOverlayController: NSObject, TargetOverlayPresenting {
             return
         }
 
-        let frame = OverlayPanelGeometry.bottomCenterRect(
+        let frame = OverlayPanelGeometry.topTrailingRect(
             panelSize: TargetOverlayMetrics.panelSize,
             on: placement.screen,
-            bottomInset: TargetOverlayMetrics.bottomInset
+            topInset: TargetOverlayMetrics.nativeHUDTopInset,
+            trailingInset: TargetOverlayMetrics.nativeHUDTrailingInset
         )
-        panelPresenter.show(state: latestPresentationState, frame: frame)
+        panelPresenter.show(
+            state: latestPresentationState,
+            outputName: overlayTitle(for: latestRouteSnapshot.audioOutput?.name),
+            frame: frame
+        )
+    }
+
+    private func overlayTitle(for outputName: String?) -> String {
+        guard let outputName else {
+            return "Media Volume"
+        }
+        let normalizedName = outputName
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+        return normalizedName.isEmpty ? "Media Volume" : normalizedName
     }
 
     @objc private func screenParametersChanged() {
