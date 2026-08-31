@@ -24,9 +24,18 @@ struct LiveTargetOverlayAccessibilityDisplayOptionsProvider:
     }
 }
 
+enum TargetOverlaySurfaceStyle: Equatable {
+    case contentOnly
+    case regularMaterial
+    case opaque
+}
+
 struct TargetOverlayContentView: View {
     let visualState: TargetOverlayVisualState
+    let outputName: String
     let accessibilityDisplayOptions: TargetOverlayAccessibilityDisplayOptions
+    let surfaceStyle: TargetOverlaySurfaceStyle
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
         let shape = RoundedRectangle(
@@ -34,83 +43,156 @@ struct TargetOverlayContentView: View {
             style: .continuous
         )
 
-        ZStack {
-            panelSurface(in: shape)
-            shape.strokeBorder(borderColor, lineWidth: borderWidth)
+        renderedSurface(in: shape)
+        .transaction { transaction in
+            transaction.animation = nil
+        }
+        .accessibilityHidden(true)
+    }
 
+    @ViewBuilder
+    private func renderedSurface(in shape: RoundedRectangle) -> some View {
+        switch surfaceStyle {
+        case .opaque:
+            overlayContent
+                .background(Color(nsColor: .windowBackgroundColor), in: shape)
+                .overlay { panelBorder(in: shape) }
+        case .regularMaterial:
+            overlayContent
+                .background(.regularMaterial, in: shape)
+                .overlay { panelBorder(in: shape) }
+        case .contentOnly:
+            overlayContent
+                .overlay { panelBorder(in: shape) }
+        }
+    }
+
+    private var overlayContent: some View {
+        ZStack(alignment: .topLeading) {
             if visualState.isVisible {
-                HStack(spacing: 12) {
-                    Image(systemName: visualState.glyph?.systemName ?? "speaker.wave.2.fill")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(glyphColor)
-                        .frame(width: 24)
+                VStack(alignment: .leading, spacing: TargetOverlayMetrics.rowSpacing) {
+                    Text(outputName)
+                        .font(.system(
+                            size: TargetOverlayMetrics.captionPointSize,
+                            weight: .semibold
+                        ))
+                        .foregroundStyle(Color.primary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+                        .frame(
+                            maxWidth: .infinity,
+                            minHeight: TargetOverlayMetrics.captionRowHeight,
+                            maxHeight: TargetOverlayMetrics.captionRowHeight,
+                            alignment: .leading
+                        )
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        volumeTrack
-                        caption
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(captionColor)
-                    }
+                    trackRow
                 }
                 .padding(.horizontal, TargetOverlayMetrics.horizontalPadding)
-                .padding(.vertical, TargetOverlayMetrics.verticalPadding)
+                .padding(.top, TargetOverlayMetrics.topPadding)
             }
         }
         .frame(
             width: TargetOverlayMetrics.panelSize.width,
-            height: TargetOverlayMetrics.panelSize.height
+            height: TargetOverlayMetrics.panelSize.height,
+            alignment: .topLeading
         )
-        .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func panelBorder(in shape: RoundedRectangle) -> some View {
+        if panelBorderWidth > 0 {
+            shape.strokeBorder(panelBorderColor, lineWidth: panelBorderWidth)
+        }
+    }
+
+    private var trackRow: some View {
+        HStack(spacing: TargetOverlayMetrics.trackRowSpacing) {
+            Image(systemName: leadingGlyphSystemName)
+                .font(.system(size: TargetOverlayMetrics.glyphPointSize, weight: .semibold))
+                .foregroundStyle(leadingGlyphColor)
+                .frame(
+                    width: TargetOverlayMetrics.leadingGlyphSlotWidth,
+                    alignment: .leading
+                )
+
+            volumeTrack
+
+            Image(systemName: "speaker.wave.3.fill")
+                .font(.system(size: TargetOverlayMetrics.glyphPointSize, weight: .semibold))
+                .foregroundStyle(trailingGlyphColor)
+                .frame(
+                    width: TargetOverlayMetrics.trailingGlyphSlotWidth,
+                    alignment: .trailing
+                )
+        }
+        .frame(height: TargetOverlayMetrics.trackRowHeight)
     }
 
     private var volumeTrack: some View {
         GeometryReader { proxy in
-            let levelWidth = proxy.size.width * (visualState.level ?? 0)
-            Capsule(style: .continuous)
-                .fill(trackColor)
-                .overlay(alignment: .leading) {
-                    if visualState.level != nil {
-                        Capsule(style: .continuous)
-                            .fill(levelColor)
-                            .frame(width: levelWidth)
+            let levelWidth = alignedLevelWidth(availableWidth: proxy.size.width)
+            VStack(spacing: TargetOverlayMetrics.tickTopGap) {
+                Capsule(style: .continuous)
+                    .fill(trackColor)
+                    .frame(width: proxy.size.width, height: TargetOverlayMetrics.trackHeight)
+                    .overlay(alignment: .leading) {
+                        if visualState.level != nil, levelWidth > 0 {
+                            Capsule(style: .continuous)
+                                .fill(levelColor)
+                                .frame(width: levelWidth)
+                        }
+                    }
+                    .overlay {
+                        if trackBorderWidth > 0 {
+                            Capsule(style: .continuous)
+                                .strokeBorder(trackBorderColor, lineWidth: trackBorderWidth)
+                        }
+                    }
+
+                HStack(spacing: 0) {
+                    ForEach(0 ..< TargetOverlayMetrics.nativeHUDTickCount, id: \.self) { index in
+                        Circle()
+                            .fill(tickColor)
+                            .frame(
+                                width: TargetOverlayMetrics.tickDiameter,
+                                height: TargetOverlayMetrics.tickDiameter
+                            )
+                        if index + 1 < TargetOverlayMetrics.nativeHUDTickCount {
+                            Spacer(minLength: 0)
+                        }
                     }
                 }
-                .overlay {
-                    Capsule(style: .continuous)
-                        .strokeBorder(trackBorderColor, lineWidth: borderWidth)
-                }
+                .padding(.horizontal, TargetOverlayMetrics.tickEndInset)
+                .frame(width: proxy.size.width, height: TargetOverlayMetrics.tickDiameter)
+            }
+            .frame(width: proxy.size.width, height: TargetOverlayMetrics.trackGroupHeight)
         }
-        .frame(height: TargetOverlayMetrics.trackHeight)
+        .frame(height: TargetOverlayMetrics.trackGroupHeight)
     }
 
-    @ViewBuilder
-    private var caption: some View {
-        switch visualState.caption {
-        case .adjusting:
-            Text("Adjusting volume")
-        case let .percentage(level):
-            Text(level, format: .percent.precision(.fractionLength(0)))
-        case .muted:
-            Text("Muted")
-        case .unavailable:
-            Text("Unavailable")
-        case nil:
-            EmptyView()
+    private var leadingGlyphSystemName: String {
+        switch visualState.glyph {
+        case .muted, .warning:
+            visualState.glyph?.systemName ?? "speaker.fill"
+        case .speaker, .speakerLow, .speakerMedium, .speakerHigh, nil:
+            "speaker.fill"
         }
     }
 
-    @ViewBuilder
-    private func panelSurface(in shape: RoundedRectangle) -> some View {
-        if accessibilityDisplayOptions.reduceTransparency {
-            shape.fill(Color(nsColor: .windowBackgroundColor))
-        } else if #available(macOS 26.0, *) {
-            Color.clear.glassEffect(.regular, in: shape)
-        } else {
-            shape.fill(.regularMaterial)
+    private func alignedLevelWidth(availableWidth: CGFloat) -> CGFloat {
+        guard let level = visualState.level, level > 0 else {
+            return 0
         }
+        let scale = max(displayScale, 1)
+        let alignedWidth = (availableWidth * CGFloat(level) * scale).rounded() / scale
+        return min(
+            max(alignedWidth, CGFloat(TargetOverlayMetrics.trackHeight)),
+            availableWidth
+        )
     }
 
-    private var glyphColor: Color {
+    private var leadingGlyphColor: Color {
         switch visualState.glyph {
         case .warning:
             .secondary
@@ -119,14 +201,20 @@ struct TargetOverlayContentView: View {
         }
     }
 
+    private var trailingGlyphColor: Color {
+        .primary
+    }
+
     private var levelColor: Color {
         switch visualState.levelTreatment {
         case .confirmed:
-            Color.accentColor
+            .primary
         case .pending:
-            Color.accentColor.opacity(0.58)
-        case .muted, .frozen:
-            .secondary
+            Color.primary.opacity(0.45)
+        case .muted:
+            Color.secondary.opacity(0.55)
+        case .frozen:
+            Color.secondary.opacity(0.35)
         case .none:
             .clear
         }
@@ -134,27 +222,36 @@ struct TargetOverlayContentView: View {
 
     private var trackColor: Color {
         accessibilityDisplayOptions.increaseContrast
-            ? Color.primary.opacity(0.22)
-            : Color.secondary.opacity(0.18)
+            ? Color.primary.opacity(0.28)
+            : Color.primary.opacity(0.15)
     }
 
     private var trackBorderColor: Color {
-        accessibilityDisplayOptions.increaseContrast
-            ? Color.primary.opacity(0.48)
-            : Color.secondary.opacity(0.24)
+        Color.primary.opacity(0.55)
     }
 
-    private var borderColor: Color {
-        accessibilityDisplayOptions.increaseContrast
-            ? Color.primary.opacity(0.6)
-            : Color.secondary.opacity(0.24)
+    private var trackBorderWidth: Double {
+        accessibilityDisplayOptions.increaseContrast ? 1 : 0
     }
 
-    private var borderWidth: Double {
-        accessibilityDisplayOptions.increaseContrast ? 1.5 : 1
+    private var tickColor: Color {
+        Color.primary.opacity(accessibilityDisplayOptions.increaseContrast ? 0.45 : 0.28)
     }
 
-    private var captionColor: Color {
-        accessibilityDisplayOptions.increaseContrast ? .primary : .secondary
+    private var panelBorderColor: Color {
+        if accessibilityDisplayOptions.increaseContrast {
+            return Color.primary.opacity(0.6)
+        }
+        if accessibilityDisplayOptions.reduceTransparency {
+            return Color(nsColor: .separatorColor)
+        }
+        return .clear
+    }
+
+    private var panelBorderWidth: Double {
+        if accessibilityDisplayOptions.increaseContrast {
+            return 1.5
+        }
+        return accessibilityDisplayOptions.reduceTransparency ? 1 : 0
     }
 }

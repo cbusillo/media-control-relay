@@ -32,17 +32,11 @@ struct TargetOverlayControllerTests {
             .confirmed(makePresentationValue()),
             .muted(makePresentationValue(isMuted: true)),
         ])
+        #expect(panelPresenter.outputNames == ["Fixture Output", "Fixture Output"])
+        let expectedFrame = OverlayRect(x: 590, y: 526, width: 294, height: 64)
         #expect(panelPresenter.frames == [
-            OverlayPanelGeometry.bottomCenterRect(
-                panelSize: TargetOverlayMetrics.panelSize,
-                on: screen,
-                bottomInset: TargetOverlayMetrics.bottomInset
-            ),
-            OverlayPanelGeometry.bottomCenterRect(
-                panelSize: TargetOverlayMetrics.panelSize,
-                on: screen,
-                bottomInset: TargetOverlayMetrics.bottomInset
-            ),
+            expectedFrame,
+            expectedFrame,
         ])
         #expect(panelPresenter.hideCount == 0)
     }
@@ -112,10 +106,11 @@ struct TargetOverlayControllerTests {
                 routeSnapshot: makeOverlayRoute(),
                 activationRule: makeActivationRule()
             )
-            #expect(panelPresenter.frames.last == OverlayPanelGeometry.bottomCenterRect(
+            #expect(panelPresenter.frames.last == OverlayPanelGeometry.topTrailingRect(
                 panelSize: TargetOverlayMetrics.panelSize,
                 on: expectedScreen,
-                bottomInset: TargetOverlayMetrics.bottomInset
+                topInset: TargetOverlayMetrics.nativeHUDTopInset,
+                trailingInset: TargetOverlayMetrics.nativeHUDTrailingInset
             ))
         }
     }
@@ -143,15 +138,17 @@ struct TargetOverlayControllerTests {
 
         #expect(panelPresenter.showStates.count == 2)
         #expect(panelPresenter.frames == [
-            OverlayPanelGeometry.bottomCenterRect(
+            OverlayPanelGeometry.topTrailingRect(
                 panelSize: TargetOverlayMetrics.panelSize,
                 on: first,
-                bottomInset: TargetOverlayMetrics.bottomInset
+                topInset: TargetOverlayMetrics.nativeHUDTopInset,
+                trailingInset: TargetOverlayMetrics.nativeHUDTrailingInset
             ),
-            OverlayPanelGeometry.bottomCenterRect(
+            OverlayPanelGeometry.topTrailingRect(
                 panelSize: TargetOverlayMetrics.panelSize,
                 on: second,
-                bottomInset: TargetOverlayMetrics.bottomInset
+                topInset: TargetOverlayMetrics.nativeHUDTopInset,
+                trailingInset: TargetOverlayMetrics.nativeHUDTrailingInset
             ),
         ])
         #expect(panelPresenter.hideCount == 0)
@@ -163,8 +160,8 @@ struct TargetOverlayControllerTests {
         let panel = TargetOverlayPanel()
 
         #expect(panel.frame.size == NSSize(
-            width: TargetOverlayMetrics.panelSize.width,
-            height: TargetOverlayMetrics.panelSize.height
+            width: TargetOverlayMetrics.windowSize.width,
+            height: TargetOverlayMetrics.windowSize.height
         ))
         #expect(panel.styleMask.contains(.borderless))
         #expect(panel.styleMask.contains(.nonactivatingPanel))
@@ -185,7 +182,40 @@ struct TargetOverlayControllerTests {
         #expect(panel.animationBehavior == .none)
         #expect(panel.isExcludedFromWindowsMenu)
         #expect(!panel.isAccessibilityElement())
+        #expect(!panel.hasShadow)
         #expect(!panel.isVisible)
+    }
+
+    @Test("Native-style metrics compose the fixed panel")
+    func nativeStyleMetricsComposePanel() {
+        #expect(
+            TargetOverlayMetrics.topPadding +
+                TargetOverlayMetrics.captionRowHeight +
+                TargetOverlayMetrics.rowSpacing +
+                TargetOverlayMetrics.trackRowHeight < TargetOverlayMetrics.panelSize.height
+        )
+        #expect(TargetOverlayMetrics.cornerRadius <= TargetOverlayMetrics.panelSize.height / 2)
+        #expect(TargetOverlayMetrics.leadingGlyphSlotWidth <= TargetOverlayMetrics.glyphPointSize)
+        #expect(TargetOverlayMetrics.trailingGlyphSlotWidth >= TargetOverlayMetrics.glyphPointSize)
+        #expect(TargetOverlayMetrics.trackGroupHeight <= TargetOverlayMetrics.trackRowHeight)
+        #expect(TargetOverlayMetrics.nativeHUDTickCount == 17)
+        #expect(TargetOverlayMetrics.windowSize.width == 310)
+        #expect(TargetOverlayMetrics.windowSize.height == 80)
+
+        let symbolConfiguration = NSImage.SymbolConfiguration(
+            pointSize: TargetOverlayMetrics.glyphPointSize,
+            weight: .semibold
+        )
+        for glyph in [TargetOverlayGlyph.speaker, .muted, .warning] {
+            let image = NSImage(
+                systemSymbolName: glyph.systemName,
+                accessibilityDescription: nil
+            )?.withSymbolConfiguration(symbolConfiguration)
+            #expect(image != nil)
+            #expect(image?.size.width ?? .infinity <
+                TargetOverlayMetrics.leadingGlyphSlotWidth +
+                    TargetOverlayMetrics.trackRowSpacing)
+        }
     }
 
     @Test("Panel presenter shows, positions, and hides the reusable panel")
@@ -195,19 +225,25 @@ struct TargetOverlayControllerTests {
             panel: panel,
             notificationCenter: NotificationCenter()
         )
+        #expect(panel.contentView?.clipsToBounds == false)
         let frame = OverlayRect(
             origin: OverlayPoint(x: -10_000, y: -10_000),
             size: TargetOverlayMetrics.panelSize
         )
 
-        presenter.show(state: .confirmed(makePresentationValue()), frame: frame)
+        presenter.show(
+            state: .confirmed(makePresentationValue()),
+            outputName: "Fixture Output",
+            frame: frame
+        )
         defer { presenter.hide() }
 
+        let windowFrame = TargetOverlayMetrics.windowFrame(containing: frame)
         #expect(panel.frame == NSRect(
-            x: frame.origin.x,
-            y: frame.origin.y,
-            width: frame.size.width,
-            height: frame.size.height
+            x: windowFrame.origin.x,
+            y: windowFrame.origin.y,
+            width: windowFrame.size.width,
+            height: windowFrame.size.height
         ))
         #expect(panel.isVisible)
         #expect(!panel.isKeyWindow)
@@ -228,7 +264,6 @@ struct TargetOverlayControllerTests {
             #expect(!visualState.isVisible)
             #expect(visualState.glyph == nil)
             #expect(visualState.level == nil)
-            #expect(visualState.caption == nil)
         }
 
         let pendingCold = TargetOverlayVisualState(presentationState: .pendingCold(.up))
@@ -236,7 +271,6 @@ struct TargetOverlayControllerTests {
         #expect(pendingCold.glyph == .speaker)
         #expect(pendingCold.level == nil)
         #expect(pendingCold.levelTreatment == .none)
-        #expect(pendingCold.caption == .adjusting)
 
         let pendingBaseline = TargetOverlayVisualState(
             presentationState: .pendingBaseline(.down, value)
@@ -244,39 +278,33 @@ struct TargetOverlayControllerTests {
         #expect(pendingBaseline.glyph == .speakerMedium)
         #expect(pendingBaseline.level == 0.5)
         #expect(pendingBaseline.levelTreatment == .pending)
-        #expect(pendingBaseline.caption == .adjusting)
 
         let confirmed = TargetOverlayVisualState(presentationState: .confirmed(value))
         #expect(confirmed.glyph == .speakerMedium)
         #expect(confirmed.level == 0.5)
         #expect(confirmed.levelTreatment == .confirmed)
-        #expect(confirmed.caption == .percentage(0.5))
 
         for rail in [MediaTargetPresentationRail.minimum, .maximum] {
             let visualState = TargetOverlayVisualState(presentationState: .rail(rail, value))
             #expect(visualState.glyph == .speakerMedium)
             #expect(visualState.level == 0.5)
             #expect(visualState.levelTreatment == .confirmed)
-            #expect(visualState.caption == .percentage(0.5))
         }
 
         let muted = TargetOverlayVisualState(presentationState: .muted(mutedValue))
         #expect(muted.glyph == .muted)
         #expect(muted.level == 0.5)
         #expect(muted.levelTreatment == .muted)
-        #expect(muted.caption == .muted)
 
         let failedWithValue = TargetOverlayVisualState(presentationState: .failed(value))
         #expect(failedWithValue.glyph == .warning)
         #expect(failedWithValue.level == 0.5)
         #expect(failedWithValue.levelTreatment == .frozen)
-        #expect(failedWithValue.caption == .unavailable)
 
         let failedWithoutValue = TargetOverlayVisualState(presentationState: .failed(nil))
         #expect(failedWithoutValue.glyph == .warning)
         #expect(failedWithoutValue.level == nil)
         #expect(failedWithoutValue.levelTreatment == .none)
-        #expect(failedWithoutValue.caption == .unavailable)
     }
 
     @Test("Visual state bounds levels and percentage semantics")
@@ -292,10 +320,8 @@ struct TargetOverlayControllerTests {
         )
 
         #expect(minimumVisualState.level == 0)
-        #expect(minimumVisualState.caption == .percentage(0))
         #expect(minimumVisualState.glyph == .speaker)
         #expect(maximumVisualState.level == 1)
-        #expect(maximumVisualState.caption == .percentage(1))
         #expect(maximumVisualState.glyph == .speakerHigh)
 
         #expect(TargetOverlayVisualState(
@@ -322,9 +348,39 @@ struct TargetOverlayControllerTests {
             notificationCenter: notificationCenter
         )
 
-        #expect(panel.hasShadow)
+        #expect(!panel.hasShadow)
         #expect(!panel.isAccessibilityElement())
         #expect(!panel.isVisible)
+        if #available(macOS 26.0, *) {
+            let glass = presenter.surfaceView as? NSGlassEffectView
+            #expect(glass != nil)
+            #expect(glass?.style == .regular)
+            #expect(glass?.cornerRadius == CGFloat(TargetOverlayMetrics.cornerRadius))
+            #expect(glass?.tintColor == nil)
+            #expect(glass?.contentView === presenter.contentView)
+            #expect(glass?.isAccessibilityElement() == false)
+            let interactiveSetter = NSSelectorFromString("setEffectIsInteractive:")
+            if #available(macOS 27.0, *), glass?.responds(to: interactiveSetter) == true {
+                #expect(glass?.value(forKey: "effectIsInteractive") as? Bool == false)
+            }
+        }
+
+        let initialSurfaceView = presenter.surfaceView
+        optionsProvider.options = TargetOverlayAccessibilityDisplayOptions(
+            reduceTransparency: false,
+            increaseContrast: true
+        )
+        notificationCenter.post(
+            name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
+            object: nil
+        )
+
+        #expect(presenter.surfaceView === initialSurfaceView)
+        if #available(macOS 26.0, *) {
+            #expect(presenter.contentView.rootView.surfaceStyle == .contentOnly)
+        } else {
+            #expect(presenter.contentView.rootView.surfaceStyle == .regularMaterial)
+        }
 
         optionsProvider.options = TargetOverlayAccessibilityDisplayOptions(
             reduceTransparency: true,
@@ -337,6 +393,8 @@ struct TargetOverlayControllerTests {
 
         #expect(presenter.accessibilityDisplayOptions == optionsProvider.options)
         #expect(!panel.hasShadow)
+        #expect(presenter.surfaceView === presenter.contentView)
+        #expect(presenter.contentView.rootView.surfaceStyle == .opaque)
         #expect(!panel.isVisible)
     }
 }
@@ -357,11 +415,13 @@ private final class OverlayScreenProviderStub: OverlayScreenProviding {
 @MainActor
 private final class OverlayPanelPresenterSpy: TargetOverlayPanelPresenting {
     private(set) var showStates: [MediaTargetPresentationState] = []
+    private(set) var outputNames: [String] = []
     private(set) var frames: [OverlayRect] = []
     private(set) var hideCount = 0
 
-    func show(state: MediaTargetPresentationState, frame: OverlayRect) {
+    func show(state: MediaTargetPresentationState, outputName: String, frame: OverlayRect) {
         showStates.append(state)
+        outputNames.append(outputName)
         frames.append(frame)
     }
 

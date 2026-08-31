@@ -172,20 +172,21 @@ public enum OverlayPlacementResolver {
 }
 
 public enum OverlayPanelGeometry {
-    public static func bottomCenterRect(
+    public static func topTrailingRect(
         panelSize: OverlaySize,
         on screen: OverlayScreenDescriptor,
-        bottomInset: Double
+        topInset: Double,
+        trailingInset: Double
     ) -> OverlayRect {
         let visibleFrame = normalized(screen.visibleFrame)
         let scale = normalizedScale(screen.backingScaleFactor)
         let width = alignedDimension(panelSize.width, limit: visibleFrame.size.width, scale: scale)
         let height = alignedDimension(panelSize.height, limit: visibleFrame.size.height, scale: scale)
 
-        let desiredX = screen.frame.origin.x + (screen.frame.size.width - width) / 2
-        let desiredY = visibleFrame.origin.y + max(0, finite(bottomInset, fallback: 0))
         let maximumX = visibleFrame.origin.x + visibleFrame.size.width - width
         let maximumY = visibleFrame.origin.y + visibleFrame.size.height - height
+        let desiredX = maximumX - max(0, finite(trailingInset, fallback: 0))
+        let desiredY = maximumY - max(0, finite(topInset, fallback: 0))
 
         let x = alignedCoordinate(
             clamped(desiredX, minimum: visibleFrame.origin.x, maximum: maximumX),
