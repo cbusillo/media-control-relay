@@ -159,8 +159,10 @@ SIGNATURE_DETAILS="$(codesign -dv --verbose=4 "${APP}" 2>&1)"
 grep -Fq "Authority=${IDENTITY}" <<< "${SIGNATURE_DETAILS}"
 grep -Eq 'flags=.*runtime' <<< "${SIGNATURE_DETAILS}"
 
-lipo -verify_arch x86_64 arm64 \
-  "${APP}/Contents/MacOS/Media Control Relay"
+lipo "${APP}/Contents/MacOS/Media Control Relay" \
+  -verify_arch x86_64
+lipo "${APP}/Contents/MacOS/Media Control Relay" \
+  -verify_arch arm64
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' \
   "${APP}/Contents/Info.plist")" = "${EXPECTED_BUNDLE_ID}"
 test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
