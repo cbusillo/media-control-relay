@@ -53,7 +53,7 @@ PROFILE="MediaControlRelay"
 IDENTITY="Developer ID Application: <organization> (<team-id>)"
 EXPECTED_BUNDLE_ID="com.shinycomputers.media-control-relay"
 EXPECTED_VERSION="0.1.0"
-EXPECTED_BUILD="5"
+EXPECTED_BUILD="6"
 ROLLBACK_EXECUTABLE_SHA256="<accepted-predecessor-executable-sha256>"
 ARTIFACT_ROOT="${HOME}/.code/artifacts/media-control-relay/${EXPECTED_COMMIT:0:7}-notarization"
 ARCHIVE="${ARTIFACT_ROOT}/MediaControlRelay.xcarchive"
@@ -85,6 +85,18 @@ The rollback copy is mandatory for an update qualification because it preserves
 the exact previously accepted installation. A genuinely clean installation may
 set `HAS_ROLLBACK=false`; it must not borrow a designated requirement or claim a
 rollback rehearsal.
+
+## Launch at Login
+
+Build 6 uses the signed main application as its login item through
+`SMAppService.mainApp`; it does not install or copy a host-specific
+`LaunchAgent`. The Settings toggle reads the Service Management status on
+launch and activation, calls `register()` or `unregister()`, and updates the
+display only after reading the resulting status back. If macOS reports that
+approval is required, use **Open Login Items Settings** and approve Media
+Control Relay in System Settings under **General → Login Items**. A failed
+operation or unavailable service is shown as a recovery state rather than as
+enabled.
 
 ## Archive and Sign
 

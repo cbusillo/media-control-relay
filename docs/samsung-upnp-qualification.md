@@ -155,6 +155,11 @@ command made the Gatekeeper pipeline return false and the local log recorded
 artifact result. Strict verification and Gatekeeper assessment passed before
 restart and in the corrected manual check on the new boot.
 
+The build-4 qualification below predates app-managed launch at login. Build 6
+introduces the supported `SMAppService.mainApp` path; automatic launch behavior
+requires separate signed-app qualification before the legacy prototype
+LaunchAgent is retired.
+
 After the observer was changed to use the system `/usr/bin/grep`, it was invoked
 manually during the same login, about 15 minutes after boot. It issued an app
 open request, verified that exactly one app process was running afterward, and
