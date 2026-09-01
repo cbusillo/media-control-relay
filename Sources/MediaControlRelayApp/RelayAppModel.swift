@@ -45,7 +45,8 @@ struct AccessibilityAccessClient: Sendable {
 @Observable
 final class RelayAppModel {
     var relayState: RelayState = .unconfigured
-    var launchAtLogin = false
+    private(set) var launchAtLoginState: LaunchAtLoginState = .notRegistered
+    private(set) var launchAtLoginOperationFailure: LaunchAtLoginOperation?
     var inputMonitoringAuthorization: InputMonitoringAuthorization = .notDetermined
     var inputMonitoringUnavailable = false
     var accessibilityAuthorization: AccessibilityAuthorization = .notDetermined
@@ -79,6 +80,7 @@ final class RelayAppModel {
     private let configurationStore: RelayConfigurationStore
     private let inputMonitoringAccess: InputMonitoringAccessClient
     private let accessibilityAccess: AccessibilityAccessClient
+    private let launchAtLoginClient: LaunchAtLoginClient
     private let volumeKeySuppressionTiming: VolumeKeySuppressionTiming
     private let targetOverlayPresenter: any TargetOverlayPresenting
     private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
@@ -128,6 +130,7 @@ final class RelayAppModel {
         volumeKeyMonitor: any VolumeKeyMonitoring = EventTapVolumeKeyMonitor(),
         inputMonitoringAccess: InputMonitoringAccessClient = .live,
         accessibilityAccess: AccessibilityAccessClient = .live,
+        launchAtLoginClient: LaunchAtLoginClient = .live,
         applicationNotificationCenter: NotificationCenter = .default,
         discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
         targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
@@ -146,6 +149,7 @@ final class RelayAppModel {
         self.volumeKeyMonitor = volumeKeyMonitor
         self.inputMonitoringAccess = inputMonitoringAccess
         self.accessibilityAccess = accessibilityAccess
+        self.launchAtLoginClient = launchAtLoginClient
         self.volumeKeySuppressionTiming = volumeKeySuppressionTiming
         volumeKeyMonitor.setSuppressionTiming(volumeKeySuppressionTiming)
         self.targetOverlayPresenter = targetOverlayPresenter
@@ -248,6 +252,7 @@ final class RelayAppModel {
                 self?.networkPathObserver.refresh()
                 self?.resolveAccessibilityAuthorization()
                 self?.refreshInputMonitoring()
+                self?.refreshLaunchAtLogin()
             }
         }
         applicationTerminationToken = applicationNotificationCenter.addObserver(
@@ -263,7 +268,17 @@ final class RelayAppModel {
         networkPathObserver.start()
         resolveAccessibilityAuthorization()
         refreshInputMonitoring()
+        refreshLaunchAtLogin()
         refreshTransportState()
+    }
+
+    var launchAtLogin: Bool {
+        get {
+            launchAtLoginState.isEnabled
+        }
+        set {
+            setLaunchAtLogin(newValue)
+        }
     }
 
     var buildDescription: String {
@@ -433,6 +448,34 @@ final class RelayAppModel {
         requestedInputMonitoringThisLaunch = true
         inputMonitoringAccess.request()
         refreshInputMonitoring()
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        let operation: LaunchAtLoginOperation = enabled ? .register : .unregister
+        launchAtLoginOperationFailure = nil
+        do {
+            if enabled {
+                try launchAtLoginClient.register()
+            } else {
+                try launchAtLoginClient.unregister()
+            }
+        } catch {
+            launchAtLoginOperationFailure = operation
+        }
+        readLaunchAtLoginStatus()
+    }
+
+    func refreshLaunchAtLogin() {
+        launchAtLoginOperationFailure = nil
+        readLaunchAtLoginStatus()
+    }
+
+    private func readLaunchAtLoginStatus() {
+        launchAtLoginState = launchAtLoginClient.status()
+    }
+
+    func openLaunchAtLoginSettings() {
+        launchAtLoginClient.openSystemSettingsLoginItems()
     }
 
     func quitApplication() {

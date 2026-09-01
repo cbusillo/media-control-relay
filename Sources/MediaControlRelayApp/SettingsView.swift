@@ -178,11 +178,37 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Launch at login", isOn: $model.launchAtLogin)
-                        .disabled(true)
-                    Text("Launch at login is not part of this preview.")
+                    Toggle("Launch at login", isOn: Binding(
+                        get: { model.launchAtLogin },
+                        set: { model.setLaunchAtLogin($0) }
+                    ))
+                    .disabled(model.launchAtLoginState == .notFound)
+                    LabeledContent("Status") {
+                        Label {
+                            Text(model.launchAtLoginState.title)
+                        } icon: {
+                            Image(systemName: model.launchAtLoginState.systemImage)
+                        }
+                    }
+                    Text(model.launchAtLoginState.detail)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let operationFailure = model.launchAtLoginOperationFailure {
+                        Text(operationFailure.failureDetail)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if model.launchAtLoginState.recoveryActionAvailable {
+                        Button("Open Login Items Settings") {
+                            model.openLaunchAtLoginSettings()
+                        }
+                        .accessibilityLabel("Open Login Items Settings")
+                        .accessibilityHint("Opens System Settings so launch at login can be approved")
+                    }
                 } header: {
                     SettingsSectionHeader("General")
                 }

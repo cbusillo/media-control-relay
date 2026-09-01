@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import MediaControlCore
+import ServiceManagement
 import Testing
 import UPnPMediaTarget
 @testable import Media_Control_Relay
@@ -8,6 +9,78 @@ import UPnPMediaTarget
 @Suite("Relay app target health", .serialized)
 @MainActor
 struct RelayAppModelTests {
+    @Test("Service Management statuses map to explicit launch-at-login states")
+    func launchAtLoginStatusMapping() {
+        #expect(LaunchAtLoginState(serviceStatus: .notRegistered) == .notRegistered)
+        #expect(LaunchAtLoginState(serviceStatus: .enabled) == .enabled)
+        #expect(LaunchAtLoginState(serviceStatus: .requiresApproval) == .requiresApproval)
+        #expect(LaunchAtLoginState(serviceStatus: .notFound) == .notFound)
+    }
+
+    @Test("Launch-at-login registration and unregistration use confirmed read-back")
+    func launchAtLoginRegisterAndUnregister() {
+        let launchAtLogin = LaunchAtLoginStub(state: .notRegistered)
+        let harness = makeHarness(
+            configuration: nil,
+            session: nil,
+            launchAtLoginClient: launchAtLogin.client
+        )
+
+        #expect(harness.model.launchAtLoginState == .notRegistered)
+        harness.model.setLaunchAtLogin(true)
+        #expect(launchAtLogin.registerCount == 1)
+        #expect(harness.model.launchAtLoginState == .enabled)
+        #expect(harness.model.launchAtLogin)
+
+        harness.model.setLaunchAtLogin(false)
+        #expect(launchAtLogin.unregisterCount == 1)
+        #expect(harness.model.launchAtLoginState == .notRegistered)
+        #expect(!harness.model.launchAtLogin)
+        harness.cleanup()
+    }
+
+    @Test("Launch-at-login failures preserve confirmed Service Management status")
+    func launchAtLoginOperationFailurePreservesStatus() {
+        let launchAtLogin = LaunchAtLoginStub(state: .notRegistered)
+        launchAtLogin.registerError = LaunchAtLoginTestError.failed
+        let harness = makeHarness(
+            configuration: nil,
+            session: nil,
+            launchAtLoginClient: launchAtLogin.client
+        )
+
+        harness.model.setLaunchAtLogin(true)
+        #expect(harness.model.launchAtLoginState == .notRegistered)
+        #expect(harness.model.launchAtLoginOperationFailure == .register)
+        #expect(!harness.model.launchAtLogin)
+
+        launchAtLogin.state = .enabled
+        launchAtLogin.unregisterError = LaunchAtLoginTestError.failed
+        harness.model.setLaunchAtLogin(false)
+        #expect(harness.model.launchAtLoginState == .enabled)
+        #expect(harness.model.launchAtLoginOperationFailure == .unregister)
+        #expect(harness.model.launchAtLogin)
+        harness.cleanup()
+    }
+
+    @Test("Approval-required launch at login exposes Login Items recovery")
+    func launchAtLoginApprovalRecovery() {
+        let launchAtLogin = LaunchAtLoginStub(state: .requiresApproval)
+        let harness = makeHarness(
+            configuration: nil,
+            session: nil,
+            launchAtLoginClient: launchAtLogin.client
+        )
+
+        #expect(harness.model.launchAtLoginState == .requiresApproval)
+        #expect(!harness.model.launchAtLogin)
+        #expect(harness.model.launchAtLoginState.recoveryActionAvailable)
+
+        harness.model.openLaunchAtLoginSettings()
+        #expect(launchAtLogin.openSettingsCount == 1)
+        harness.cleanup()
+    }
+
     @Test("Matching UPnP configuration becomes active after a successful probe")
     func successfulProbeBecomesActive() async {
         let target = AppModelTargetStub()
@@ -1467,6 +1540,7 @@ private func makeHarness(
         request: {}
     ),
     accessibilityAccess: AccessibilityAccessClient = .denied,
+    launchAtLoginClient: LaunchAtLoginClient? = nil,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
     let suiteName = "com.shinycomputers.media-control-relay.app-model-tests.\(UUID().uuidString)"
@@ -1480,6 +1554,12 @@ private func makeHarness(
         initialSnapshot: initialNetworkSnapshot
     )
     let applicationNotificationCenter = NotificationCenter()
+    let resolvedLaunchAtLoginClient = launchAtLoginClient ?? LaunchAtLoginClient(
+        status: { .notRegistered },
+        register: {},
+        unregister: {},
+        openSystemSettingsLoginItems: {}
+    )
     let model = RelayAppModel(
         routeObserver: routeObserver,
         networkPathObserver: networkPathObserver,
@@ -1487,6 +1567,7 @@ private func makeHarness(
         volumeKeyMonitor: volumeKeyMonitor,
         inputMonitoringAccess: inputMonitoringAccess,
         accessibilityAccess: accessibilityAccess,
+        launchAtLoginClient: resolvedLaunchAtLoginClient,
         applicationNotificationCenter: applicationNotificationCenter,
         discovery: discovery,
         targetPresentationTiming: targetPresentationTiming,
@@ -1504,6 +1585,47 @@ private func makeHarness(
         defaults: defaults,
         suiteName: suiteName
     )
+}
+
+private enum LaunchAtLoginTestError: Error {
+    case failed
+}
+
+@MainActor
+private final class LaunchAtLoginStub {
+    var state: LaunchAtLoginState
+    var registerError: Error?
+    var unregisterError: Error?
+    var registerCount = 0
+    var unregisterCount = 0
+    var openSettingsCount = 0
+
+    init(state: LaunchAtLoginState) {
+        self.state = state
+    }
+
+    var client: LaunchAtLoginClient {
+        LaunchAtLoginClient(
+            status: { self.state },
+            register: {
+                self.registerCount += 1
+                if let registerError = self.registerError {
+                    throw registerError
+                }
+                self.state = .enabled
+            },
+            unregister: {
+                self.unregisterCount += 1
+                if let unregisterError = self.unregisterError {
+                    throw unregisterError
+                }
+                self.state = .notRegistered
+            },
+            openSystemSettingsLoginItems: {
+                self.openSettingsCount += 1
+            }
+        )
+    }
 }
 
 @MainActor
