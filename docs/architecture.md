@@ -320,9 +320,12 @@ the initial scope.
 
 ### Developer ID
 
-The direct build is the first release path. Release automation will add stable
-Developer ID signing and notarization on top of the hardened-runtime build so
-Input Monitoring approval survives updates. The foundation has no self-updater.
+The direct build is the first release path. Developer ID signing and
+notarization preserve the accepted designated requirement on top of the
+hardened-runtime build so Input Monitoring approval survives updates. The
+[Developer ID notarization runbook](developer-id-notarization.md) defines the
+exact-commit archive, Keychain-profile submission, stapling, quarantine,
+installation, and rollback path. The foundation has no self-updater.
 
 ### Mac App Store
 
