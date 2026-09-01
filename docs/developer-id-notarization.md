@@ -53,7 +53,7 @@ PROFILE="MediaControlRelay"
 IDENTITY="Developer ID Application: <organization> (<team-id>)"
 EXPECTED_BUNDLE_ID="com.shinycomputers.media-control-relay"
 EXPECTED_VERSION="0.1.0"
-EXPECTED_BUILD="6"
+EXPECTED_BUILD="7"
 ROLLBACK_EXECUTABLE_SHA256="<accepted-predecessor-executable-sha256>"
 ARTIFACT_ROOT="${HOME}/.code/artifacts/media-control-relay/${EXPECTED_COMMIT:0:7}-notarization"
 ARCHIVE="${ARTIFACT_ROOT}/MediaControlRelay.xcarchive"
@@ -88,7 +88,7 @@ rollback rehearsal.
 
 ## Launch at Login
 
-Build 6 uses the signed main application as its login item through
+Build 7 uses the signed main application as its login item through
 `SMAppService.mainApp`; it does not install or copy a host-specific
 `LaunchAgent`. The Settings toggle reads the Service Management status on
 launch and activation, calls `register()` or `unregister()`, and updates the
@@ -97,6 +97,11 @@ approval is required, use **Open Login Items Settings** and approve Media
 Control Relay in System Settings under **General → Login Items**. A failed
 operation or unavailable service is shown as a recovery state rather than as
 enabled.
+
+An initial `.notFound` status remains registration-ready. This state can occur
+before Service Management has created the main-app record, so the Settings
+toggle must allow one registration attempt and then display the confirmed
+read-back or operation failure.
 
 ## Archive and Sign
 

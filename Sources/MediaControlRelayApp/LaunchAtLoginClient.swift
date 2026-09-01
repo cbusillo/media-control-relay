@@ -11,6 +11,7 @@ enum LaunchAtLoginState: Equatable {
     case enabled
     case requiresApproval
     case notFound
+    case unknown
 
     init(serviceStatus: SMAppService.Status) {
         switch serviceStatus {
@@ -23,7 +24,7 @@ enum LaunchAtLoginState: Equatable {
         case .notFound:
             self = .notFound
         @unknown default:
-            self = .notFound
+            self = .unknown
         }
     }
 
@@ -40,6 +41,8 @@ enum LaunchAtLoginState: Equatable {
         case .requiresApproval:
             return "Approval required"
         case .notFound:
+            return "Not registered"
+        case .unknown:
             return "Unavailable"
         }
     }
@@ -53,7 +56,9 @@ enum LaunchAtLoginState: Equatable {
         case .requiresApproval:
             return "Allow Media Control Relay in System Settings → General → Login Items to finish enabling it."
         case .notFound:
-            return "macOS could not find this app as a Service Management login item."
+            return "macOS has not registered this app as a login item. Turn on Launch at login to try again."
+        case .unknown:
+            return "macOS returned an unrecognized launch-at-login status."
         }
     }
 
@@ -65,7 +70,7 @@ enum LaunchAtLoginState: Equatable {
             return "checkmark.circle.fill"
         case .requiresApproval:
             return "exclamationmark.triangle"
-        case .notFound:
+        case .notFound, .unknown:
             return "questionmark.circle"
         }
     }
@@ -74,7 +79,16 @@ enum LaunchAtLoginState: Equatable {
         switch self {
         case .requiresApproval:
             return true
+        case .notRegistered, .enabled, .notFound, .unknown:
+            return false
+        }
+    }
+
+    var toggleAvailable: Bool {
+        switch self {
         case .notRegistered, .enabled, .notFound:
+            return true
+        case .requiresApproval, .unknown:
             return false
         }
     }
