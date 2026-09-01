@@ -55,6 +55,9 @@ final class RelayAppModel {
     var observedVolumeKeyPressCount = 0
     var observedVolumeActionCount = 0
     var lastObservedVolumeAction: VolumeAction?
+    private(set) var externalVolumeActionsAccepted = 0
+    private(set) var externalVolumeActionsRejected = 0
+    private(set) var externalVolumeActionsRateLimited = 0
     var routeSnapshot = RouteSnapshot(audioOutput: nil, displays: [])
     var routeObservationState: RouteObservationState = .stopped
     var activationMatches = false
@@ -82,6 +85,8 @@ final class RelayAppModel {
     private let accessibilityAccess: AccessibilityAccessClient
     private let launchAtLoginClient: LaunchAtLoginClient
     private let volumeKeySuppressionTiming: VolumeKeySuppressionTiming
+    private let monotonicTimeProvider: MonotonicTimeProvider
+    private let externalVolumeActionDuplicateIntervalNanoseconds: UInt64
     private let targetOverlayPresenter: any TargetOverlayPresenting
     private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
     private let coordinator: RelayCoordinator
@@ -112,6 +117,7 @@ final class RelayAppModel {
     private var requestedInputMonitoringThisLaunch = false
     private let accessibilityRequestedKey = "accessibilityAccessRequested"
     private var requestedAccessibilityThisLaunch = false
+    private var lastExternalVolumeAction: (action: VolumeAction, timestamp: UInt64)?
 
     private struct TargetCommandRequest: Sendable {
         let command: RelayCommand
@@ -135,6 +141,8 @@ final class RelayAppModel {
         discovery: MediaTargetDiscoveryModel = MediaTargetDiscoveryModel(),
         targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
         volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
+        monotonicTimeProvider: MonotonicTimeProvider = .live,
+        externalVolumeActionDuplicateIntervalNanoseconds: UInt64 = 100_000_000,
         targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
         mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
             MediaTargetSessionFactory.make(configuration: $0)
@@ -151,6 +159,9 @@ final class RelayAppModel {
         self.accessibilityAccess = accessibilityAccess
         self.launchAtLoginClient = launchAtLoginClient
         self.volumeKeySuppressionTiming = volumeKeySuppressionTiming
+        self.monotonicTimeProvider = monotonicTimeProvider
+        self.externalVolumeActionDuplicateIntervalNanoseconds =
+            externalVolumeActionDuplicateIntervalNanoseconds
         volumeKeyMonitor.setSuppressionTiming(volumeKeySuppressionTiming)
         self.targetOverlayPresenter = targetOverlayPresenter
         self.discovery = discovery
@@ -350,6 +361,9 @@ final class RelayAppModel {
             "target_recovery_attempts": targetRecoveryAttempts.formatted(),
             "volume_actions_emitted": observedVolumeActionCount.formatted(),
             "volume_events_observed": observedVolumeKeyEventCount.formatted(),
+            "external_actions_accepted": externalVolumeActionsAccepted.formatted(),
+            "external_actions_rejected": externalVolumeActionsRejected.formatted(),
+            "external_actions_rate_limited": externalVolumeActionsRateLimited.formatted(),
             "target_connection": targetConnectionDiagnosticName,
             "network_path": networkPathSnapshot.status.rawValue,
             "network_transitions": networkTransitionCount.formatted(),
@@ -372,6 +386,9 @@ final class RelayAppModel {
             "target_recovery_attempts",
             "volume_actions_emitted",
             "volume_events_observed",
+            "external_actions_accepted",
+            "external_actions_rejected",
+            "external_actions_rate_limited",
             "target_connection",
             "network_path",
             "network_transitions",
@@ -1219,6 +1236,30 @@ final class RelayAppModel {
             isHeldRepeat: false,
             recordAsObservedInput: false
         )
+    }
+
+    func handleExternalVolumeAction(_ action: VolumeAction) {
+        externalVolumeActionsAccepted += 1
+        let timestamp = monotonicTimeProvider.now()
+        if let lastExternalVolumeAction,
+           lastExternalVolumeAction.action == action,
+           timestamp >= lastExternalVolumeAction.timestamp,
+           timestamp - lastExternalVolumeAction.timestamp
+                < externalVolumeActionDuplicateIntervalNanoseconds {
+            externalVolumeActionsRateLimited += 1
+            return
+        }
+
+        lastExternalVolumeAction = (action, timestamp)
+        dispatchVolumeAction(
+            action,
+            isHeldRepeat: false,
+            recordAsObservedInput: false
+        )
+    }
+
+    func recordRejectedExternalVolumeURL(count: Int = 1) {
+        externalVolumeActionsRejected += max(0, count)
     }
 
     private func dispatchVolumeAction(

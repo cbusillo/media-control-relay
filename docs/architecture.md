@@ -66,6 +66,22 @@ Future control-surface and target adapters remain optional boundaries around
 the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
 integration must not make the core app depend on that device.
 
+### External Volume Actuator
+
+`MediaControlRelayApp` owns the vendor-neutral custom URL contract. It accepts
+only `media-control-relay://control/volume/up`,
+`media-control-relay://control/volume/down`, and
+`media-control-relay://control/volume/mute`. Parsing stays out of
+`MediaControlCore`, and the app delegate queues accepted actions during
+cold-launch delivery without activating or presenting a window. Once the model
+is attached, each action uses the existing non-physical/menu dispatch path with
+no held-repeat state and no physical-input accounting.
+
+The delegate performs no caller discovery and records no URL text. A small
+monotonic-time duplicate limit runs before the routing reducer. The actuator is
+an optional local control surface, not a bundled Loupedeck plugin, installer, or
+profile mutator.
+
 The current UI reports only facts that are implemented. Preview commands remain
 local, compatible selected renderers use the real local-network target adapter,
 and Settings distinguishes Input Monitoring from the optional Accessibility
