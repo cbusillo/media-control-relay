@@ -141,6 +141,22 @@ display-absent diagnostics are deferred to issue #23.
 No real device, Samsung transport, network, pairing, or credential behavior is
 claimed by this milestone.
 
+## External Custom URL Actions
+
+The menu-bar app registers one custom URL scheme with exactly three canonical
+routes: `media-control-relay://control/volume/up`,
+`media-control-relay://control/volume/down`, and
+`media-control-relay://control/volume/mute`. The app delegate accepts only those
+exact strings, rejects alternate casing, percent encoding, credentials, ports,
+queries, fragments, unknown hosts, and extra path components, and never logs the
+raw URL.
+
+Cold-launch URL delivery is held until `RelayAppModel` is available. Delivery
+does not open or activate a setup window. Accepted actions enter the same
+non-physical dispatch path used by menu controls with held-repeat disabled and
+physical-input counters untouched. A monotonic-time duplicate limit runs before
+the reducer; rejected and rate-limited totals are bounded diagnostics only.
+
 The later signed pairing-free Samsung UPnP matrix is recorded separately in
 [`samsung-upnp-qualification.md`](samsung-upnp-qualification.md). That record
 does not broaden this milestone's preview-target claims.

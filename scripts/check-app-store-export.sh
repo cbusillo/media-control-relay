@@ -7,16 +7,19 @@ export_options="$repo_root/Config/AppStoreExportOptions.plist"
 validation_options="$repo_root/Config/AppStoreValidationOptions.plist"
 app_store_entitlements="$repo_root/Config/MediaControlRelayAppStore.entitlements"
 direct_entitlements="$repo_root/Config/MediaControlRelay.entitlements"
+info_plist="$repo_root/Config/MediaControlRelay-Info.plist"
 export_json="$(mktemp)"
 validation_json="$(mktemp)"
 app_store_entitlements_json="$(mktemp)"
 direct_entitlements_json="$(mktemp)"
-trap 'rm -f "$export_json" "$validation_json" "$app_store_entitlements_json" "$direct_entitlements_json"' EXIT HUP INT TERM
+info_json="$(mktemp)"
+trap 'rm -f "$export_json" "$validation_json" "$app_store_entitlements_json" "$direct_entitlements_json" "$info_json"' EXIT HUP INT TERM
 
 plutil -convert json -o "$export_json" "$export_options"
 plutil -convert json -o "$validation_json" "$validation_options"
 plutil -convert json -o "$app_store_entitlements_json" "$app_store_entitlements"
 plutil -convert json -o "$direct_entitlements_json" "$direct_entitlements"
+plutil -convert json -o "$info_json" "$info_plist"
 
 ruby -rjson -ryaml -e '
   export_options = JSON.parse(File.read(ARGV.fetch(0)))
@@ -77,5 +80,11 @@ ruby -rjson -ryaml -e '
   direct_entitlements = JSON.parse(File.read(ARGV.fetch(4)))
   abort "Direct builds must not declare application entitlements" unless
     direct_entitlements == {}
+  info_plist = JSON.parse(File.read(ARGV.fetch(5)))
+  expected_url_types = [
+    { "CFBundleURLSchemes" => ["media-control-relay"] },
+  ]
+  abort "Info.plist must register exactly the media-control-relay URL scheme" unless
+    info_plist["CFBundleURLTypes"] == expected_url_types
 ' "$export_json" "$validation_json" "$repo_root/project.yml" \
-  "$app_store_entitlements_json" "$direct_entitlements_json"
+  "$app_store_entitlements_json" "$direct_entitlements_json" "$info_json"
