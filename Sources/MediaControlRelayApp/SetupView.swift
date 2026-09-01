@@ -17,6 +17,7 @@ struct SetupView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Media Control Relay")
                             .font(.largeTitle.weight(.semibold))
+                            .accessibilityAddTraits(.isHeader)
                         Text("Route Mac volume controls to a preview target or compatible local media renderer")
                             .foregroundStyle(.secondary)
                         Label {
@@ -34,6 +35,7 @@ struct SetupView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("How setup will work")
                         .font(.headline)
+                        .accessibilityAddTraits(.isHeader)
 
                     SetupStepRow(
                         number: 1,
@@ -49,6 +51,8 @@ struct SetupView: View {
                         openSettings()
                     }
                     .buttonStyle(.link)
+                    .accessibilityLabel("Open Volume Key Settings")
+                    .accessibilityHint("Opens Media Control Relay Settings")
                     SetupStepRow(
                         number: 3,
                         title: "Verify volume routing",

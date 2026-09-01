@@ -33,14 +33,17 @@ struct MenuBarStatusView: View {
                 Button("Volume Down", systemImage: "speaker.minus") {
                     model.handleMenuVolumeAction(.down)
                 }
+                .accessibilityLabel("Volume Down")
                 .accessibilityHint(targetControlAccessibilityHint)
                 Button("Mute", systemImage: "speaker.slash") {
                     model.handleMenuVolumeAction(.mute)
                 }
+                .accessibilityLabel("Mute")
                 .accessibilityHint(targetControlAccessibilityHint)
                 Button("Volume Up", systemImage: "speaker.plus") {
                     model.handleMenuVolumeAction(.up)
                 }
+                .accessibilityLabel("Volume Up")
                 .accessibilityHint(targetControlAccessibilityHint)
             }
             .labelStyle(.iconOnly)
@@ -52,16 +55,20 @@ struct MenuBarStatusView: View {
                 openWindow(id: "setup")
                 NSApp.activate()
             }
+            .accessibilityLabel("See Setup Preview")
+            .accessibilityHint("Opens the Media Control Relay setup window")
 
             SettingsLink {
-                Text("Settings…")
+                Text("Open Settings…")
             }
+            .accessibilityLabel("Open Settings")
 
             Divider()
 
             Button("Quit Media Control Relay") {
                 NSApplication.shared.terminate(nil)
             }
+            .accessibilityLabel("Quit Media Control Relay")
         }
         .frame(width: 280)
     }

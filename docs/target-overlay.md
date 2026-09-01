@@ -66,6 +66,9 @@ activating the app. Instead, `RelayAppModel` publishes the latest confirmed
 target status to the accessible menu-bar item and menu window, where VoiceOver
 users can inspect it and use explicit volume controls whenever the configured
 target is active. Disabled controls explain that active-target requirement.
+The menu-bar actions carry explicit accessibility labels, and the setup and
+Settings surfaces expose explicit heading and action descriptions so macOS does
+not have to infer them from SwiftUI link or form-button presentation.
 
 The panel observes `NSWorkspace.accessibilityDisplayOptionsDidChangeNotification`
 while it exists. Reduce Transparency chooses an opaque

@@ -258,7 +258,10 @@ issue-#38 worktree build.
   release. A complete second press/release pair is treated as a deliberate
   rapid press rather than discarded.
 - Setup and Settings remained unclipped in native dark and light appearances.
-  The Accessibility tree preserved visible button names and supplemental hints.
+  Their Accessibility trees expose explicit section headings and action labels;
+  critical SwiftUI links and form buttons do not rely on visible text alone for
+  their macOS accessibility descriptions. Supplemental hints describe setup,
+  target-selection, destructive-removal, and diagnostics actions.
 - With full keyboard navigation enabled temporarily, Tab reached the setup link
   and the Settings preview-target button; Space activated both controls. The
   original global keyboard-navigation setting was restored afterward.
