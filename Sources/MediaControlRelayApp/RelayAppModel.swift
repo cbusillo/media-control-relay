@@ -273,12 +273,7 @@ final class RelayAppModel {
     }
 
     var launchAtLogin: Bool {
-        get {
-            launchAtLoginState.isEnabled
-        }
-        set {
-            setLaunchAtLogin(newValue)
-        }
+        launchAtLoginState.isEnabled
     }
 
     var buildDescription: String {

@@ -182,7 +182,10 @@ struct SettingsView: View {
                         get: { model.launchAtLogin },
                         set: { model.setLaunchAtLogin($0) }
                     ))
-                    .disabled(model.launchAtLoginState == .notFound)
+                    .disabled(
+                        model.launchAtLoginState == .requiresApproval
+                            || model.launchAtLoginState == .notFound
+                    )
                     LabeledContent("Status") {
                         Label {
                             Text(model.launchAtLoginState.title)
@@ -198,7 +201,7 @@ struct SettingsView: View {
                     if let operationFailure = model.launchAtLoginOperationFailure {
                         Text(operationFailure.failureDetail)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.red)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 

@@ -52,7 +52,13 @@ struct RelayApp: App {
             configurationStore: RelayConfigurationStore(defaults: defaults),
             volumeKeyMonitor: InactiveVolumeKeyMonitor(),
             inputMonitoringAccess: .denied,
-            accessibilityAccess: .denied
+            accessibilityAccess: .denied,
+            launchAtLoginClient: LaunchAtLoginClient(
+                status: { .notRegistered },
+                register: {},
+                unregister: {},
+                openSystemSettingsLoginItems: {}
+            )
         )
 #else
         RelayAppModel(targetOverlayPresenter: TargetOverlayController())
