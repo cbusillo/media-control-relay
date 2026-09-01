@@ -89,6 +89,72 @@ struct RelayRoutingReducerTests {
         #expect(output.cancelPendingCommand)
     }
 
+    @Test("Display-required activation stays dormant without a display")
+    func displayAbsentActivationRuleStaysDormant() {
+        var reducer = configuredReducer(
+            activationRule: ActivationRule(
+                audioOutputMatch: "Living Room TV",
+                displayMatch: "Living Room TV",
+                requiresDisplay: true
+            )
+        )
+
+        _ = reducer.reduce(.routeObservationState(.observing))
+        let routeOutput = reducer.reduce(.routeSnapshot(RouteSnapshot(
+            audioOutput: AudioOutputSnapshot(
+                name: "Living Room TV",
+                transportKind: .display
+            ),
+            displays: []
+        )))
+        let commandOutput = reducer.reduce(.volumeAction(.up))
+
+        #expect(!routeOutput.activationMatches)
+        #expect(routeOutput.resolvedState == .dormant)
+        #expect(commandOutput.resolvedState == .dormant)
+        #expect(commandOutput.command == nil)
+    }
+
+    @Test("AirPlay activation routes only the matching output without a display")
+    func airPlayActivationMatching() throws {
+        let matchingRoute = RouteSnapshot(
+            audioOutput: AudioOutputSnapshot(
+                name: "Living Room AirPlay",
+                transportKind: .airPlay
+            ),
+            displays: []
+        )
+        let configuration = try #require(
+            RelayConfigurationFactory.upnpMediaRenderer(
+                identity: MediaTargetIdentity(stableIdentifier: "uuid:fixture-target"),
+                for: matchingRoute
+            )
+        )
+        var reducer = configuredReducer(configuration: configuration)
+
+        _ = reducer.reduce(.routeObservationState(.observing))
+        let matchingOutput = reducer.reduce(.routeSnapshot(matchingRoute))
+        let matchingCommand = reducer.reduce(.volumeAction(.up))
+
+        #expect(matchingOutput.activationMatches)
+        #expect(matchingOutput.resolvedState == .active)
+        #expect(matchingCommand.command?.action == .up)
+
+        let mismatchOutput = reducer.reduce(.routeSnapshot(RouteSnapshot(
+            audioOutput: AudioOutputSnapshot(
+                name: "Bedroom AirPlay",
+                transportKind: .airPlay
+            ),
+            displays: []
+        )))
+        let mismatchCommand = reducer.reduce(.volumeAction(.down))
+
+        #expect(!mismatchOutput.activationMatches)
+        #expect(mismatchOutput.resolvedState == .dormant)
+        #expect(mismatchCommand.resolvedState == .dormant)
+        #expect(mismatchCommand.command == nil)
+    }
+
     @Test("Configuration removal clears matching and recording eligibility")
     func configurationRemoval() {
         var reducer = activeReducer()
@@ -193,6 +259,29 @@ struct RelayRoutingReducerTests {
         _ = reducer.reduce(.configuration(configuration))
         _ = reducer.reduce(.routeObservationState(.observing))
         _ = reducer.reduce(.routeSnapshot(route))
+        _ = reducer.reduce(.inputMonitoringAuthorization(.granted))
+        _ = reducer.reduce(.transportReachability(.reachable))
+        return reducer
+    }
+
+    private func configuredReducer(
+        activationRule: ActivationRule
+    ) -> RelayRoutingReducer {
+        configuredReducer(configuration: RelayConfiguration(
+            target: RelayTargetMetadata(
+                kind: .upnpMediaRenderer,
+                name: "UPnP Media Target",
+                stableIdentifier: "uuid:fixture-target"
+            ),
+            activationRule: activationRule
+        ))
+    }
+
+    private func configuredReducer(
+        configuration: RelayConfiguration
+    ) -> RelayRoutingReducer {
+        var reducer = RelayRoutingReducer()
+        _ = reducer.reduce(.configuration(configuration))
         _ = reducer.reduce(.inputMonitoringAuthorization(.granted))
         _ = reducer.reduce(.transportReachability(.reachable))
         return reducer

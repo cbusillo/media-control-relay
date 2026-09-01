@@ -3,6 +3,33 @@ import Testing
 
 @Suite("Relay status copy")
 struct RelayStatusCopyTests {
+    @Test("Catalog covers every relay state and target kind")
+    func exhaustiveCatalogCoverage() {
+        let targetKinds: [RelayTargetKind?] = [nil, .preview, .upnpMediaRenderer]
+        let states: [RelayState] = [
+            .unconfigured,
+            .unsupported,
+            .needsPermission,
+            .needsLocalNetworkPermission,
+            .targetAuthenticationRejected,
+            .dormant,
+            .checkingTarget,
+            .offline,
+            .active,
+        ]
+
+        for targetKind in targetKinds {
+            let copies = states.map {
+                RelayStatusCopyCatalog.copy(for: $0, targetKind: targetKind)
+            }
+
+            #expect(copies.allSatisfy { !$0.title.isEmpty })
+            #expect(copies.allSatisfy { !$0.detail.isEmpty })
+            #expect(copies.allSatisfy { !$0.systemImage.isEmpty })
+            #expect(Set(copies.map(\.title)).count == states.count)
+        }
+    }
+
     @Test("Preview active copy is honest about the sink and Mac behavior")
     func previewActiveHonesty() {
         let copy = RelayStatusCopyCatalog.copy(for: .active, targetKind: .preview)

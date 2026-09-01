@@ -7,7 +7,7 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             Form {
-                Section("Media Target") {
+                Section {
                     LabeledContent("Configured Target") {
                         Text(model.configuredDeviceName)
                     }
@@ -39,20 +39,26 @@ struct SettingsView: View {
                             model.createPreviewTarget()
                         }
                         .disabled(!model.canCreatePreviewTarget)
+                        .accessibilityLabel("Create Preview Target")
                         .accessibilityHint("Creates a local in-process recording target")
                         discoveryControls
                     } else {
                         Button("Remove Configured Target", role: .destructive) {
                             model.removeConfiguredTarget()
                         }
+                        .accessibilityLabel("Remove Configured Target")
                         .accessibilityHint("Removes the configured target and resets its counters")
                     }
+                } header: {
+                    SettingsSectionHeader("Media Target")
                 }
-                Section("Privacy Boundary") {
+                Section {
                     Text("Discovery shows generic media-renderer labels only. Device addresses, identifiers, model names, and control URLs are never displayed or copied to diagnostics.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                } header: {
+                    SettingsSectionHeader("Privacy Boundary")
                 }
                 recoveryControls
             }
@@ -62,7 +68,7 @@ struct SettingsView: View {
             }
 
             Form {
-                Section("Volume Key Access") {
+                Section {
                     LabeledContent("Status") {
                         Label {
                             Text(model.inputMonitoringTitle)
@@ -91,29 +97,38 @@ struct SettingsView: View {
                             Button("Allow Volume Key Access") {
                                 model.requestInputMonitoring()
                             }
+                            .accessibilityLabel("Allow Volume Key Access")
                         case .requested:
-                            Button("Quit to Apply Access") {
+                            Button("Quit to Apply Volume Key Access") {
                                 model.quitApplication()
                             }
-                            Button("Open Privacy & Security") {
+                            .accessibilityLabel("Quit to Apply Volume Key Access")
+                            .accessibilityHint("Quits Media Control Relay so the permission can take effect")
+                            Button("Open Input Monitoring Settings") {
                                 model.openInputMonitoringSettings()
                             }
+                            .accessibilityLabel("Open Input Monitoring Settings")
                         case .denied:
-                            Button("Open Privacy & Security") {
+                            Button("Open Input Monitoring Settings") {
                                 model.openInputMonitoringSettings()
                             }
-                            Button("Quit After Changing Access") {
+                            .accessibilityLabel("Open Input Monitoring Settings")
+                            Button("Quit After Changing Volume Key Access") {
                                 model.quitApplication()
                             }
+                            .accessibilityLabel("Quit After Changing Volume Key Access")
                         case .granted:
                             Button("Quit and Reopen Media Control Relay") {
                                 model.quitApplication()
                             }
+                            .accessibilityLabel("Quit and Reopen Media Control Relay")
                         }
                     }
+                } header: {
+                    SettingsSectionHeader("Volume Key Access")
                 }
 
-                Section("Native Volume HUD") {
+                Section {
                     LabeledContent("Status") {
                         Label {
                             Text(model.accessibilityTitle)
@@ -130,40 +145,53 @@ struct SettingsView: View {
                         Button("Allow Native HUD Replacement") {
                             model.requestAccessibility()
                         }
+                        .accessibilityLabel("Allow Native HUD Replacement")
                     case .requested:
-                        Button("Quit to Apply Access") {
+                        Button("Quit to Apply Native HUD Access") {
                             model.quitApplication()
                         }
+                        .accessibilityLabel("Quit to Apply Native HUD Access")
+                        .accessibilityHint("Quits Media Control Relay so the permission can take effect")
                         Button("Open Accessibility Settings") {
                             model.openAccessibilitySettings()
                         }
+                        .accessibilityLabel("Open Accessibility Settings")
                     case .denied:
                         Button("Open Accessibility Settings") {
                             model.openAccessibilitySettings()
                         }
-                        Button("Quit After Changing Access") {
+                        .accessibilityLabel("Open Accessibility Settings")
+                        Button("Quit After Changing Accessibility Access") {
                             model.quitApplication()
                         }
+                        .accessibilityLabel("Quit After Changing Accessibility Access")
                     case .granted:
                         if model.volumeKeySuppressionMode != .conditional {
                             Button("Quit and Reopen Media Control Relay") {
                                 model.quitApplication()
                             }
+                            .accessibilityLabel("Quit and Reopen Media Control Relay")
                         }
                     }
+                } header: {
+                    SettingsSectionHeader("Native Volume HUD")
                 }
 
-                Section("General") {
+                Section {
                     Toggle("Launch at login", isOn: $model.launchAtLogin)
                         .disabled(true)
                     Text("Launch at login is not part of this preview.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                } header: {
+                    SettingsSectionHeader("General")
                 }
-                Section("Privacy") {
+                Section {
                     Text("Configuration is stored locally without credentials. A selected media renderer is contacted only on the local network for discovery and volume control.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                } header: {
+                    SettingsSectionHeader("Privacy")
                 }
             }
             .formStyle(.grouped)
@@ -172,7 +200,7 @@ struct SettingsView: View {
             }
 
             Form {
-                Section("Diagnostics") {
+                Section {
                     LabeledContent("Build", value: model.buildDescription)
                     LabeledContent(
                         "Route Observation",
@@ -214,6 +242,10 @@ struct SettingsView: View {
                     Button("Copy Diagnostics") {
                         model.copyDiagnostics()
                     }
+                    .accessibilityLabel("Copy Diagnostics")
+                    .accessibilityHint("Copies privacy-safe diagnostics to the clipboard")
+                } header: {
+                    SettingsSectionHeader("Diagnostics")
                 }
                 Section {
                     Text("Diagnostics contain only coarse target, activation, command-count, network-state, route-transport, and display-count fields. Local target names, network interface names, and route identifiers are never copied.")
@@ -236,6 +268,7 @@ struct SettingsView: View {
             Button("Find Media Renderers") {
                 model.discovery.startScan()
             }
+            .accessibilityLabel("Find Media Renderers")
             Text("Searches this network without displaying or storing device addresses.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
@@ -244,50 +277,57 @@ struct SettingsView: View {
             Button("Stop") {
                 model.discovery.cancelScan()
             }
+            .accessibilityLabel("Stop Media Renderer Search")
         case let .results(choices):
             discoveryChoices(choices)
         case .empty:
             Text("No compatible media renderers responded.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            Button("Search Again") {
+            Button("Search for Media Renderers Again") {
                 model.discovery.startScan()
             }
+            .accessibilityLabel("Search for Media Renderers Again")
         case .localNetworkDenied:
             if model.networkPathSnapshot.status == .available ||
                 model.networkPathSnapshot.status == .localNetworkDenied {
                 Text("Local-network access is unavailable. Enable Media Control Relay in Privacy & Security, then check access again.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Button("Open Privacy & Security") {
+                Button("Open Local Network Settings") {
                     model.openLocalNetworkSettings()
                 }
-                Button("Check Access Again") {
+                .accessibilityLabel("Open Local Network Settings")
+                Button("Check Local Network Access Again") {
                     model.discovery.startScan()
                 }
+                .accessibilityLabel("Check Local Network Access Again")
             } else {
                 Text("Couldn’t search this network.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Button("Search Again") {
+                Button("Search for Media Renderers Again") {
                     model.discovery.startScan()
                 }
+                .accessibilityLabel("Search for Media Renderers Again")
             }
         case .failed:
             Text("Couldn’t search this network.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-            Button("Search Again") {
+            Button("Search for Media Renderers Again") {
                 model.discovery.startScan()
             }
+            .accessibilityLabel("Search for Media Renderers Again")
         case let .routeUnavailable(choices):
             Text("Switch your Mac to the audio output you want to control, then choose a target below.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             discoveryChoices(choices)
-            Button("Search Again") {
+            Button("Search for Media Renderers Again") {
                 model.discovery.startScan()
             }
+            .accessibilityLabel("Search for Media Renderers Again")
         }
     }
 
@@ -295,35 +335,45 @@ struct SettingsView: View {
     private var recoveryControls: some View {
         switch model.relayState {
         case .needsLocalNetworkPermission:
-            Section("Local Network Recovery") {
+            Section {
                 Text(model.statusCopy.detail)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Button("Open Privacy & Security") {
+                Button("Open Local Network Settings") {
                     model.openLocalNetworkSettings()
                 }
-                Button("Check Access Again") {
+                .accessibilityLabel("Open Local Network Settings")
+                Button("Check Local Network Access Again") {
                     model.retryTargetConnection()
                 }
+                .accessibilityLabel("Check Local Network Access Again")
+            } header: {
+                SettingsSectionHeader("Local Network Recovery")
             }
         case .targetAuthenticationRejected:
-            Section("Target Recovery") {
+            Section {
                 Text(model.statusCopy.detail)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Try Reaching Target Again") {
                     model.retryTargetConnection()
                 }
+                .accessibilityLabel("Try Reaching Target Again")
+            } header: {
+                SettingsSectionHeader("Target Recovery")
             }
         case .offline:
             if model.targetConfiguration?.target.kind == .upnpMediaRenderer {
-                Section("Target Recovery") {
+                Section {
                     Text(model.statusCopy.detail)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Button("Try Reaching Target Again") {
                         model.retryTargetConnection()
                     }
+                    .accessibilityLabel("Try Reaching Target Again")
+                } header: {
+                    SettingsSectionHeader("Target Recovery")
                 }
             }
         case .unconfigured,
@@ -345,9 +395,22 @@ struct SettingsView: View {
                 Button("Use This Target") {
                     model.selectDiscoveredTarget(choice)
                 }
-                .accessibilityLabel("Use \(choice.label)")
+                .accessibilityLabel("Use This Target, \(choice.label)")
                 .accessibilityHint("Selects this media renderer and captures the current audio route")
             }
         }
+    }
+}
+
+private struct SettingsSectionHeader: View {
+    let title: LocalizedStringResource
+
+    init(_ title: LocalizedStringResource) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .accessibilityAddTraits(.isHeader)
     }
 }

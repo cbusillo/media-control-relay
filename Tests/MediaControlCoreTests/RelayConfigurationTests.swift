@@ -55,6 +55,23 @@ struct RelayConfigurationTests {
         #expect(configuration.activationRule.matches(route.activationSnapshot))
     }
 
+    @Test("AirPlay routes derive audio-only activation despite active displays")
+    func airPlayRoute() throws {
+        let route = RouteSnapshot(
+            audioOutput: AudioOutputSnapshot(
+                name: "Living Room AirPlay",
+                transportKind: .airPlay
+            ),
+            displays: [DisplaySnapshot(name: "Unrelated Display")]
+        )
+
+        let configuration = try #require(RelayConfigurationFactory.preview(for: route))
+        #expect(configuration.activationRule.audioOutputMatch == "Living Room AirPlay")
+        #expect(configuration.activationRule.displayMatch == nil)
+        #expect(!configuration.activationRule.requiresDisplay)
+        #expect(configuration.activationRule.matches(route.activationSnapshot))
+    }
+
     @Test("Display transport falls back to audio-only matching without a usable display name")
     func displayRouteWithoutName() throws {
         let route = RouteSnapshot(
