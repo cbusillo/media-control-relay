@@ -13,10 +13,18 @@ A user-created control-surface mapping may invoke exactly these custom URLs:
 - `media-control-relay://control/volume/mute`
 
 The current Loupedeck desktop software can bind each action without a custom
-plugin: create one local `.webloc` file for each canonical URL, then assign the
-file with the built-in **Desktop > Open File** action. Keep those launchers in a
-stable private local folder. Do not add device profile exports or machine-local
-paths to this repository.
+plugin. Create three **Custom > Run Command** actions and assign them to the
+desired controls. Loupedeck separates an executable from its argument with
+`||`, so use these exact command values:
+
+- `/usr/bin/open||media-control-relay://control/volume/up`
+- `/usr/bin/open||media-control-relay://control/volume/down`
+- `/usr/bin/open||media-control-relay://control/volume/mute`
+
+Do not replace `||` with a space. Do not use `.webloc` files: on current macOS
+versions, Loupedeck's built-in **Desktop > Open File** action may fail to open a
+custom-URL `.webloc`. Keep the mapping user-managed, and do not add device
+profile exports or machine-local paths to this repository.
 
 The app rejects alternate casing, percent-encoded forms, credentials, ports,
 queries, fragments, unknown hosts, and extra path components. Accepted actions
