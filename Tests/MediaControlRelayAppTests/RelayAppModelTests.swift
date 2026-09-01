@@ -15,6 +15,9 @@ struct RelayAppModelTests {
         #expect(LaunchAtLoginState(serviceStatus: .enabled) == .enabled)
         #expect(LaunchAtLoginState(serviceStatus: .requiresApproval) == .requiresApproval)
         #expect(LaunchAtLoginState(serviceStatus: .notFound) == .notFound)
+        #expect(LaunchAtLoginState.notFound.toggleAvailable)
+        #expect(!LaunchAtLoginState.requiresApproval.toggleAvailable)
+        #expect(!LaunchAtLoginState.unknown.toggleAvailable)
     }
 
     @Test("Launch-at-login registration and unregistration use confirmed read-back")
@@ -36,6 +39,32 @@ struct RelayAppModelTests {
         #expect(launchAtLogin.unregisterCount == 1)
         #expect(harness.model.launchAtLoginState == .notRegistered)
         #expect(!harness.model.launchAtLogin)
+        harness.cleanup()
+    }
+
+    @Test("A missing Service Management record remains registration-ready")
+    func launchAtLoginNotFoundCanRegister() {
+        let launchAtLogin = LaunchAtLoginStub(state: .notFound)
+        launchAtLogin.registerError = LaunchAtLoginTestError.failed
+        let harness = makeHarness(
+            configuration: nil,
+            session: nil,
+            launchAtLoginClient: launchAtLogin.client
+        )
+
+        #expect(harness.model.launchAtLoginState == .notFound)
+        harness.model.setLaunchAtLogin(true)
+        #expect(launchAtLogin.registerCount == 1)
+        #expect(harness.model.launchAtLoginState == .notFound)
+        #expect(harness.model.launchAtLoginOperationFailure == .register)
+        #expect(!harness.model.launchAtLogin)
+
+        launchAtLogin.registerError = nil
+        harness.model.setLaunchAtLogin(true)
+        #expect(launchAtLogin.registerCount == 2)
+        #expect(harness.model.launchAtLoginState == .enabled)
+        #expect(harness.model.launchAtLoginOperationFailure == nil)
+        #expect(harness.model.launchAtLogin)
         harness.cleanup()
     }
 

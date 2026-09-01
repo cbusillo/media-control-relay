@@ -155,10 +155,16 @@ command made the Gatekeeper pipeline return false and the local log recorded
 artifact result. Strict verification and Gatekeeper assessment passed before
 restart and in the corrected manual check on the new boot.
 
-The build-4 qualification below predates app-managed launch at login. Build 6
-introduces the supported `SMAppService.mainApp` path; automatic launch behavior
-requires separate signed-app qualification before the legacy prototype
-LaunchAgent is retired.
+The build-4 qualification below predates app-managed launch at login. Build 7
+uses the supported `SMAppService.mainApp` path and keeps an initial `.notFound`
+status registration-ready; automatic launch behavior requires separate
+signed-app qualification before the legacy prototype LaunchAgent is retired.
+
+On September 1, 2026, the installed notarized build 6 returned `.notFound` on
+macOS 27 before any registration attempt, including after Launch Services was
+refreshed. The legacy LaunchAgent remained active and build 6 did not launch
+after the preceding reboot, so no cutover or automatic-start success was
+claimed from that observation.
 
 After the observer was changed to use the system `/usr/bin/grep`, it was invoked
 manually during the same login, about 15 minutes after boot. It issued an app

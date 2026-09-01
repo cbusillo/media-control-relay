@@ -182,10 +182,7 @@ struct SettingsView: View {
                         get: { model.launchAtLogin },
                         set: { model.setLaunchAtLogin($0) }
                     ))
-                    .disabled(
-                        model.launchAtLoginState == .requiresApproval
-                            || model.launchAtLoginState == .notFound
-                    )
+                    .disabled(!model.launchAtLoginState.toggleAvailable)
                     LabeledContent("Status") {
                         Label {
                             Text(model.launchAtLoginState.title)
