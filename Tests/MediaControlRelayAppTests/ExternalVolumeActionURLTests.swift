@@ -64,6 +64,11 @@ struct ExternalVolumeActionURLTests {
         )
         let urlTypes = try #require(propertyList["CFBundleURLTypes"] as? [[String: Any]])
         #expect(urlTypes.count == 1)
+        #expect(urlTypes.first?["CFBundleTypeRole"] as? String == "Viewer")
+        #expect(
+            urlTypes.first?["CFBundleURLName"] as? String
+                == "com.shinycomputers.media-control-relay.external-volume"
+        )
         #expect(urlTypes.first?["CFBundleURLSchemes"] as? [String] == [
             "media-control-relay"
         ])

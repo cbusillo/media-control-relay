@@ -82,9 +82,13 @@ ruby -rjson -ryaml -e '
     direct_entitlements == {}
   info_plist = JSON.parse(File.read(ARGV.fetch(5)))
   expected_url_types = [
-    { "CFBundleURLSchemes" => ["media-control-relay"] },
+    {
+      "CFBundleTypeRole" => "Viewer",
+      "CFBundleURLName" => "com.shinycomputers.media-control-relay.external-volume",
+      "CFBundleURLSchemes" => ["media-control-relay"],
+    },
   ]
   abort "Info.plist must register exactly the media-control-relay URL scheme" unless
     info_plist["CFBundleURLTypes"] == expected_url_types
 ' "$export_json" "$validation_json" "$repo_root/project.yml" \
-  "$app_store_entitlements_json" "$direct_entitlements_json" "$info_json"
+	"$app_store_entitlements_json" "$direct_entitlements_json" "$info_json"

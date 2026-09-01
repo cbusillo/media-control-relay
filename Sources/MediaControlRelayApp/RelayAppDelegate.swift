@@ -3,6 +3,9 @@ import MediaControlCore
 
 @MainActor
 final class RelayAppDelegate: NSObject, NSApplicationDelegate {
+    private static let maximumPendingActionCount = 16
+    private static let maximumPendingRejectedURLCount = 16
+
     private weak var model: RelayAppModel?
     private var pendingActions: [VolumeAction] = []
     private var pendingRejectedURLCount = 0
@@ -30,20 +33,29 @@ final class RelayAppDelegate: NSObject, NSApplicationDelegate {
                 if let model {
                     model.recordRejectedExternalVolumeURL()
                 } else {
-                    pendingRejectedURLCount += 1
+                    recordPendingRejection()
                 }
                 continue
             }
 
             if let model {
                 model.handleExternalVolumeAction(action)
-            } else {
+            } else if pendingActions.count < Self.maximumPendingActionCount {
                 pendingActions.append(action)
+            } else {
+                recordPendingRejection()
             }
         }
     }
 
     func application(_ application: NSApplication, open urls: [URL]) {
         receive(urls: urls)
+    }
+
+    private func recordPendingRejection() {
+        pendingRejectedURLCount = min(
+            Self.maximumPendingRejectedURLCount,
+            pendingRejectedURLCount + 1
+        )
     }
 }

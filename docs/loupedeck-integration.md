@@ -12,6 +12,12 @@ A user-created control-surface mapping may invoke exactly these custom URLs:
 - `media-control-relay://control/volume/down`
 - `media-control-relay://control/volume/mute`
 
+The current Loupedeck desktop software can bind each action without a custom
+plugin: create one local `.webloc` file for each canonical URL, then assign the
+file with the built-in **Desktop > Open File** action. Keep those launchers in a
+stable private local folder. Do not add device profile exports or machine-local
+paths to this repository.
+
 The app rejects alternate casing, percent-encoded forms, credentials, ports,
 queries, fragments, unknown hosts, and extra path components. Accepted actions
 use the same non-physical routing path as menu controls, do not count as
@@ -25,7 +31,8 @@ Mute. The interface does not identify or authorize callers, and it does not
 expose arbitrary remote commands. Users who need stronger isolation should not
 enable a mapping for untrusted local software.
 
-URL delivery supports cold launch without opening or activating a window. The
-app keeps only bounded aggregate diagnostics for accepted, rejected, and
-rate-limited actions. It does not log raw URLs or caller data and does not read,
-persist, or mutate device/private profile data.
+URL delivery supports cold launch without itself requesting window presentation
+or activation; normal first-run setup behavior remains unchanged. The app keeps
+only coarse aggregate diagnostics for accepted, rejected, and rate-limited
+actions. It does not log raw URLs or caller data and does not read, persist, or
+mutate device/private profile data.

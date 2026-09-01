@@ -152,10 +152,11 @@ queries, fragments, unknown hosts, and extra path components, and never logs the
 raw URL.
 
 Cold-launch URL delivery is held until `RelayAppModel` is available. Delivery
-does not open or activate a setup window. Accepted actions enter the same
-non-physical dispatch path used by menu controls with held-repeat disabled and
-physical-input counters untouched. A monotonic-time duplicate limit runs before
-the reducer; rejected and rate-limited totals are bounded diagnostics only.
+does not itself request window presentation or activation; normal first-run
+setup behavior remains unchanged. Accepted actions enter the same non-physical
+dispatch path used by menu controls with held-repeat disabled and physical-input
+counters untouched. A monotonic-time duplicate limit runs before the reducer;
+rejected and rate-limited totals are coarse diagnostics only.
 
 The later signed pairing-free Samsung UPnP matrix is recorded separately in
 [`samsung-upnp-qualification.md`](samsung-upnp-qualification.md). That record

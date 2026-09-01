@@ -874,13 +874,38 @@ struct RelayAppModelTests {
         harness.model.handleExternalVolumeAction(.up)
 
         #expect(harness.model.commandsRecorded == 1)
-        #expect(harness.model.externalVolumeActionsAccepted == 2)
+        #expect(harness.model.externalVolumeActionsAccepted == 1)
         #expect(harness.model.externalVolumeActionsRateLimited == 1)
 
         clock.now += 50_000_000
         harness.model.handleExternalVolumeAction(.up)
         #expect(harness.model.commandsRecorded == 2)
+        #expect(harness.model.externalVolumeActionsAccepted == 2)
         #expect(harness.model.externalVolumeActionsRateLimited == 1)
+        harness.cleanup()
+    }
+
+    @Test("Cold-launch external delivery is bounded before model attachment")
+    func externalURLDeliveryIsBounded() async {
+        let delegate = RelayAppDelegate()
+        let url = URL(string: "media-control-relay://control/volume/up")!
+        delegate.receive(urls: Array(repeating: url, count: 20))
+        #expect(delegate.pendingActionCount == 16)
+
+        let clock = TestMonotonicClock()
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil,
+            monotonicTimeProvider: clock.provider
+        )
+        await waitUntil { harness.model.relayState == .active }
+        delegate.attach(model: harness.model)
+
+        #expect(delegate.pendingActionCount == 0)
+        #expect(harness.model.commandsRecorded == 1)
+        #expect(harness.model.externalVolumeActionsAccepted == 1)
+        #expect(harness.model.externalVolumeActionsRateLimited == 15)
+        #expect(harness.model.externalVolumeActionsRejected == 4)
         harness.cleanup()
     }
 

@@ -73,7 +73,8 @@ only `media-control-relay://control/volume/up`,
 `media-control-relay://control/volume/down`, and
 `media-control-relay://control/volume/mute`. Parsing stays out of
 `MediaControlCore`, and the app delegate queues accepted actions during
-cold-launch delivery without activating or presenting a window. Once the model
+cold-launch delivery without itself requesting activation or window
+presentation. Normal first-run setup behavior remains unchanged. Once the model
 is attached, each action uses the existing non-physical/menu dispatch path with
 no held-repeat state and no physical-input accounting.
 

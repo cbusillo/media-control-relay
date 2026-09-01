@@ -1239,7 +1239,6 @@ final class RelayAppModel {
     }
 
     func handleExternalVolumeAction(_ action: VolumeAction) {
-        externalVolumeActionsAccepted += 1
         let timestamp = monotonicTimeProvider.now()
         if let lastExternalVolumeAction,
            lastExternalVolumeAction.action == action,
@@ -1250,6 +1249,7 @@ final class RelayAppModel {
             return
         }
 
+        externalVolumeActionsAccepted += 1
         lastExternalVolumeAction = (action, timestamp)
         dispatchVolumeAction(
             action,

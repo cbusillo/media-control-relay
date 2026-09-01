@@ -28,7 +28,7 @@ The optional custom URL actuator is intentionally narrow and unauthenticated:
 it exposes exactly three local custom URLs for Volume Up, Volume Down, and Mute.
 Any local process that can invoke a registered custom URL may request those
 actions, so the feature is not an authorization boundary. The app rejects
-noncanonical URLs, records only bounded accepted/rejected/rate-limited counts,
+noncanonical URLs, records only coarse accepted/rejected/rate-limited counts,
 and never records raw URLs, caller identity, query values, or fragments.
 
 The actuator does not install software, discover a caller, change profiles, or
