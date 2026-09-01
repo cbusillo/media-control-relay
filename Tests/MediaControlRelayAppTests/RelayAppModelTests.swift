@@ -840,6 +840,101 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("External actions use the menu route without physical-input diagnostics")
+    func externalActionsDoNotPolluteInputDiagnostics() async {
+        let clock = TestMonotonicClock()
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil,
+            monotonicTimeProvider: clock.provider
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleExternalVolumeAction(.up)
+
+        #expect(harness.model.commandsRecorded == 1)
+        #expect(harness.model.observedVolumeActionCount == 0)
+        #expect(harness.model.lastObservedVolumeAction == nil)
+        #expect(harness.model.externalVolumeActionsAccepted == 1)
+        harness.cleanup()
+    }
+
+    @Test("Rapid duplicate external actions are rate limited before reduction")
+    func duplicateExternalActionsAreRateLimited() async {
+        let clock = TestMonotonicClock()
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil,
+            monotonicTimeProvider: clock.provider
+        )
+
+        await waitUntil { harness.model.relayState == .active }
+        harness.model.handleExternalVolumeAction(.up)
+        clock.now += 50_000_000
+        harness.model.handleExternalVolumeAction(.up)
+
+        #expect(harness.model.commandsRecorded == 1)
+        #expect(harness.model.externalVolumeActionsAccepted == 1)
+        #expect(harness.model.externalVolumeActionsRateLimited == 1)
+
+        clock.now += 50_000_000
+        harness.model.handleExternalVolumeAction(.up)
+        #expect(harness.model.commandsRecorded == 2)
+        #expect(harness.model.externalVolumeActionsAccepted == 2)
+        #expect(harness.model.externalVolumeActionsRateLimited == 1)
+        harness.cleanup()
+    }
+
+    @Test("Cold-launch external delivery is bounded before model attachment")
+    func externalURLDeliveryIsBounded() async {
+        let delegate = RelayAppDelegate()
+        let url = URL(string: "media-control-relay://control/volume/up")!
+        delegate.receive(urls: Array(repeating: url, count: 20))
+        #expect(delegate.pendingActionCount == 16)
+
+        let clock = TestMonotonicClock()
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil,
+            monotonicTimeProvider: clock.provider
+        )
+        await waitUntil { harness.model.relayState == .active }
+        delegate.attach(model: harness.model)
+
+        #expect(delegate.pendingActionCount == 0)
+        #expect(harness.model.commandsRecorded == 1)
+        #expect(harness.model.externalVolumeActionsAccepted == 1)
+        #expect(harness.model.externalVolumeActionsRateLimited == 15)
+        #expect(harness.model.externalVolumeActionsRejected == 4)
+        harness.cleanup()
+    }
+
+    @Test("External URL delivery queues cold-launch actions and records rejection safely")
+    func externalURLDeliveryQueuesColdLaunchActions() async {
+        let delegate = RelayAppDelegate()
+        delegate.receive(urls: [
+            URL(string: "media-control-relay://control/volume/mute")!,
+            URL(string: "media-control-relay://control/volume/mute?raw=private")!,
+        ])
+        #expect(delegate.pendingActionCount == 1)
+
+        let harness = makeHarness(
+            configuration: makePreviewConfiguration(),
+            session: nil
+        )
+        await waitUntil { harness.model.relayState == .active }
+        delegate.attach(model: harness.model)
+
+        #expect(delegate.pendingActionCount == 0)
+        #expect(harness.model.commandsRecorded == 1)
+        #expect(harness.model.externalVolumeActionsAccepted == 1)
+        #expect(harness.model.externalVolumeActionsRejected == 1)
+        #expect(!harness.model.diagnosticsSummary.contains("media-control-relay://"))
+        #expect(harness.model.diagnosticsSummary.contains("external_actions_accepted=1"))
+        #expect(harness.model.diagnosticsSummary.contains("external_actions_rejected=1"))
+        harness.cleanup()
+    }
+
     @Test("Rapid physical command execution preserves FIFO order and latest presentation")
     func commandOrderIsFIFO() async {
         let target = AppModelTargetStub()
@@ -1564,6 +1659,7 @@ private func makeHarness(
     targetPresentationTiming: MediaTargetPresentationTiming = MediaTargetPresentationTiming(),
     targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
     volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
+    monotonicTimeProvider: MonotonicTimeProvider = .live,
     inputMonitoringAccess: InputMonitoringAccessClient = InputMonitoringAccessClient(
         preflight: { true },
         request: {}
@@ -1601,6 +1697,7 @@ private func makeHarness(
         discovery: discovery,
         targetPresentationTiming: targetPresentationTiming,
         volumeKeySuppressionTiming: volumeKeySuppressionTiming,
+        monotonicTimeProvider: monotonicTimeProvider,
         targetOverlayPresenter: targetOverlayPresenter,
         mediaTargetSessionFactory: { configuration in
             sessionFactory?(configuration) ?? session
@@ -1614,6 +1711,14 @@ private func makeHarness(
         defaults: defaults,
         suiteName: suiteName
     )
+}
+
+private final class TestMonotonicClock: @unchecked Sendable {
+    var now: UInt64 = 0
+
+    var provider: MonotonicTimeProvider {
+        MonotonicTimeProvider(now: { self.now })
+    }
 }
 
 private enum LaunchAtLoginTestError: Error {

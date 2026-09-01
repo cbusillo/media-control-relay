@@ -42,6 +42,8 @@ This initial slice includes:
   requested-dimension read-back;
 - network, authentication, offline, route, sleep, and wake recovery states;
 - privacy-safe diagnostics redaction;
+- a strict optional `media-control-relay://` actuator for Volume Up, Volume
+  Down, and Mute without bundled control-surface software;
 - a native SwiftUI menu-bar and setup/settings shell;
 - separate Developer ID and App Store entitlement files;
 - provenance, architecture, privacy, and validation documentation;
@@ -94,6 +96,7 @@ scripts/generate-project.sh
 - [Architecture](docs/architecture.md)
 - [Target volume overlay](docs/target-overlay.md)
 - [Relay routing](docs/relay-routing.md)
+- [Loupedeck integration](docs/loupedeck-integration.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
 - [Samsung UPnP qualification](docs/samsung-upnp-qualification.md)
 - [Product identity](docs/product-identity.md)

@@ -44,6 +44,13 @@ without copying third-party source or device-specific control code.
 implementation is copied or adapted. Reading published protocol specifications
 does not by itself introduce third-party source code into the repository.
 
+The custom URL actuator is original, vendor-neutral app-shell code. It contains
+no bundled Loupedeck plugin payload, vendor SDK, profile installer, automatic
+profile mutation, device identifier, host-pinned path, or private configuration.
+An optional user-created Loupedeck mapping may invoke the three documented
+custom URLs, but that mapping is external to this repository and is not required
+by the App Store app.
+
 ## Decisions
 
 1. The foundation contains no Samsung protocol or pairing implementation.
