@@ -13,6 +13,13 @@
   merge.
 - Delete merged task branches and clean merged worktrees during closeout.
 
+## Host Safety
+
+- Never restart this Mac without obtaining fresh, explicit user confirmation
+  immediately before initiating the restart. Earlier or general authorization
+  does not carry forward, and an automatic or scheduled restart is not a
+  substitute for asking again.
+
 ## Product Shape
 
 Media Control Relay is a focused native macOS menu-bar app that routes actions
