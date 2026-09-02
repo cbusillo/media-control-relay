@@ -159,17 +159,23 @@ struct RemoteControlSettingsView: View {
             }
         case let .credentialFailure(operation):
             status(
-                title: operation == .read
-                    ? "Couldn’t read the saved connection"
-                    : "Couldn’t remove the saved connection",
+                title: credentialFailureTitle(operation),
                 detail: "Check that your login Keychain is available, then try again.",
                 systemImage: "key.slash"
             )
             Button("Try Again") {
-                if operation == .read {
+                switch operation {
+                case .read:
                     model.startIfNeeded()
-                } else {
+                case .write:
+                    model.retryCredentialSave()
+                case .remove:
                     model.forgetCredentials()
+                }
+            }
+            if operation == .write {
+                Button("Start Over") {
+                    model.cancelDiscovery()
                 }
             }
         }
@@ -231,6 +237,19 @@ struct RemoteControlSettingsView: View {
         case .next: "Next"
         case .relativeSeek: "Relative Seek"
         case .relativeVolume: "Relative Volume"
+        }
+    }
+
+    private func credentialFailureTitle(
+        _ operation: RemoteControlCredentialOperation
+    ) -> LocalizedStringKey {
+        switch operation {
+        case .read:
+            "Couldn’t read the saved connection"
+        case .write:
+            "Couldn’t save the Apple TV connection"
+        case .remove:
+            "Couldn’t remove the saved connection"
         }
     }
 

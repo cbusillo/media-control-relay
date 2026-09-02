@@ -17,7 +17,13 @@ public actor AppleCompanionSession {
 
     private struct PendingRequest {
         let generation: UInt64
+        let appliesSuccessfulState: Bool
         let continuation: CheckedContinuation<AppleCompanionReply, Error>
+    }
+
+    private struct PendingCredentialReply {
+        let generation: UInt64
+        let reply: AppleCompanionReply
     }
 
     private let transportFactory: @Sendable () async throws -> any AppleCompanionTransport
@@ -35,6 +41,7 @@ public actor AppleCompanionSession {
     private var timeoutTasks: [UInt64: Task<Void, Never>] = [:]
     private var nextRequestID: UInt64 = 0
     private var reconnectAttempt = 0
+    private var pendingCredentialReply: PendingCredentialReply?
 
     public init(
         keychain: any AppleCompanionKeychain,
@@ -111,13 +118,47 @@ public actor AppleCompanionSession {
     }
 
     public func beginPairing(targetID: String) async throws {
+        pendingCredentialReply = nil
         _ = try await send(.beginPairing(targetID: targetID))
     }
 
     @discardableResult
     public func finishPairing(pin: Int) async throws -> AppleCompanionReply {
-        let reply = try await send(.finishPairing(pin: pin))
+        let pairingGeneration = generation
+        let reply = try await send(
+            .finishPairing(pin: pin),
+            appliesSuccessfulState: false
+        )
+        do {
+            try persistSecret(from: reply)
+        } catch let error as AppleCompanionKeychainError {
+            if error != .invalidData {
+                pendingCredentialReply = PendingCredentialReply(
+                    generation: pairingGeneration,
+                    reply: reply
+                )
+            }
+            throw error
+        }
+        pendingCredentialReply = nil
+        guard pairingGeneration == generation else {
+            throw AppleCompanionProtocolError.generationInvalidated
+        }
+        apply(reply.state, capabilities: reply.capabilities)
+        return reply
+    }
+
+    public func retryPersistingPairingCredential() throws -> AppleCompanionReply {
+        guard let pendingCredentialReply else {
+            throw AppleCompanionKeychainError.invalidData
+        }
+        let reply = pendingCredentialReply.reply
         try persistSecret(from: reply)
+        self.pendingCredentialReply = nil
+        guard pendingCredentialReply.generation == generation else {
+            throw AppleCompanionProtocolError.generationInvalidated
+        }
+        apply(reply.state, capabilities: reply.capabilities)
         return reply
     }
 
@@ -143,12 +184,14 @@ public actor AppleCompanionSession {
         helperProcess?.stop()
         invalidatePending(with: AppleCompanionProtocolError.connectionLost)
         reconnectAttempt = 0
+        pendingCredentialReply = nil
         generation &+= 1
         state = .dormant
     }
 
     public func invalidate() {
         generation &+= 1
+        pendingCredentialReply = nil
         startTask?.cancel()
         startTask = nil
         invalidatePending(with: AppleCompanionProtocolError.generationInvalidated)
@@ -172,9 +215,13 @@ public actor AppleCompanionSession {
 
     public func clearStoredSecret() throws {
         try keychain.delete(account: keychainAccount)
+        pendingCredentialReply = nil
     }
 
-    private func send(_ operation: AppleCompanionOperation) async throws -> AppleCompanionReply {
+    private func send(
+        _ operation: AppleCompanionOperation,
+        appliesSuccessfulState: Bool = true
+    ) async throws -> AppleCompanionReply {
         try Task.checkCancellation()
         if transport == nil {
             try await start()
@@ -199,6 +246,7 @@ public actor AppleCompanionSession {
             try await withCheckedThrowingContinuation { continuation in
                 pending[requestID] = PendingRequest(
                     generation: requestGeneration,
+                    appliesSuccessfulState: appliesSuccessfulState,
                     continuation: continuation
                 )
                 if Task.isCancelled {
@@ -270,7 +318,9 @@ public actor AppleCompanionSession {
             request.continuation.resume(throwing: AppleCompanionProtocolError.remote(error))
             return
         }
-        apply(reply.state, capabilities: reply.capabilities)
+        if request.appliesSuccessfulState {
+            apply(reply.state, capabilities: reply.capabilities)
+        }
         reconnectAttempt = 0
         request.continuation.resume(returning: reply)
     }

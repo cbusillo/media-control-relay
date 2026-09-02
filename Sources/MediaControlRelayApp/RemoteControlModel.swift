@@ -15,6 +15,7 @@ enum RemoteControlRuntimeAvailability: String, Equatable, Sendable {
 
 enum RemoteControlCredentialOperation: String, Equatable, Sendable {
     case read
+    case write
     case remove
 }
 
@@ -42,6 +43,7 @@ protocol RemoteControlActuating: Sendable {
     func discover() async throws -> [RemoteControlDiscoveryChoice]
     func beginPairing(targetID: String) async throws
     func finishPairing(pin: Int) async throws -> MediaRemoteTargetState
+    func retryCredentialSave() async throws -> MediaRemoteTargetState
     func execute(_ action: MediaRemoteAction) async throws -> MediaRemoteTargetState
     func stop() async
     func clearStoredCredential() async throws
@@ -319,6 +321,30 @@ final class RemoteControlModel {
                 self?.pairingPIN = ""
                 self?.operationMessage = "That PIN didn’t work. Try again."
                 self?.state = .pairing(choice, failedAttempts: attempts + 1)
+            } catch let failure as RemoteControlFailure {
+                guard self?.isCurrentOperation(generation) == true else { return }
+                self?.apply(failure)
+            } catch {
+                guard self?.isCurrentOperation(generation) == true else { return }
+                self?.state = .offline(manual: false)
+            }
+        }
+    }
+
+    func retryCredentialSave() {
+        guard case .credentialFailure(.write) = state,
+              let actuator else { return }
+        let generation = beginOperation()
+        operationMessage = nil
+        state = .connecting(reconnecting: false)
+        operationTask = Task { [weak self] in
+            defer { self?.finishOperation(generation) }
+            do {
+                let remoteState = try await actuator.retryCredentialSave()
+                guard self?.isCurrentOperation(generation) == true else { return }
+                self?.apply(remoteState)
+            } catch is CancellationError {
+                return
             } catch let failure as RemoteControlFailure {
                 guard self?.isCurrentOperation(generation) == true else { return }
                 self?.apply(failure)

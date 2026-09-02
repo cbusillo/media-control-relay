@@ -75,3 +75,10 @@ When the app first stores Apple credentials, a Keychain prompt may appear in
 Debug or Release depending on the signing and sandbox state of the build you
 are running. That prompt is expected and should be answered in the local user
 session, not worked around by hard-coding credentials or paths.
+
+If saving the completed pairing fails, the app stays in an explicit credential
+recovery state rather than claiming the Apple TV is ready. **Try Again** retries
+the retained credential write without repeating pairing. **Start Over** returns
+to the unconfigured setup state and tears down the pairing session, including
+its retained reply. A later app launch resumes only from a successfully stored
+credential.

@@ -1,10 +1,72 @@
 import Foundation
 import MediaControlCore
+import Security
 import Testing
 @testable import AppleCompanionSupport
 
 @Suite("Apple Companion support", .serialized)
 struct AppleCompanionSupportTests {
+    @Test("Legacy Keychain values migrate to the login Keychain")
+    func legacyKeychainMigration() throws {
+        let legacyData = Data("legacy-credential".utf8)
+        let security = FakeKeychainSecurity(legacyData: legacyData)
+        let keychain = SystemAppleCompanionKeychain(
+            service: "fixture-service",
+            security: security
+        )
+
+        #expect(try keychain.read(account: "fixture-account") == legacyData)
+        #expect(security.currentData == legacyData)
+        #expect(security.legacyData == nil)
+        #expect(security.readBuckets == [.current, .legacy])
+    }
+
+    @Test("Legacy Keychain values remain usable when copy-forward fails")
+    func legacyKeychainMigrationWriteFailure() throws {
+        let legacyData = Data("legacy-credential".utf8)
+        let security = FakeKeychainSecurity(
+            legacyData: legacyData,
+            addStatus: errSecInteractionNotAllowed
+        )
+        let keychain = SystemAppleCompanionKeychain(
+            service: "fixture-service",
+            security: security
+        )
+
+        #expect(try keychain.read(account: "fixture-account") == legacyData)
+        #expect(security.currentData == nil)
+        #expect(security.legacyData == legacyData)
+    }
+
+    @Test("An inaccessible legacy Keychain does not block fresh setup")
+    func inaccessibleLegacyKeychain() throws {
+        let security = FakeKeychainSecurity(legacyReadStatus: errSecInteractionNotAllowed)
+        let keychain = SystemAppleCompanionKeychain(
+            service: "fixture-service",
+            security: security
+        )
+
+        #expect(try keychain.read(account: "fixture-account") == nil)
+        #expect(security.readBuckets == [.current, .legacy])
+    }
+
+    @Test("Credential removal reports an undeletable legacy value")
+    func legacyKeychainDeleteFailure() {
+        let security = FakeKeychainSecurity(
+            legacyData: Data("legacy-credential".utf8),
+            legacyDeleteStatus: errSecInteractionNotAllowed
+        )
+        let keychain = SystemAppleCompanionKeychain(
+            service: "fixture-service",
+            security: security
+        )
+
+        #expect(throws: AppleCompanionKeychainError.accessDenied) {
+            try keychain.delete(account: "fixture-account")
+        }
+        #expect(security.legacyData != nil)
+    }
+
     @Test("Frame codec handles split messages and rejects malformed input")
     func frameCodec() throws {
         let request = AppleCompanionWireMessage.request(
@@ -222,6 +284,277 @@ struct AppleCompanionSupportTests {
         } catch let error as AppleCompanionProtocolError {
             #expect(error == .generationInvalidated)
         }
+        await session.stop()
+    }
+
+    @Test("Paired credentials resume in a new session")
+    func pairedCredentialResumesInNewSession() async throws {
+        let keychain = FakeKeychain()
+        let pairingTransport = FakeTransport()
+        let pairingSession = AppleCompanionSession(
+            keychain: keychain,
+            timeoutNanoseconds: 500_000_000,
+            transportFactory: { pairingTransport }
+        )
+
+        let begin = Task { try await pairingSession.beginPairing(targetID: "fixture") }
+        let beginRequest = try await pairingTransport.waitForRequest()
+        try await pairingTransport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: beginRequest.id,
+                    generation: beginRequest.generation,
+                    state: .pairingRequired
+                )
+            )
+        )
+        try await begin.value
+
+        let secret = AppleCompanionConnectionSecret(
+            host: "fixture-host",
+            identifier: "fixture-id",
+            credentials: "opaque-credential"
+        )
+        let finish = Task { try await pairingSession.finishPairing(pin: 1234) }
+        let finishRequest = try await pairingTransport.waitForRequest()
+        try await pairingTransport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: finishRequest.id,
+                    generation: finishRequest.generation,
+                    state: .ready,
+                    capabilities: [.navigation],
+                    secret: secret
+                )
+            )
+        )
+        _ = try await finish.value
+        await pairingSession.stop()
+
+        let resumeTransport = FakeTransport()
+        let resumedSession = AppleCompanionSession(
+            keychain: keychain,
+            timeoutNanoseconds: 500_000_000,
+            transportFactory: { resumeTransport }
+        )
+        let resume = Task { try await resumedSession.resume() }
+        let resumeRequest = try await resumeTransport.waitForRequest()
+        #expect(resumeRequest.operation == .connect(secret))
+        try await resumeTransport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: resumeRequest.id,
+                    generation: resumeRequest.generation,
+                    state: .ready,
+                    capabilities: [.navigation]
+                )
+            )
+        )
+        _ = try await resume.value
+
+        #expect(await resumedSession.state == .ready([.navigation]))
+        await resumedSession.stop()
+    }
+
+    @Test("Pairing does not report ready before credential persistence succeeds")
+    func pairingCredentialFailureDoesNotReportReady() async throws {
+        let transport = FakeTransport()
+        let session = AppleCompanionSession(
+            keychain: FailingWriteKeychain(),
+            timeoutNanoseconds: 500_000_000,
+            transportFactory: { transport }
+        )
+
+        let begin = Task { try await session.beginPairing(targetID: "fixture") }
+        let beginRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: beginRequest.id,
+                    generation: beginRequest.generation,
+                    state: .pairingRequired
+                )
+            )
+        )
+        try await begin.value
+
+        let finish = Task { try await session.finishPairing(pin: 1234) }
+        let finishRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: finishRequest.id,
+                    generation: finishRequest.generation,
+                    state: .ready,
+                    capabilities: [.navigation],
+                    secret: AppleCompanionConnectionSecret(
+                        host: "fixture-host",
+                        identifier: "fixture-id",
+                        credentials: "opaque-credential"
+                    )
+                )
+            )
+        )
+
+        await #expect(throws: AppleCompanionKeychainError.unavailable) {
+            _ = try await finish.value
+        }
+        #expect(await session.state == .pairingRequired)
+        await session.stop()
+    }
+
+    @Test("A pairing reply without credentials is not retained for retry")
+    func pairingReplyWithoutCredential() async throws {
+        let transport = FakeTransport()
+        let session = AppleCompanionSession(
+            keychain: FakeKeychain(),
+            timeoutNanoseconds: 500_000_000,
+            transportFactory: { transport }
+        )
+
+        let begin = Task { try await session.beginPairing(targetID: "fixture") }
+        let beginRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: beginRequest.id,
+                    generation: beginRequest.generation,
+                    state: .pairingRequired
+                )
+            )
+        )
+        try await begin.value
+
+        let finish = Task { try await session.finishPairing(pin: 1234) }
+        let finishRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: finishRequest.id,
+                    generation: finishRequest.generation,
+                    state: .ready,
+                    capabilities: [.navigation]
+                )
+            )
+        )
+
+        await #expect(throws: AppleCompanionKeychainError.invalidData) {
+            _ = try await finish.value
+        }
+        #expect(await session.state == .pairingRequired)
+        await #expect(throws: AppleCompanionKeychainError.invalidData) {
+            _ = try await session.retryPersistingPairingCredential()
+        }
+        await session.stop()
+    }
+
+    @Test("Pairing credential persistence can be retried without pairing again")
+    func pairingCredentialPersistenceRetry() async throws {
+        let transport = FakeTransport()
+        let keychain = RecoveringWriteKeychain()
+        let session = AppleCompanionSession(
+            keychain: keychain,
+            timeoutNanoseconds: 500_000_000,
+            transportFactory: { transport }
+        )
+
+        let begin = Task { try await session.beginPairing(targetID: "fixture") }
+        let beginRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: beginRequest.id,
+                    generation: beginRequest.generation,
+                    state: .pairingRequired
+                )
+            )
+        )
+        try await begin.value
+
+        let secret = AppleCompanionConnectionSecret(
+            host: "fixture-host",
+            identifier: "fixture-id",
+            credentials: "opaque-credential"
+        )
+        let finish = Task { try await session.finishPairing(pin: 1234) }
+        let finishRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: finishRequest.id,
+                    generation: finishRequest.generation,
+                    state: .ready,
+                    capabilities: [.navigation],
+                    secret: secret
+                )
+            )
+        )
+        await #expect(throws: AppleCompanionKeychainError.unavailable) {
+            _ = try await finish.value
+        }
+        #expect(await session.state == .pairingRequired)
+
+        _ = try await session.retryPersistingPairingCredential()
+
+        #expect(try await session.storedSecret() == secret)
+        #expect(await session.state == .ready([.navigation]))
+        await session.stop()
+    }
+
+    @Test("Pairing credential retry does not restore stale ready state")
+    func pairingCredentialRetryAfterDisconnect() async throws {
+        let transport = FakeTransport()
+        let keychain = RecoveringWriteKeychain()
+        let session = AppleCompanionSession(
+            keychain: keychain,
+            timeoutNanoseconds: 500_000_000,
+            maximumReconnectAttempts: 0,
+            transportFactory: { transport }
+        )
+
+        let begin = Task { try await session.beginPairing(targetID: "fixture") }
+        let beginRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: beginRequest.id,
+                    generation: beginRequest.generation,
+                    state: .pairingRequired
+                )
+            )
+        )
+        try await begin.value
+
+        let secret = AppleCompanionConnectionSecret(
+            host: "fixture-host",
+            identifier: "fixture-id",
+            credentials: "opaque-credential"
+        )
+        let finish = Task { try await session.finishPairing(pin: 1234) }
+        let finishRequest = try await transport.waitForRequest()
+        try await transport.push(
+            .reply(
+                AppleCompanionReply(
+                    id: finishRequest.id,
+                    generation: finishRequest.generation,
+                    state: .ready,
+                    capabilities: [.navigation],
+                    secret: secret
+                )
+            )
+        )
+        await #expect(throws: AppleCompanionKeychainError.unavailable) {
+            _ = try await finish.value
+        }
+        transport.close()
+        #expect(await eventually { await session.state == .offline })
+
+        await #expect(throws: AppleCompanionProtocolError.generationInvalidated) {
+            _ = try await session.retryPersistingPairingCredential()
+        }
+
+        #expect(try await session.storedSecret() == secret)
+        #expect(await session.state == .offline)
         await session.stop()
     }
 
@@ -518,6 +851,102 @@ private func eventually(
     return await condition()
 }
 
+private enum FakeKeychainBucket: Equatable {
+    case current
+    case legacy
+}
+
+private final class FakeKeychainSecurity: AppleCompanionKeychainSecurity, @unchecked Sendable {
+    private let lock = NSLock()
+    private var storedCurrentData: Data?
+    private var storedLegacyData: Data?
+    private var storedReadBuckets: [FakeKeychainBucket] = []
+    private let legacyReadStatus: OSStatus
+    private let addStatus: OSStatus
+    private let legacyDeleteStatus: OSStatus
+
+    init(
+        currentData: Data? = nil,
+        legacyData: Data? = nil,
+        legacyReadStatus: OSStatus = errSecSuccess,
+        addStatus: OSStatus = errSecSuccess,
+        legacyDeleteStatus: OSStatus = errSecSuccess
+    ) {
+        storedCurrentData = currentData
+        storedLegacyData = legacyData
+        self.legacyReadStatus = legacyReadStatus
+        self.addStatus = addStatus
+        self.legacyDeleteStatus = legacyDeleteStatus
+    }
+
+    var currentData: Data? {
+        lock.withLock { storedCurrentData }
+    }
+
+    var legacyData: Data? {
+        lock.withLock { storedLegacyData }
+    }
+
+    var readBuckets: [FakeKeychainBucket] {
+        lock.withLock { storedReadBuckets }
+    }
+
+    func copyMatching(_ query: CFDictionary) -> (status: OSStatus, result: Any?) {
+        lock.withLock {
+            let bucket = bucket(for: query)
+            storedReadBuckets.append(bucket)
+            if bucket == .legacy, legacyReadStatus != errSecSuccess {
+                return (legacyReadStatus, nil)
+            }
+            let data = bucket == .legacy ? storedLegacyData : storedCurrentData
+            return data.map { (errSecSuccess, $0) } ?? (errSecItemNotFound, nil)
+        }
+    }
+
+    func update(_ query: CFDictionary, attributes: CFDictionary) -> OSStatus {
+        lock.withLock {
+            guard bucket(for: query) == .current, storedCurrentData != nil else {
+                return errSecItemNotFound
+            }
+            storedCurrentData = data(in: attributes)
+            return errSecSuccess
+        }
+    }
+
+    func add(_ attributes: CFDictionary) -> OSStatus {
+        lock.withLock {
+            guard addStatus == errSecSuccess else { return addStatus }
+            storedCurrentData = data(in: attributes)
+            return errSecSuccess
+        }
+    }
+
+    func delete(_ query: CFDictionary) -> OSStatus {
+        lock.withLock {
+            switch bucket(for: query) {
+            case .current:
+                guard storedCurrentData != nil else { return errSecItemNotFound }
+                storedCurrentData = nil
+                return errSecSuccess
+            case .legacy:
+                guard storedLegacyData != nil else { return errSecItemNotFound }
+                guard legacyDeleteStatus == errSecSuccess else { return legacyDeleteStatus }
+                storedLegacyData = nil
+                return errSecSuccess
+            }
+        }
+    }
+
+    private func bucket(for query: CFDictionary) -> FakeKeychainBucket {
+        let dictionary = query as NSDictionary
+        return dictionary[kSecUseDataProtectionKeychain] as? Bool == true ? .legacy : .current
+    }
+
+    private func data(in attributes: CFDictionary) -> Data? {
+        (attributes as NSDictionary)[kSecValueData] as? Data
+    }
+}
+
 private final class FakeKeychain: AppleCompanionKeychain, @unchecked Sendable {
     private let lock = NSLock()
     private var values: [String: Data] = [:]
@@ -532,5 +961,41 @@ private final class FakeKeychain: AppleCompanionKeychain, @unchecked Sendable {
 
     func delete(account: String) throws {
         _ = lock.withLock { values.removeValue(forKey: account) }
+    }
+}
+
+private struct FailingWriteKeychain: AppleCompanionKeychain, Sendable {
+    func read(account: String) throws -> Data? {
+        nil
+    }
+
+    func write(_ data: Data, account: String) throws {
+        throw AppleCompanionKeychainError.unavailable
+    }
+
+    func delete(account: String) throws {}
+}
+
+private final class RecoveringWriteKeychain: AppleCompanionKeychain, @unchecked Sendable {
+    private let lock = NSLock()
+    private var value: Data?
+    private var shouldFailWrite = true
+
+    func read(account: String) throws -> Data? {
+        lock.withLock { value }
+    }
+
+    func write(_ data: Data, account: String) throws {
+        try lock.withLock {
+            if shouldFailWrite {
+                shouldFailWrite = false
+                throw AppleCompanionKeychainError.unavailable
+            }
+            value = data
+        }
+    }
+
+    func delete(account: String) throws {
+        lock.withLock { value = nil }
     }
 }

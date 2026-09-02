@@ -61,6 +61,8 @@ private struct AppleCompanionRemoteActuator: RemoteControlActuating {
             return map(try await session.resume())
         } catch is CancellationError {
             throw CancellationError()
+        } catch let error as AppleCompanionKeychainError {
+            throw map(error, operation: .read)
         } catch {
             throw map(error)
         }
@@ -93,6 +95,24 @@ private struct AppleCompanionRemoteActuator: RemoteControlActuating {
             return map(try await session.finishPairing(pin: pin))
         } catch is CancellationError {
             throw CancellationError()
+        } catch AppleCompanionKeychainError.invalidData {
+            throw RemoteControlFailure.unavailable
+        } catch let error as AppleCompanionKeychainError {
+            throw map(error, operation: .write)
+        } catch {
+            throw map(error)
+        }
+    }
+
+    func retryCredentialSave() async throws -> MediaRemoteTargetState {
+        do {
+            return map(try await session.retryPersistingPairingCredential())
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch AppleCompanionKeychainError.invalidData {
+            throw RemoteControlFailure.unavailable
+        } catch let error as AppleCompanionKeychainError {
+            throw map(error, operation: .write)
         } catch {
             throw map(error)
         }

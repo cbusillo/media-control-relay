@@ -91,6 +91,57 @@ struct RemoteControlModelTests {
         #expect(await actuator.executedActions.contains(.volume(2)))
     }
 
+    @Test("Pairing save failure remains explicit and recoverable")
+    func pairingSaveFailure() async {
+        let choice = RemoteControlDiscoveryChoice(id: "private-id", name: "Living Room")
+        let actuator = FakeRemoteActuator(
+            discoveries: [choice],
+            pairingFailure: .credential(.write)
+        )
+        let model = makeModel(actuator: actuator)
+        await eventually { model.state == .unconfigured }
+
+        model.discover()
+        await eventually { model.state == .choosing([choice]) }
+        model.select(choice)
+        await eventually { model.state == .pairing(choice, failedAttempts: 0) }
+        model.pairingPIN = "1234"
+        model.finishPairing()
+        await eventually { model.state == .credentialFailure(.write) }
+        model.retryCredentialSave()
+        await eventually { model.state == .ready([.navigation]) }
+
+        #expect(await actuator.finishedPINs == [1234])
+        #expect(await actuator.retryCredentialSaveCount == 1)
+    }
+
+    @Test("Pairing save retry cannot be started twice")
+    func pairingSaveRetryIsSingleFlight() async {
+        let choice = RemoteControlDiscoveryChoice(id: "private-id", name: "Living Room")
+        let actuator = FakeRemoteActuator(
+            discoveries: [choice],
+            pairingFailure: .credential(.write),
+            retryCredentialSaveDelayNanoseconds: 50_000_000
+        )
+        let model = makeModel(actuator: actuator)
+        await eventually { model.state == .unconfigured }
+
+        model.discover()
+        await eventually { model.state == .choosing([choice]) }
+        model.select(choice)
+        await eventually { model.state == .pairing(choice, failedAttempts: 0) }
+        model.pairingPIN = "1234"
+        model.finishPairing()
+        await eventually { model.state == .credentialFailure(.write) }
+
+        model.retryCredentialSave()
+        #expect(model.state == .connecting(reconnecting: false))
+        model.retryCredentialSave()
+        await eventually { model.state == .ready([.navigation]) }
+
+        #expect(await actuator.retryCredentialSaveCount == 1)
+    }
+
     @Test("Credential removal failure preserves the truthful ready state")
     func removalFailure() async {
         let actuator = FakeRemoteActuator(
@@ -232,12 +283,16 @@ private actor FakeRemoteActuator: RemoteControlActuating {
     private let resumeState: MediaRemoteTargetState
     private let discoveries: [RemoteControlDiscoveryChoice]
     private let pairingState: MediaRemoteTargetState
+    private let pairingFailure: RemoteControlFailure?
+    private let retryCredentialSaveState: MediaRemoteTargetState
+    private let retryCredentialSaveDelayNanoseconds: UInt64
     private let executeState: MediaRemoteTargetState
     private let clearFailure: RemoteControlFailure?
 
     private(set) var resumeCount = 0
     private(set) var beginPairingIDs: [String] = []
     private(set) var finishedPINs: [Int] = []
+    private(set) var retryCredentialSaveCount = 0
     private(set) var executedActions: [MediaRemoteAction] = []
     private(set) var stopCount = 0
 
@@ -246,6 +301,9 @@ private actor FakeRemoteActuator: RemoteControlActuating {
         resumeState: MediaRemoteTargetState = .unconfigured,
         discoveries: [RemoteControlDiscoveryChoice] = [],
         pairingState: MediaRemoteTargetState = .ready(capabilities: []),
+        pairingFailure: RemoteControlFailure? = nil,
+        retryCredentialSaveState: MediaRemoteTargetState = .ready(capabilities: [.navigation]),
+        retryCredentialSaveDelayNanoseconds: UInt64 = 0,
         executeState: MediaRemoteTargetState = .ready(capabilities: []),
         clearFailure: RemoteControlFailure? = nil
     ) {
@@ -253,6 +311,9 @@ private actor FakeRemoteActuator: RemoteControlActuating {
         self.resumeState = resumeState
         self.discoveries = discoveries
         self.pairingState = pairingState
+        self.pairingFailure = pairingFailure
+        self.retryCredentialSaveState = retryCredentialSaveState
+        self.retryCredentialSaveDelayNanoseconds = retryCredentialSaveDelayNanoseconds
         self.executeState = executeState
         self.clearFailure = clearFailure
     }
@@ -274,9 +335,18 @@ private actor FakeRemoteActuator: RemoteControlActuating {
         beginPairingIDs.append(targetID)
     }
 
-    func finishPairing(pin: Int) -> MediaRemoteTargetState {
+    func finishPairing(pin: Int) throws -> MediaRemoteTargetState {
         finishedPINs.append(pin)
+        if let pairingFailure { throw pairingFailure }
         return pairingState
+    }
+
+    func retryCredentialSave() async throws -> MediaRemoteTargetState {
+        retryCredentialSaveCount += 1
+        if retryCredentialSaveDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: retryCredentialSaveDelayNanoseconds)
+        }
+        return retryCredentialSaveState
     }
 
     func execute(_ action: MediaRemoteAction) -> MediaRemoteTargetState {
@@ -306,6 +376,7 @@ private actor DelayedDiscoveryActuator: RemoteControlActuating {
 
     func beginPairing(targetID: String) {}
     func finishPairing(pin: Int) -> MediaRemoteTargetState { .unsupported }
+    func retryCredentialSave() -> MediaRemoteTargetState { .unsupported }
     func execute(_ action: MediaRemoteAction) -> MediaRemoteTargetState { .unsupported }
     func stop() {}
     func clearStoredCredential() {}

@@ -90,7 +90,13 @@ pretending a connected Apple session exists.
 `MemoryStorage` only. Discovery returns ephemeral target references; pairing is
 split into begin and finish requests so the user can enter the PIN shown by the
 Apple TV. The resulting host, stable identifier, and credentials cross only the
-owner-only socket and are stored together as an opaque Keychain value.
+owner-only socket and are stored together as an opaque login-Keychain value.
+The session does not publish `ready` until that write succeeds. Existing values
+from the earlier data-protection Keychain query remain readable and are copied
+forward best-effort without making a temporary migration failure block use. The
+login-Keychain item is not marked synchronizable, but it no longer carries the
+earlier `ThisDeviceOnly` accessibility class and follows login-Keychain
+portability behavior.
 
 The helper reports every action capability only when pyatv's live Companion
 feature state says the corresponding operation is available. Native mute,
