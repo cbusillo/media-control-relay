@@ -1,0 +1,33 @@
+{
+  "request": {
+    "kind": "request",
+    "request": {
+      "id": 42,
+      "generation": 7,
+      "operation": {
+        "operation": "connect",
+        "secret": {
+          "host": "fixture-host",
+          "identifier": "fixture-id",
+          "credentials": "opaque-credential"
+        }
+      }
+    }
+  },
+  "reply": {
+    "kind": "reply",
+    "reply": {
+      "id": 42,
+      "generation": 7,
+      "state": "ready",
+      "capabilities": ["navigation"],
+      "targets": [],
+      "secret": {
+        "host": "fixture-host",
+        "identifier": "fixture-id",
+        "credentials": "opaque-credential"
+      },
+      "error": null
+    }
+  }
+}

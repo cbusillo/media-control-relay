@@ -66,6 +66,43 @@ Future control-surface and target adapters remain optional boundaries around
 the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
 integration must not make the core app depend on that device.
 
+### Optional Apple Companion Boundary
+
+`AppleCompanionSupport` owns the Swift-side Apple remote session, owner-only
+Unix-socket transport, bounded line-delimited JSON framing, request correlation,
+generation invalidation, reconnect backoff, helper lifecycle seam, and Keychain
+credential custody. Apple, Companion, Python, Network, and Keychain details do
+not enter `MediaControlCore`.
+
+`AppleCompanionHelper` is a separately tested source payload pinned by
+`uv.lock` to `pyatv==0.18.0`. It uses Companion discovery and pairing through
+`MemoryStorage` only. Discovery returns ephemeral target references; pairing is
+split into begin and finish requests so the user can enter the PIN shown by the
+Apple TV. The resulting host, stable identifier, and credentials cross only the
+owner-only socket and are stored together as an opaque Keychain value.
+
+The helper reports every action capability only when pyatv's live Companion
+feature state says the corresponding operation is available. Native mute,
+power, and playback-position state are not claimed.
+
+For local owner testing, `scripts/apple-companion-helper.sh` installs an
+owner-only, content-addressed runtime under Application Support. The installer
+uses the checked-in Python version and uv lock, creates a relocatable virtual
+environment, and atomically selects the active version. The Swift locator
+validates ownership, permissions, symlink containment, manifest schema, source
+digest, launcher, and interpreter before constructing a session. Missing local
+state is normal; damaged state fails closed.
+
+The helper's Unix socket remains under a short owner-only temporary directory
+because Darwin limits Unix-domain socket paths. The process boundary rejects an
+overlong path before launch and passes only the socket location through the
+environment.
+
+The local runtime is not a product payload. Developer ID staging remains
+blocked on provenance review of the embedded runtime and complete dependency
+closure in issue #90. App Store builds contain no helper or Python payload, do
+not link `AppleCompanionSupport`, and remain useful without Apple controls.
+
 ### External Volume Actuator
 
 `MediaControlRelayApp` owns the vendor-neutral custom URL contract. It accepts

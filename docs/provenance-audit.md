@@ -89,6 +89,26 @@ by the App Store app.
 9. The project-wide MIT license applies only to original project code and
    compatible contributions. It does not override third-party obligations.
 
+10. The checked-in Apple Companion helper source and lockfile may exercise the
+    approved `pyatv==0.18.0` dependency in local tests with `MemoryStorage` only.
+    They do not approve distribution of a Python runtime or pyatv's transitive
+    dependency closure. No helper executable or Python payload may be staged
+    into a release until those exact shipped artifacts, licenses, hashes,
+    signing behavior, and notices are recorded here.
+
+11. Public validation resolves the lockfile's test-only Python dependency
+    closure from its recorded package indexes. `uv run --locked` verifies the
+    lockfile hashes, but this adds a network and package-index trust surface to
+    CI; it does not convert those dependencies into distributable product code.
+
+12. The owner may install a local test runtime with
+    `scripts/apple-companion-helper.sh`. That runtime is content-addressed,
+    owner-only Application Support state built from the checked-in Python
+    version and uv lock. It is not staged into an app, release, archive, or
+    public evidence. Distribution remains blocked on issue #90's audit of the
+    exact embedded runtime, transitive artifacts, licenses, hashes, signing,
+    notarization, and notices.
+
 ## Required Follow-Up
 
 - Record exact source revisions and test-vector origins in protocol PRs.

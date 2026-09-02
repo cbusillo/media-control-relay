@@ -7,6 +7,9 @@ MediaControlRelay.xcodeproj/
 scratch/
 xcuserdata/
 *.xcuserstate
+__pycache__/
+*.py[cod]
+.venv/
 *.env
 *.env.*
 *.p8

@@ -13,6 +13,10 @@ let package = Package(
             targets: ["MediaControlCore"]
         ),
         .library(
+            name: "AppleCompanionSupport",
+            targets: ["AppleCompanionSupport"]
+        ),
+        .library(
             name: "UPnPMediaTarget",
             targets: ["UPnPMediaTarget"]
         ),
@@ -20,12 +24,20 @@ let package = Package(
     targets: [
         .target(name: "MediaControlCore"),
         .target(
+            name: "AppleCompanionSupport",
+            dependencies: ["MediaControlCore"]
+        ),
+        .target(
             name: "UPnPMediaTarget",
             dependencies: ["MediaControlCore"]
         ),
         .testTarget(
             name: "MediaControlCoreTests",
             dependencies: ["MediaControlCore"]
+        ),
+        .testTarget(
+            name: "AppleCompanionSupportTests",
+            dependencies: ["AppleCompanionSupport", "MediaControlCore"]
         ),
         .testTarget(
             name: "UPnPMediaTargetTests",
