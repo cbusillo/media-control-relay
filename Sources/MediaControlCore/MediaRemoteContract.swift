@@ -40,7 +40,6 @@ public enum MediaRemoteAction: Equatable, Hashable, Sendable {
             return .relativeVolume
         }
     }
-
 }
 
 public enum MediaRemoteCapability: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
