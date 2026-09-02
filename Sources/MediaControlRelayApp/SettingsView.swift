@@ -67,6 +67,13 @@ struct SettingsView: View {
                 Label("Media Target", systemImage: "record.circle")
             }
 
+            if let remoteControl = model.remoteControl {
+                RemoteControlSettingsView(model: remoteControl)
+                    .tabItem {
+                        Label("Apple TV", systemImage: "appletv")
+                    }
+            }
+
             Form {
                 Section {
                     LabeledContent("Status") {
@@ -428,7 +435,7 @@ struct SettingsView: View {
     }
 }
 
-private struct SettingsSectionHeader: View {
+struct SettingsSectionHeader: View {
     let title: LocalizedStringResource
 
     init(_ title: LocalizedStringResource) {

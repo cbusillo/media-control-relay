@@ -53,7 +53,10 @@ struct RelayApp: App {
     private static func makeModel() -> RelayAppModel {
 #if DEBUG
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil else {
-            return RelayAppModel(targetOverlayPresenter: TargetOverlayController())
+            return RelayAppModel(
+                targetOverlayPresenter: TargetOverlayController(),
+                remoteControl: RemoteControlRuntimeFactory.make()
+            )
         }
 
         let suiteName = "com.shinycomputers.media-control-relay.test-host"
@@ -74,7 +77,10 @@ struct RelayApp: App {
             )
         )
 #else
-        RelayAppModel(targetOverlayPresenter: TargetOverlayController())
+        RelayAppModel(
+            targetOverlayPresenter: TargetOverlayController(),
+            remoteControl: RemoteControlRuntimeFactory.make()
+        )
 #endif
     }
 }

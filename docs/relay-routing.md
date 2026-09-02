@@ -146,7 +146,7 @@ claimed by this milestone.
 The menu-bar app registers one custom URL scheme with two exact host families.
 The volume actuator remains `media-control-relay://control/volume/up`,
 `media-control-relay://control/volume/down`, and
-`media-control-relay://control/volume/mute`. The Apple remote actuator is the
+`media-control-relay://control/volume/mute`. The remote actuator is the
 exact allowlist of `media-control-relay://remote/navigate/up`,
 `media-control-relay://remote/navigate/down`,
 `media-control-relay://remote/navigate/left`,

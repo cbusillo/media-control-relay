@@ -58,6 +58,13 @@ struct SetupView: View {
                         title: "Verify volume routing",
                         detail: "Use Settings to review activation matching, command counts, and the selected target's connection status."
                     )
+                    if model.remoteControl != nil {
+                        SetupStepRow(
+                            number: 4,
+                            title: "Connect an Apple TV",
+                            detail: "Use the Apple TV tab in Settings to discover, pair, and recover the optional local remote connection."
+                        )
+                    }
                 }
 
                 Text("Configuration stays on this Mac. Local-network discovery shows generic renderer labels only, and Media Control Relay contacts only the renderer you explicitly select for volume control.")

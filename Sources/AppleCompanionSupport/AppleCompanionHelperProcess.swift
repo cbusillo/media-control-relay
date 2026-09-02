@@ -4,6 +4,7 @@ import Darwin
 public final class AppleCompanionHelperProcess: @unchecked Sendable {
     private let helperURL: URL
     private let socketPath: String
+    private let processLock = NSLock()
     private var process: Process?
 
     public init(helperURL: URL, socketPath: String) {
@@ -12,7 +13,7 @@ public final class AppleCompanionHelperProcess: @unchecked Sendable {
     }
 
     public var isRunning: Bool {
-        process?.isRunning == true
+        processLock.withLock { process?.isRunning == true }
     }
 
     public func start(
@@ -46,7 +47,9 @@ public final class AppleCompanionHelperProcess: @unchecked Sendable {
         } catch {
             throw .unavailable
         }
-        self.process = process
+        processLock.withLock {
+            self.process = process
+        }
 
         let deadline = DispatchTime.now().uptimeNanoseconds &+ timeoutNanoseconds
         while DispatchTime.now().uptimeNanoseconds < deadline {
@@ -54,7 +57,11 @@ public final class AppleCompanionHelperProcess: @unchecked Sendable {
                 return
             }
             guard process.isRunning else {
-                self.process = nil
+                processLock.withLock {
+                    if self.process === process {
+                        self.process = nil
+                    }
+                }
                 throw .unavailable
             }
             try? await Task.sleep(nanoseconds: 10_000_000)
@@ -64,7 +71,10 @@ public final class AppleCompanionHelperProcess: @unchecked Sendable {
     }
 
     public func stop() {
-        guard let process else { return }
+        guard let process = processLock.withLock({
+            defer { self.process = nil }
+            return self.process
+        }) else { return }
         if process.isRunning {
             process.terminate()
             let deadline = DispatchTime.now().uptimeNanoseconds + 1_000_000_000
@@ -76,7 +86,6 @@ public final class AppleCompanionHelperProcess: @unchecked Sendable {
             }
             process.waitUntilExit()
         }
-        self.process = nil
     }
 
     private func isOwnedSocketReady() -> Bool {

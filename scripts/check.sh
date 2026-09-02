@@ -126,9 +126,47 @@ if nm -gU \
 	printf 'App Store executable unexpectedly links Apple Companion support\n' >&2
 	exit 1
 fi
+if nm -u \
+	"$app_store_build_dir/$app_store_product_name/Contents/MacOS/$app_store_executable" |
+	rg -q 'AppleCompanion'; then
+	printf 'App Store executable unexpectedly references Apple Companion support\n' >&2
+	exit 1
+fi
+if strings \
+	"$app_store_build_dir/$app_store_product_name/Contents/MacOS/$app_store_executable" |
+	rg -q 'AppleCompanion'; then
+	printf 'App Store executable unexpectedly contains Apple Companion metadata\n' >&2
+	exit 1
+fi
 if find "$app_store_build_dir/$app_store_product_name" \
 	\( -name '*.py' -o -name '*.pyc' -o -name 'pyatv*' \
 	-o -name 'AppleCompanionHelper*' \) -print -quit | rg -q .; then
 	printf 'App Store build unexpectedly contains Apple Companion helper material\n' >&2
+	exit 1
+fi
+release_build_settings="$(xcodebuild \
+	-project MediaControlRelay.xcodeproj \
+	-scheme MediaControlRelay \
+	-configuration Release \
+	-destination 'platform=macOS' \
+	-showBuildSettings)"
+release_build_dir="$(printf '%s\n' "$release_build_settings" | awk -F' = ' '
+		/Build settings for action build and target MediaControlRelay:/ { target = 1; next }
+		target && /TARGET_BUILD_DIR =/ { print $2; exit }
+	')"
+release_product_name="$(printf '%s\n' "$release_build_settings" | awk -F' = ' '
+		/Build settings for action build and target MediaControlRelay:/ { target = 1; next }
+		target && /FULL_PRODUCT_NAME =/ { print $2; exit }
+	')"
+[ -n "$release_build_dir" ] && [ -n "$release_product_name" ] || {
+	printf 'Unable to resolve the Release application build path\n' >&2
+	exit 1
+}
+release_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
+	"$release_build_dir/$release_product_name/Contents/Info.plist")"
+if ! nm -gU \
+	"$release_build_dir/$release_product_name/Contents/MacOS/$release_executable" |
+	rg -q 'AppleCompanion'; then
+	printf 'Release executable does not contain the live Apple Companion adapter\n' >&2
 	exit 1
 fi

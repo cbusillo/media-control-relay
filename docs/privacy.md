@@ -48,9 +48,9 @@ route rule, but never persists or displays the target address, control URL,
 model string, SSDP payload, or SOAP payload.
 
 The app never shows hosts, IDs, PINs, credentials, runtime paths, or other
-private identifiers in UI or diagnostics. The local Apple companion helper is
-the custody boundary for discovered credentials, and the user-facing names it
-surfaces are ephemeral labels only.
+private identifiers in UI or diagnostics. Keychain is the sole persistent
+credential boundary; the local helper uses memory-only storage, and discovered
+device names remain ephemeral labels.
 
 Network recovery stores only a coarse path state and transition count. Interface
 types may be compared in memory to detect a path change, but interface names,

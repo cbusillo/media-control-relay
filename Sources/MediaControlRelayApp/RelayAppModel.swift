@@ -58,6 +58,8 @@ final class RelayAppModel {
     private(set) var externalVolumeActionsAccepted = 0
     private(set) var externalVolumeActionsRejected = 0
     private(set) var externalVolumeActionsRateLimited = 0
+    private(set) var externalRemoteActionsRejected = 0
+    private(set) var externalRemoteActionsUnavailable = 0
     var routeSnapshot = RouteSnapshot(audioOutput: nil, displays: [])
     var routeObservationState: RouteObservationState = .stopped
     var activationMatches = false
@@ -75,6 +77,7 @@ final class RelayAppModel {
 
     let productStatus: LocalizedStringResource = "Preview build"
     let discovery: MediaTargetDiscoveryModel
+    let remoteControl: RemoteControlModel?
 
     private let volumeKeyMonitor: any VolumeKeyMonitoring
     private let volumeKeyGestureMonitor: VolumeKeyGestureMonitor
@@ -146,7 +149,8 @@ final class RelayAppModel {
         targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
         mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
             MediaTargetSessionFactory.make(configuration: $0)
-        }
+        },
+        remoteControl: RemoteControlModel? = nil
     ) {
         let gestureMonitor = VolumeKeyGestureMonitor()
         let configuration = configurationStore.load()
@@ -165,6 +169,7 @@ final class RelayAppModel {
         volumeKeyMonitor.setSuppressionTiming(volumeKeySuppressionTiming)
         self.targetOverlayPresenter = targetOverlayPresenter
         self.discovery = discovery
+        self.remoteControl = remoteControl
         self.mediaTargetSessionFactory = mediaTargetSessionFactory
         self.preferences = configurationStore.defaults
         self.targetPresentation = MediaTargetPresentationModel(
@@ -281,6 +286,7 @@ final class RelayAppModel {
         refreshInputMonitoring()
         refreshLaunchAtLogin()
         refreshTransportState()
+        remoteControl?.startIfNeeded()
     }
 
     var launchAtLogin: Bool {
@@ -364,11 +370,14 @@ final class RelayAppModel {
             "external_actions_accepted": externalVolumeActionsAccepted.formatted(),
             "external_actions_rejected": externalVolumeActionsRejected.formatted(),
             "external_actions_rate_limited": externalVolumeActionsRateLimited.formatted(),
+            "remote_actions_rejected": externalRemoteActionsRejected.formatted(),
+            "remote_actions_unavailable": externalRemoteActionsUnavailable.formatted(),
             "target_connection": targetConnectionDiagnosticName,
             "network_path": networkPathSnapshot.status.rawValue,
             "network_transitions": networkTransitionCount.formatted(),
         ].merging(routeDiagnostics) { current, _ in current }
-        let allowedFieldNames: Set<String> = [
+        .merging(remoteControl?.diagnosticsFields ?? [:]) { _, remote in remote }
+        var allowedFieldNames: Set<String> = [
             "app_version",
             "relay_state",
             "input_monitoring",
@@ -396,6 +405,7 @@ final class RelayAppModel {
             "audio_transport",
             "active_displays",
         ]
+        allowedFieldNames.formUnion(RemoteControlModel.diagnosticFieldNames)
         return DiagnosticsRedaction.redact(
             fields: DiagnosticsRedaction.allowlisted(
                 fields: fields,
@@ -507,6 +517,30 @@ final class RelayAppModel {
         volumeKeyTask = nil
         volumeActionTask?.cancel()
         volumeActionTask = nil
+        remoteControl?.shutdown()
+    }
+
+    func handleExternalRemoteAction(_ action: MediaRemoteAction) {
+        guard let remoteControl else {
+            externalRemoteActionsUnavailable += 1
+            return
+        }
+        remoteControl.handle(action)
+    }
+
+    func recordRejectedExternalRemoteURL(count: Int = 1) {
+        let count = max(0, count)
+        guard let remoteControl else {
+            externalRemoteActionsRejected += count
+            return
+        }
+        for _ in 0..<count {
+            remoteControl.recordRejectedAction()
+        }
+    }
+
+    var remoteControlTerminationStopper: (@Sendable () -> Void)? {
+        remoteControl?.terminationStopper
     }
 
     func openInputMonitoringSettings() {
