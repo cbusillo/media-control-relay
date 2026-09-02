@@ -39,6 +39,9 @@ class Controller(Protocol):
     async def close(self) -> None: ...
 
 
+ParentPidObserver = Callable[[], int]
+
+
 class HelperError(Exception):
     """A bounded, client-visible helper error category."""
 
@@ -440,11 +443,32 @@ async def serve_exclusive_client(
         await serve_client(reader, writer, controller)
 
 
-async def run(socket_path: Path, controller: Controller | None = None) -> None:
+async def watch_parent_process(
+    initial_parent_pid: int,
+    *,
+    observe_parent_pid: ParentPidObserver = os.getppid,
+    poll_interval: float = 0.5,
+) -> None:
+    interval = max(0.0, poll_interval)
+    while observe_parent_pid() == initial_parent_pid:
+        await asyncio.sleep(interval)
+
+
+async def run(
+    socket_path: Path,
+    controller: Controller | None = None,
+    *,
+    observe_parent_pid: ParentPidObserver = os.getppid,
+    parent_pid_poll_interval: float = 0.5,
+) -> None:
     validate_socket_path(socket_path)
     active_controller = controller or PyATVController()
     client_lock = asyncio.Lock()
     previous_umask = os.umask(0o077)
+    initial_parent_pid = observe_parent_pid()
+    server: asyncio.AbstractServer | None = None
+    serve_task: asyncio.Task[None] | None = None
+    watchdog_task: asyncio.Task[None] | None = None
     try:
         server = await asyncio.start_unix_server(
             lambda reader, writer: serve_exclusive_client(
@@ -456,16 +480,42 @@ async def run(socket_path: Path, controller: Controller | None = None) -> None:
             path=str(socket_path),
             limit=MAX_FRAME_BYTES + 1,
         )
+        os.chmod(socket_path, 0o600)
+        serve_task = asyncio.create_task(server.serve_forever())
+        watchdog_task = asyncio.create_task(
+            watch_parent_process(
+                initial_parent_pid,
+                observe_parent_pid=observe_parent_pid,
+                poll_interval=parent_pid_poll_interval,
+            )
+        )
+        done, pending = await asyncio.wait(
+            {serve_task, watchdog_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if watchdog_task in done or serve_task in done:
+            server.close()
+        if serve_task in pending:
+            serve_task.cancel()
+        if watchdog_task in pending:
+            watchdog_task.cancel()
+        await asyncio.gather(serve_task, watchdog_task, return_exceptions=True)
+    except asyncio.CancelledError:
+        if server is not None:
+            server.close()
     finally:
         os.umask(previous_umask)
-    os.chmod(socket_path, 0o600)
-    try:
-        await server.serve_forever()
-    except asyncio.CancelledError:
-        pass
-    finally:
-        server.close()
-        await server.wait_closed()
+        if server is not None:
+            server.close()
+            await server.wait_closed()
+        if serve_task is not None:
+            serve_task.cancel()
+        if watchdog_task is not None:
+            watchdog_task.cancel()
+        await asyncio.gather(
+            *(task for task in (serve_task, watchdog_task) if task is not None),
+            return_exceptions=True,
+        )
         await active_controller.close()
         try:
             socket_path.unlink()

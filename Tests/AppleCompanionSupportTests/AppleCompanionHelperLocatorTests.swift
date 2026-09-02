@@ -21,6 +21,7 @@ struct AppleCompanionHelperLocatorTests {
         )
         #expect(runtime.availability == .notInstalled)
         #expect(runtime.session == nil)
+        #expect(runtime.helperProcess == nil)
     }
 
     @Test("Secure content-addressed installation resolves its launcher")
@@ -45,6 +46,7 @@ struct AppleCompanionHelperLocatorTests {
             socketPath: fixture.temporaryRoot.appendingPathComponent("helper.sock").path
         )
         #expect(runtime.session != nil)
+        #expect(runtime.helperProcess != nil)
     }
 
     @Test("Mutated content fails closed")
