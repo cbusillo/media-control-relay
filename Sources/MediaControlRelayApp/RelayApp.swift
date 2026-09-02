@@ -22,6 +22,7 @@ struct RelayApp: App {
         }
         .defaultSize(width: 560, height: 520)
         .defaultLaunchBehavior(hasShownWelcome ? .suppressed : .presented)
+        .handlesExternalEvents(matching: [])
         .windowResizability(.contentSize)
 
         MenuBarExtra {

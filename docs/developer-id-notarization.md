@@ -53,7 +53,7 @@ PROFILE="MediaControlRelay"
 IDENTITY="Developer ID Application: <organization> (<team-id>)"
 EXPECTED_BUNDLE_ID="com.shinycomputers.media-control-relay"
 EXPECTED_VERSION="0.1.0"
-EXPECTED_BUILD="7"
+EXPECTED_BUILD="10"
 ROLLBACK_EXECUTABLE_SHA256="<accepted-predecessor-executable-sha256>"
 ARTIFACT_ROOT="${HOME}/.code/artifacts/media-control-relay/${EXPECTED_COMMIT:0:7}-notarization"
 ARCHIVE="${ARTIFACT_ROOT}/MediaControlRelay.xcarchive"
@@ -88,7 +88,7 @@ rollback rehearsal.
 
 ## Launch at Login
 
-Build 7 uses the signed main application as its login item through
+Build 10 uses the signed main application as its login item through
 `SMAppService.mainApp`; it does not install or copy a host-specific
 `LaunchAgent`. The Settings toggle reads the Service Management status on
 launch and activation, calls `register()` or `unregister()`, and updates the
