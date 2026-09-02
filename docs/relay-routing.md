@@ -143,13 +143,23 @@ claimed by this milestone.
 
 ## External Custom URL Actions
 
-The menu-bar app registers one custom URL scheme with exactly three canonical
-routes: `media-control-relay://control/volume/up`,
+The menu-bar app registers one custom URL scheme with two exact host families.
+The volume actuator remains `media-control-relay://control/volume/up`,
 `media-control-relay://control/volume/down`, and
-`media-control-relay://control/volume/mute`. The app delegate accepts only those
-exact strings, rejects alternate casing, percent encoding, credentials, ports,
-queries, fragments, unknown hosts, and extra path components, and never logs the
-raw URL.
+`media-control-relay://control/volume/mute`. The Apple remote actuator is the
+exact allowlist of `media-control-relay://remote/navigate/up`,
+`media-control-relay://remote/navigate/down`,
+`media-control-relay://remote/navigate/left`,
+`media-control-relay://remote/navigate/right`, `media-control-relay://remote/select`,
+`media-control-relay://remote/back`, `media-control-relay://remote/home`,
+`media-control-relay://remote/play-pause`, `media-control-relay://remote/previous`,
+`media-control-relay://remote/next`, `media-control-relay://remote/seek/forward/10`,
+`media-control-relay://remote/seek/forward/30`, `media-control-relay://remote/seek/backward/10`,
+`media-control-relay://remote/seek/backward/30`, `media-control-relay://remote/volume/up`,
+and `media-control-relay://remote/volume/down`. The app delegate accepts only
+those exact strings, rejects alternate casing, percent encoding, credentials,
+ports, queries, fragments, unknown hosts, and extra path components, and never
+logs the raw URL.
 
 Cold-launch URL delivery is held until `RelayAppModel` is available. Delivery
 does not itself request window presentation or activation; normal first-run
@@ -157,6 +167,17 @@ setup behavior remains unchanged. Accepted actions enter the same non-physical
 dispatch path used by menu controls with held-repeat disabled and physical-input
 counters untouched. A monotonic-time duplicate limit runs before the reducer;
 rejected and rate-limited totals are coarse diagnostics only.
+
+The two hosts are separate, host-based no-fallback boundaries. `control` volume
+URLs never fall through to the `remote` parser, and `remote` URLs never fall
+back to the volume actuator. Parsing is strict and exact, not prefix-based or
+path-normalizing.
+
+The local actuator is bounded and intentionally narrow. It exposes only the
+documented local actions, does not identify callers, does not authorize local
+processes, and does not create a path to arbitrary remote commands. Unsupported
+or unavailable actions fail closed with an honest rejected state instead of an
+automatic fallback.
 
 The later signed pairing-free Samsung UPnP matrix is recorded separately in
 [`samsung-upnp-qualification.md`](samsung-upnp-qualification.md). That record

@@ -10,6 +10,12 @@ and Mute actions but does not connect to or control a TV or other media device.
 The app is intentionally not a universal remote, smart-home hub, media
 dashboard, streaming service, or cloud relay.
 
+The current product shape keeps one app target and one shared vendor-neutral
+model, then selects a build-specific factory at launch. Debug and Release use a
+live Apple companion factory for local development and signed developer use,
+while the App Store configuration uses an absent factory so the shipped app
+remains honest about the optional Apple boundary.
+
 ## Toolchain And Platform Floors
 
 The app builds with Xcode 26 or later while retaining macOS 15 as its deployment
@@ -74,6 +80,11 @@ generation invalidation, reconnect backoff, helper lifecycle seam, and Keychain
 credential custody. Apple, Companion, Python, Network, and Keychain details do
 not enter `MediaControlCore`.
 
+That adapter boundary stays isolated from the shared model and from the app's
+other routing surfaces. The optional Apple code path is constructed only through
+the app shell, and the App Store build keeps that boundary absent rather than
+pretending a connected Apple session exists.
+
 `AppleCompanionHelper` is a separately tested source payload pinned by
 `uv.lock` to `pyatv==0.18.0`. It uses Companion discovery and pairing through
 `MemoryStorage` only. Discovery returns ephemeral target references; pairing is
@@ -84,6 +95,11 @@ owner-only socket and are stored together as an opaque Keychain value.
 The helper reports every action capability only when pyatv's live Companion
 feature state says the corresponding operation is available. Native mute,
 power, and playback-position state are not claimed.
+
+The helper lifecycle includes a parent-death watchdog. A dead parent, session
+invalidation, or helper failure tears the helper down instead of letting it
+persist as a stray background process, which keeps the local boundary honest
+and recoverable.
 
 For local owner testing, `scripts/apple-companion-helper.sh` installs an
 owner-only, content-addressed runtime under Application Support. The installer
@@ -102,6 +118,8 @@ The local runtime is not a product payload. Developer ID staging remains
 blocked on provenance review of the embedded runtime and complete dependency
 closure in issue #90. App Store builds contain no helper or Python payload, do
 not link `AppleCompanionSupport`, and remain useful without Apple controls.
+That App Store configuration is the proof boundary for #90: the shipped app is
+still functional while the Apple companion helper is absent.
 
 ### External Volume Actuator
 
