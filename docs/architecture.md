@@ -74,9 +74,12 @@ only `media-control-relay://control/volume/up`,
 `media-control-relay://control/volume/mute`. Parsing stays out of
 `MediaControlCore`, and the app delegate queues accepted actions during
 cold-launch delivery without itself requesting activation or window
-presentation. Normal first-run setup behavior remains unchanged. Once the model
-is attached, each action uses the existing non-physical/menu dispatch path with
-no held-repeat state and no physical-input accounting.
+presentation. The setup scene opts out of external-event routing, and the
+delegate declines application reopen requests, so repeated custom-URL actions
+cannot present the setup scene. Normal first-run setup and explicit menu-bar
+setup presentation remain unchanged. Once the model is attached, each action
+uses the existing non-physical/menu dispatch path with no held-repeat state and
+no physical-input accounting.
 
 The delegate performs no caller discovery and records no URL text. A small
 monotonic-time duplicate limit runs before the routing reducer. The actuator is

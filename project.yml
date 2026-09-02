@@ -59,7 +59,7 @@ targets:
       base:
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
         CODE_SIGN_ENTITLEMENTS: Config/MediaControlRelay.entitlements
-        CURRENT_PROJECT_VERSION: "8"
+        CURRENT_PROJECT_VERSION: "10"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Config/MediaControlRelay-Info.plist
         MARKETING_VERSION: "0.1.0"

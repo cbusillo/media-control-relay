@@ -935,6 +935,24 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Reopen requests do not present app windows")
+    func reopenRequestsDoNotPresentAppWindows() {
+        let delegate = RelayAppDelegate()
+
+        #expect(
+            !delegate.applicationShouldHandleReopen(
+                NSApplication.shared,
+                hasVisibleWindows: false
+            )
+        )
+        #expect(
+            !delegate.applicationShouldHandleReopen(
+                NSApplication.shared,
+                hasVisibleWindows: true
+            )
+        )
+    }
+
     @Test("Rapid physical command execution preserves FIFO order and latest presentation")
     func commandOrderIsFIFO() async {
         let target = AppModelTargetStub()
@@ -1668,7 +1686,7 @@ private func makeHarness(
     launchAtLoginClient: LaunchAtLoginClient? = nil,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
-    let suiteName = "com.shinycomputers.media-control-relay.app-model-tests.\(UUID().uuidString)"
+    let suiteName = "com.media-control-relay.app-model-tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suiteName)!
     let configurationStore = RelayConfigurationStore(defaults: defaults)
     if let configuration {

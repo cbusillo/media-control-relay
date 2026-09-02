@@ -52,6 +52,13 @@ final class RelayAppDelegate: NSObject, NSApplicationDelegate {
         receive(urls: urls)
     }
 
+    func applicationShouldHandleReopen(
+        _ application: NSApplication,
+        hasVisibleWindows flag: Bool
+    ) -> Bool {
+        false
+    }
+
     private func recordPendingRejection() {
         pendingRejectedURLCount = min(
             Self.maximumPendingRejectedURLCount,
