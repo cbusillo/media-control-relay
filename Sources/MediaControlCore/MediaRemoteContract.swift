@@ -18,34 +18,6 @@ public enum MediaRemoteAction: Equatable, Hashable, Sendable {
     case seek(Int)
     case volume(Int)
 
-    public static func direction(_ direction: MediaRemoteDirection) -> Self {
-        .navigate(direction)
-    }
-
-    public static var up: Self {
-        .navigate(.up)
-    }
-
-    public static var down: Self {
-        .navigate(.down)
-    }
-
-    public static var left: Self {
-        .navigate(.left)
-    }
-
-    public static var right: Self {
-        .navigate(.right)
-    }
-
-    public static func relativeSeek(_ delta: Int) -> Self {
-        .seek(delta)
-    }
-
-    public static func relativeVolume(_ delta: Int) -> Self {
-        .volume(delta)
-    }
-
     public var requiredCapability: MediaRemoteCapability {
         switch self {
         case .navigate:
@@ -69,9 +41,6 @@ public enum MediaRemoteAction: Equatable, Hashable, Sendable {
         }
     }
 
-    public var requiredCapabilities: Set<MediaRemoteCapability> {
-        [requiredCapability]
-    }
 }
 
 public enum MediaRemoteCapability: String, CaseIterable, Codable, Equatable, Hashable, Sendable {
@@ -85,9 +54,6 @@ public enum MediaRemoteCapability: String, CaseIterable, Codable, Equatable, Has
     case relativeSeek
     case relativeVolume
 
-    public static var directionalNavigation: Self {
-        .navigation
-    }
 }
 
 public enum MediaRemoteFailure: Error, Equatable, Sendable {
@@ -97,7 +63,6 @@ public enum MediaRemoteFailure: Error, Equatable, Sendable {
     case unsupported
     case offline
     case unsupportedAction(MediaRemoteAction)
-    case noFallback
     case queueFull
     case generationInvalidated
 }
@@ -137,7 +102,7 @@ public enum MediaRemoteTargetState: Equatable, Sendable {
         case .connecting:
             throw .connecting
         case .unsupported:
-            throw .noFallback
+            throw .unsupported
         case .offline:
             throw .offline
         case .ready:
@@ -149,16 +114,12 @@ public enum MediaRemoteTargetState: Equatable, Sendable {
 }
 
 public struct MediaRemoteCommandQueue: Equatable, Sendable {
-    private enum Segment: Equatable, Sendable {
-        case action(MediaRemoteAction)
-    }
-
     public let capacity: Int
     public let maximumSeekMagnitude: Int
     public let maximumVolumeMagnitude: Int
 
     public private(set) var generation: UInt64
-    private var segments: [Segment]
+    private var actions: [MediaRemoteAction]
 
     public init(
         capacity: Int = 32,
@@ -170,24 +131,19 @@ public struct MediaRemoteCommandQueue: Equatable, Sendable {
         self.maximumSeekMagnitude = max(1, maximumSeekMagnitude)
         self.maximumVolumeMagnitude = max(1, maximumVolumeMagnitude)
         self.generation = generation
-        self.segments = []
+        self.actions = []
     }
 
     public var pendingCount: Int {
-        segments.count
+        actions.count
     }
 
     public var isEmpty: Bool {
-        segments.isEmpty
+        actions.isEmpty
     }
 
     public var pendingActions: [MediaRemoteAction] {
-        segments.map { segment in
-            switch segment {
-            case let .action(action):
-                return action
-            }
-        }
+        actions
     }
 
     public mutating func enqueue(
@@ -206,26 +162,23 @@ public struct MediaRemoteCommandQueue: Equatable, Sendable {
             return
         }
 
-        guard segments.count < capacity else {
+        guard actions.count < capacity else {
             throw .queueFull
         }
-        segments.append(.action(boundedAction))
+        actions.append(boundedAction)
     }
 
     public mutating func dequeue() -> MediaRemoteAction? {
-        guard !segments.isEmpty else {
+        guard !actions.isEmpty else {
             return nil
         }
-        switch segments.removeFirst() {
-        case let .action(action):
-            return action
-        }
+        return actions.removeFirst()
     }
 
     @discardableResult
     public mutating func invalidate() -> UInt64 {
         generation &+= 1
-        segments.removeAll(keepingCapacity: true)
+        actions.removeAll(keepingCapacity: true)
         return generation
     }
 
@@ -243,19 +196,19 @@ public struct MediaRemoteCommandQueue: Equatable, Sendable {
     }
 
     private mutating func coalesce(_ action: MediaRemoteAction) -> Bool {
-        guard let last = segments.last else {
+        guard let last = actions.last else {
             return false
         }
 
         let combined: MediaRemoteAction?
         switch (last, action) {
-        case let (.action(.seek(existing)), .seek(delta)):
+        case let (.seek(existing), .seek(delta)):
             combined = combinedDelta(
                 existing,
                 delta,
                 maximumMagnitude: maximumSeekMagnitude
             ).map(MediaRemoteAction.seek)
-        case let (.action(.volume(existing)), .volume(delta)):
+        case let (.volume(existing), .volume(delta)):
             combined = combinedDelta(
                 existing,
                 delta,
@@ -266,9 +219,9 @@ public struct MediaRemoteCommandQueue: Equatable, Sendable {
         }
 
         if let combined {
-            segments[segments.index(before: segments.endIndex)] = .action(combined)
+            actions[actions.index(before: actions.endIndex)] = combined
         } else {
-            segments.removeLast()
+            actions.removeLast()
         }
         return true
     }

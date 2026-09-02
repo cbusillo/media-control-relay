@@ -22,7 +22,6 @@ struct MediaRemoteContractTests {
 
         for (action, capability) in actions {
             #expect(action.requiredCapability == capability)
-            #expect(action.requiredCapabilities == [capability])
         }
         #expect(MediaRemoteCapability.allCases.count == 9)
     }
@@ -52,7 +51,7 @@ struct MediaRemoteContractTests {
             (.unconfigured, .unconfigured),
             (.pairingRequired, .pairingRequired),
             (.connecting, .connecting),
-            (.unsupported, .noFallback),
+            (.unsupported, .unsupported),
             (.offline, .offline),
         ]
 
