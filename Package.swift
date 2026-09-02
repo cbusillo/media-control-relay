@@ -37,7 +37,8 @@ let package = Package(
         ),
         .testTarget(
             name: "AppleCompanionSupportTests",
-            dependencies: ["AppleCompanionSupport", "MediaControlCore"]
+            dependencies: ["AppleCompanionSupport", "MediaControlCore"],
+            exclude: ["Fixtures"]
         ),
         .testTarget(
             name: "UPnPMediaTargetTests",

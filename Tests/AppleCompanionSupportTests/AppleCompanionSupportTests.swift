@@ -327,10 +327,13 @@ struct AppleCompanionSupportTests {
             try await session.start()
             Issue.record("Failing transport unexpectedly started")
         } catch {}
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        #expect(await eventually {
+            let requestCount = await factory.requestCount
+            let state = await session.state
+            return requestCount == 3 && state == .offline
+        })
         let attemptsAfterCircuit = await factory.requestCount
         #expect(attemptsAfterCircuit == 3)
-        #expect(await session.state == .offline)
         try? await Task.sleep(nanoseconds: 10_000_000)
         #expect(await factory.requestCount == attemptsAfterCircuit)
         await session.stop()
@@ -339,9 +342,12 @@ struct AppleCompanionSupportTests {
             try await session.start()
             Issue.record("Failing transport unexpectedly restarted")
         } catch {}
-        try? await Task.sleep(nanoseconds: 20_000_000)
+        #expect(await eventually {
+            let requestCount = await factory.requestCount
+            let state = await session.state
+            return requestCount == attemptsAfterCircuit + 3 && state == .offline
+        })
         #expect(await factory.requestCount == attemptsAfterCircuit + 3)
-        #expect(await session.state == .offline)
         await session.stop()
     }
 
@@ -497,6 +503,19 @@ private actor AlwaysFailingTransportFactory {
         requestCount += 1
         throw AppleCompanionProtocolError.unavailable
     }
+}
+
+private func eventually(
+    attempts: Int = 200,
+    condition: () async -> Bool
+) async -> Bool {
+    for _ in 0..<attempts {
+        if await condition() {
+            return true
+        }
+        try? await Task.sleep(nanoseconds: 1_000_000)
+    }
+    return await condition()
 }
 
 private final class FakeKeychain: AppleCompanionKeychain, @unchecked Sendable {
