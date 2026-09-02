@@ -158,13 +158,16 @@ public struct ApplicationSupportAppleCompanionHelperLocator: AppleCompanionHelpe
 public struct AppleCompanionRuntimeResolution: Sendable {
     public let availability: AppleCompanionHelperAvailability
     public let session: AppleCompanionSession?
+    public let helperProcess: AppleCompanionHelperProcess?
 
     public init(
         availability: AppleCompanionHelperAvailability,
-        session: AppleCompanionSession?
+        session: AppleCompanionSession?,
+        helperProcess: AppleCompanionHelperProcess? = nil
     ) {
         self.availability = availability
         self.session = session
+        self.helperProcess = helperProcess
     }
 }
 
@@ -185,7 +188,8 @@ public enum AppleCompanionRuntime {
         guard case let .installed(installation) = availability else {
             return AppleCompanionRuntimeResolution(
                 availability: availability,
-                session: nil
+                session: nil,
+                helperProcess: nil
             )
         }
 
@@ -202,7 +206,8 @@ public enum AppleCompanionRuntime {
         )
         return AppleCompanionRuntimeResolution(
             availability: availability,
-            session: session
+            session: session,
+            helperProcess: helperProcess
         )
     }
 }

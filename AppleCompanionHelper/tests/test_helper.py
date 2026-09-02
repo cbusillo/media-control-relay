@@ -4,12 +4,21 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from helper import MAX_FRAME_BYTES, HelperError, result, run, serve_client, validate_socket_path
+from helper import (
+    MAX_FRAME_BYTES,
+    HelperError,
+    result,
+    run,
+    serve_client,
+    validate_socket_path,
+    watch_parent_process,
+)
 
 
 class FakeController:
     def __init__(self):
         self.operations = []
+        self.closed = False
 
     async def handle(self, operation):
         self.operations.append(operation)
@@ -34,7 +43,18 @@ class FakeController:
         return result("ready", capabilities=["navigation"])
 
     async def close(self):
+        self.closed = True
         return None
+
+
+class FakeParentPidObserver:
+    def __init__(self, values):
+        self.values = iter(values)
+        self.calls = 0
+
+    def __call__(self):
+        self.calls += 1
+        return next(self.values)
 
 
 class HelperProtocolTests(unittest.IsolatedAsyncioTestCase):
@@ -186,6 +206,36 @@ class HelperProtocolTests(unittest.IsolatedAsyncioTestCase):
 
             task.cancel()
             await task
+
+    async def test_parent_watchdog_stops_helper_when_parent_pid_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            socket_path = Path(directory) / "companion.sock"
+            observer = FakeParentPidObserver([1234, 1234, 4321])
+            task = asyncio.create_task(
+                run(
+                    socket_path,
+                    self.controller,
+                    observe_parent_pid=observer,
+                    parent_pid_poll_interval=0,
+                )
+            )
+            await asyncio.wait_for(task, timeout=1)
+
+            self.assertFalse(socket_path.exists())
+            self.assertTrue(self.controller.closed)
+            self.assertGreaterEqual(observer.calls, 2)
+
+    async def test_parent_watchdog_records_initial_parent_pid(self):
+        observer = FakeParentPidObserver([2222, 2222, 1111])
+        await asyncio.wait_for(
+            watch_parent_process(
+                2222,
+                observe_parent_pid=observer,
+                poll_interval=0,
+            ),
+            timeout=1,
+        )
+        self.assertGreaterEqual(observer.calls, 3)
 
 
 class SocketPermissionTests(unittest.TestCase):
