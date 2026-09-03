@@ -1,0 +1,393 @@
+{
+  "schema": 1,
+  "status": "candidate-inventory",
+  "noticePath": "AppleCompanionHelper/NOTICES.md",
+  "noticePurpose": "Deterministic normalized rendering of retained notice text with original-byte hashes; not legal advice or distribution approval.",
+  "packages": [
+    {
+      "name": "aiohappyeyeballs",
+      "version": "2.7.1",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "PSF-2.0",
+        "licenseClassifiers": [
+          "License :: OSI Approved :: Python Software Foundation License"
+        ]
+      },
+      "resolvedExpression": "PSF-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "aiohttp",
+      "version": "3.14.3",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache-2.0 AND MIT",
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "Apache-2.0 AND MIT",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "aiosignal",
+      "version": "1.4.0",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache 2.0",
+        "licenseClassifiers": [
+          "License :: OSI Approved :: Apache Software License"
+        ]
+      },
+      "resolvedExpression": "Apache-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "annotated-types",
+      "version": "0.8.0",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": ["License :: OSI Approved :: MIT License"]
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "attrs",
+      "version": "26.1.0",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "certifi",
+      "version": "2026.7.22",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "MPL-2.0",
+        "licenseClassifiers": [
+          "License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)"
+        ]
+      },
+      "resolvedExpression": "MPL-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "requires-review",
+      "reviewReason": "Review MPL-2.0 file-level source obligations and the Mozilla CA bundle attribution and update terms before distribution."
+    },
+    {
+      "name": "cffi",
+      "version": "2.1.1",
+      "expectedEvidence": {
+        "licenseExpression": "MIT-0",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT-0",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "chacha20poly1305-reuseable",
+      "version": "0.13.2",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache-2.0 OR BSD-3-Clause",
+        "licenseClassifiers": ["License :: Other/Proprietary License"]
+      },
+      "resolvedExpression": "Apache-2.0 OR BSD-3-Clause",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "requires-review",
+      "reviewReason": "Resolve the conflict between the legacy dual-license field and the proprietary classifier before distribution."
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.1",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "MIT",
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "cryptography",
+      "version": "50.0.1",
+      "expectedEvidence": {
+        "licenseExpression": "Apache-2.0 OR BSD-3-Clause",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "Apache-2.0 OR BSD-3-Clause",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "frozenlist",
+      "version": "1.8.0",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache-2.0",
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "Apache-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "idna",
+      "version": "3.19",
+      "expectedEvidence": {
+        "licenseExpression": "BSD-3-Clause",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "BSD-3-Clause",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "ifaddr",
+      "version": "0.2.0",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "MIT",
+        "licenseClassifiers": ["License :: OSI Approved :: MIT License"]
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "miniaudio",
+      "version": "1.71",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "MIT",
+        "licenseClassifiers": ["License :: OSI Approved :: MIT License"]
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "multidict",
+      "version": "6.7.1",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache License 2.0",
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "Apache-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "propcache",
+      "version": "0.5.2",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache-2.0",
+        "licenseClassifiers": [
+          "License :: OSI Approved :: Apache Software License"
+        ]
+      },
+      "resolvedExpression": "Apache-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "protobuf",
+      "version": "7.36.1",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "3-Clause BSD License",
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "BSD-3-Clause",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "pyatv",
+      "version": "0.18.0",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "pycparser",
+      "version": "3.0",
+      "expectedEvidence": {
+        "licenseExpression": "BSD-3-Clause",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "BSD-3-Clause",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "pydantic",
+      "version": "2.13.5",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "pydantic_core",
+      "version": "2.46.5",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache-2.0",
+        "licenseClassifiers": [
+          "License :: OSI Approved :: Apache Software License"
+        ]
+      },
+      "resolvedExpression": "Apache-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "MIT",
+        "licenseClassifiers": ["License :: OSI Approved :: MIT License"]
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "srptools",
+      "version": "1.0.1",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "BSD 3-Clause License",
+        "licenseClassifiers": ["License :: OSI Approved :: BSD License"]
+      },
+      "resolvedExpression": "BSD-3-Clause",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "tabulate",
+      "version": "0.10.0",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "tinytag",
+      "version": "2.3.1",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": null,
+        "licenseClassifiers": ["License :: OSI Approved :: MIT License"]
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "classifier",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "expectedEvidence": {
+        "licenseExpression": "PSF-2.0",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "PSF-2.0",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.4",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.7.0",
+      "expectedEvidence": {
+        "licenseExpression": "MIT",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "MIT",
+      "resolution": "license-expression",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "yarl",
+      "version": "1.24.5",
+      "expectedEvidence": {
+        "licenseExpression": null,
+        "license": "Apache-2.0",
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "Apache-2.0",
+      "resolution": "legacy-license-field",
+      "reviewStatus": "recorded"
+    },
+    {
+      "name": "zeroconf",
+      "version": "0.151.3",
+      "expectedEvidence": {
+        "licenseExpression": "LGPL-2.1-or-later",
+        "license": null,
+        "licenseClassifiers": []
+      },
+      "resolvedExpression": "LGPL-2.1-or-later",
+      "resolution": "license-expression",
+      "reviewStatus": "requires-review",
+      "reviewReason": "Review LGPL-2.1-or-later source and relinking obligations for the compiled extension modules before distribution."
+    }
+  ]
+}

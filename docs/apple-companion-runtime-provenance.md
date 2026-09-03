@@ -19,9 +19,11 @@ the local uv-managed qualification path, and can be staged without an installer
 or framework relocation. Freeze tools remain out of scope because they add a
 bootloader and another binary provenance surface.
 
-The candidate remains blocked from distribution. Approval requires the full
-license and notice inventory, inside-out signing proof, notarization, quarantine
-and clean-Mac qualification, rollback, and App Store exclusion evidence.
+The candidate remains blocked from distribution. Its notice inventory is now
+deterministic and reviewable, but the recorded runtime proxy and package review
+items remain unresolved. Approval also requires inside-out signing proof,
+notarization, quarantine and clean-Mac qualification, rollback, and App Store
+exclusion evidence.
 
 ## Architecture
 
@@ -41,7 +43,8 @@ of the first candidate.
 `scripts/stage-apple-companion-runtime.sh` produces an ignored candidate under
 `scratch/`. It:
 
-- downloads only the pinned standalone-runtime asset and verifies its sha256;
+- downloads the pinned standalone-runtime asset and the pinned same-release
+  full-variant notice proxy, and verifies both sha256 digests;
 - rejects absolute, parent-traversing, or non-`python/` archive paths;
 - installs the complete production lock directly into the standalone runtime's
   own `site-packages`, without a virtualenv or absolute interpreter link;
@@ -51,15 +54,20 @@ of the first candidate.
   Tcl/Tk, IDLE, and build-only metadata that the Companion helper does not use;
 - rejects absolute or escaping symlinks;
 - proves the staged interpreter version and architecture;
-- loads the real helper with isolated Python to verify imports; and
-- emits a deterministic manifest of packages, license metadata, native code,
-  input hashes, and the complete staged-content digest.
+- loads the real helper with isolated Python to verify imports;
+- validates each package's exact metadata evidence against
+  `AppleCompanionHelper/license-policy.json`;
+- regenerates `AppleCompanionHelper/NOTICES.md` from the pinned runtime notice
+  proxy and retained wheel files, requiring byte-for-byte equality; and
+- emits a deterministic manifest of packages, license evidence, runtime notice
+  sources, native code, input hashes, and the complete staged-content digest.
 
 Two independent clean stages produced the same pinned requirements digest,
-31-package inventory, 35-file native-code inventory, and complete content
+31-package inventory, 19-file runtime notice proxy, 38-file package license
+inventory, 35-file native-code inventory, notice digest, and complete content
 digest. Those expected values are part of `runtime-source.json`, so tool,
-wheel-selection, or pruning drift fails instead of silently changing the
-candidate.
+wheel-selection, notice, metadata, or pruning drift fails instead of silently
+changing the candidate.
 
 The staging script deliberately does not modify an app bundle, Xcode project,
 archive, signing identity, or notarization submission. It is evidence for the
@@ -67,18 +75,36 @@ candidate audit, not a release-packaging path.
 
 ## License State
 
-The standalone build project source declares MPL-2.0 and publishes separate
-component license files. That is the build project's license, not a single
-license for the produced runtime. The stripped candidate artifact carries
-CPython's license text but does not carry the standalone project's bundled-
-library notice set. Those notices must be sourced and reviewed out of band
-before approval. The staged dependency manifest records each installed
-distribution's declared license expression and retained license-file paths.
+The standalone build project source declares MPL-2.0. That is the build
+project's license, not a single license for the produced runtime. The stripped
+candidate artifact carries CPython's license text but does not carry the build
+project's bundled-library notice set. The inventory therefore pins the
+`pgo+lto-full` asset from the same project release and records all 19 of its
+`python/licenses/` files as a conservative proxy. This is not an identity claim:
+some listed components may be absent after pruning, and the proxy does not prove
+that no other obligation exists.
 
-These records are inputs to the required notice audit; they are not a claim
-that every obligation has been discharged. `THIRD-PARTY-NOTICES.md` must be
-expanded with the approved runtime and complete shipped dependency closure
-before the candidate can move from `candidate` to `approved`.
+`AppleCompanionHelper/license-policy.json` records the exact metadata evidence,
+resolved expression, and review state for all 31 locked distributions. The
+generated `AppleCompanionHelper/NOTICES.md` includes the 19 runtime-proxy files
+and all 38 retained package license, notice, copying, and author files with
+their sha256 digests. Staging regenerates that file and fails on any package,
+metadata, path, file, or text drift.
+
+Three review items remain explicit and distribution-blocking:
+
+- `certifi==2026.7.22` uses MPL-2.0 and carries the Mozilla CA bundle; its
+  file-level source and bundle attribution/update obligations need review.
+- `chacha20poly1305-reuseable==0.13.2` has a legacy Apache-2.0 OR BSD-3-Clause
+  field and a conflicting proprietary classifier; that metadata conflict needs
+  resolution.
+- `zeroconf==0.151.3` uses LGPL-2.1-or-later and includes compiled extension
+  modules; source and relinking obligations need review.
+
+The generated notice set is an engineering integrity record, not a claim that
+the notices are legally sufficient or that every obligation has been
+discharged. The candidate must remain `candidate` until the review items and
+the remaining distribution gates are resolved.
 
 ## Signing and Distribution Gates
 

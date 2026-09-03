@@ -1,5 +1,13 @@
 # Third-Party Notices
 
+## Apple Companion runtime candidate
+
+The deterministic candidate inventory for the optional Developer ID Apple
+Companion runtime is generated at `AppleCompanionHelper/NOTICES.md`. It covers
+the pinned same-release runtime notice proxy and the exact locked Python
+dependency closure. The inventory is an engineering integrity record, not legal
+advice or distribution approval; its explicit review items remain unresolved.
+
 ## postlund/pyatv v0.18.0
 
 Media Control Relay may use `postlund/pyatv` `v0.18.0` as a pinned optional

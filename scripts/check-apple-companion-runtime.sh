@@ -4,6 +4,9 @@ set -eu
 
 repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 source_manifest="$repo_root/AppleCompanionHelper/runtime-source.json"
+license_policy="$repo_root/AppleCompanionHelper/license-policy.json"
+committed_notices="$repo_root/AppleCompanionHelper/NOTICES.md"
+notice_generator="$repo_root/scripts/generate-apple-companion-notices.rb"
 runtime_path="${1:-}"
 
 for command_name in ruby shasum; do
@@ -12,6 +15,7 @@ for command_name in ruby shasum; do
 		exit 69
 	}
 done
+ruby -c "$notice_generator" >/dev/null
 
 ruby -rjson -rdigest -e '
 	repo_root = File.realpath(ARGV.fetch(0))
@@ -33,6 +37,13 @@ ruby -rjson -rdigest -e '
 	exit 1 unless manifest.fetch("lastVerified") == "2026-09-03"
 	exit 1 unless manifest.fetch("pythonVersion") == "3.13.7"
 	exit 1 unless manifest.fetch("source") == expected_source
+	notice_source = manifest.fetch("noticeSource")
+	exit 1 unless notice_source.fetch("project") == "astral-sh/python-build-standalone"
+	exit 1 unless notice_source.fetch("release") == "20250818"
+	exit 1 unless notice_source.fetch("relationship") == "same-release-full-variant-proxy"
+	exit 1 unless notice_source.fetch("licenseFiles").length == 19
+	exit 1 unless Digest::SHA256.hexdigest(JSON.generate(notice_source)) ==
+	  "82857f45626cbd10a8e2b8026da3a7942353df993e25e4bcd31bef11c592010c"
 	policy = manifest.fetch("architecturePolicy")
 	exit 1 unless policy.fetch("application") == "universal2"
 	exit 1 unless policy.fetch("helperRuntime") == "arm64"
@@ -55,12 +66,15 @@ ruby -rjson -rdigest -e '
 	  "packageCount" => 31,
 	  "nativeCodeCount" => 35,
 	  "prunedRecordEntryCount" => 10,
-	  "contentSha256" => "06aa7f024e3652c07cf11b472c39ad8459d68f90df64ea10e892625d2208a4d1",
+	  "runtimeNoticeFileCount" => 19,
+	  "packageLicenseFileCount" => 38,
+	  "noticeSha256" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
+	  "contentSha256" => "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331",
 	}
 	distribution = manifest.fetch("distribution")
 	exit 1 unless distribution.fetch("approved") == false
 	exit 1 unless distribution.fetch("blockedBy") == [
-	  "Complete the runtime and dependency license/notice audit.",
+	  "Resolve the same-release runtime notice proxy and the recorded certifi, chacha20poly1305-reuseable, and zeroconf review items.",
 	  "Prove inside-out Developer ID signing without weakened entitlements.",
 	  "Pass notarization, quarantine, rollback, and clean-Mac qualification.",
 	  "Wire the runtime into Developer ID builds while preserving App Store exclusion.",
@@ -68,6 +82,8 @@ ruby -rjson -rdigest -e '
 	expected_inputs = {
 	  "AppleCompanionHelper/.python-version" => "3ce16e94590543a327d3e5ae412e663206e0ed1b46628ed3dd5ad29caa1ff5ac",
 	  "AppleCompanionHelper/helper.py" => "fa456b34df18a5e61553c21be9b348dc45c4241824a2f57d95dd18be5d5f8721",
+	  "AppleCompanionHelper/license-policy.json" => "833f4fcef5b531dc0519dbee6a6e29ca92f9674522aa64fd29a281772fd81058",
+	  "AppleCompanionHelper/NOTICES.md" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
 	  "AppleCompanionHelper/pyproject.toml" => "2996be95515a1151cde0c811e24562f5da7cdbd4575fc560cfe85fa6a567410f",
 	  "AppleCompanionHelper/uv.lock" => "80725a973bfbb4d117f095da671583b554eb18f3d45d1424f1399748f1d6bd01",
 	}
@@ -95,6 +111,8 @@ if [ -n "$runtime_path" ]; then
 	  root = File.realpath(ARGV.fetch(0))
 	  manifest = JSON.parse(File.read(File.join(root, "manifest.json")))
 	  source = JSON.parse(File.read(ARGV.fetch(1)))
+	  policy = JSON.parse(File.read(ARGV.fetch(2)))
+	  committed_notices = File.binread(ARGV.fetch(3))
 	  marker = File.join(root, ".media-control-relay-apple-companion-runtime-candidate")
 	  exit 1 unless File.read(marker) == "media-control-relay-apple-companion-runtime-candidate-v1\n"
 	  exit 1 unless manifest.fetch("schema") == 1
@@ -104,22 +122,60 @@ if [ -n "$runtime_path" ]; then
 	  exit 1 unless manifest.fetch("inputs") == source.fetch("inputs")
 	  expected_staging = source.fetch("staging")
 	  exit 1 unless manifest.fetch("requirementsSha256") == expected_staging.fetch("requirementsSha256")
+	  exit 1 unless manifest.fetch("runtimeNotices") == source.fetch("noticeSource")
+	  notice_path = File.join(root, "NOTICES.md")
+	  exit 1 unless File.file?(notice_path) && !File.symlink?(notice_path)
+	  exit 1 unless File.binread(notice_path) == committed_notices
+	  exit 1 unless Digest::SHA256.file(notice_path).hexdigest == manifest.fetch("noticeSha256")
+	  exit 1 unless manifest.fetch("noticeSha256") == expected_staging.fetch("noticeSha256")
+	  exit 1 unless manifest.fetch("runtimeNotices").fetch("licenseFiles").length ==
+	    expected_staging.fetch("runtimeNoticeFileCount")
 	  exit 1 unless manifest.fetch("packageCount") == expected_staging.fetch("packageCount")
 	  packages = manifest.fetch("packages")
 	  exit 1 unless packages.length == expected_staging.fetch("packageCount")
 	  exit 1 unless packages.map { |item| item.fetch("name").downcase }.uniq.length == packages.length
+	  policy_packages = policy.fetch("packages").to_h do |item|
+	    [[item.fetch("name"), item.fetch("version")], item]
+	  end
+	  exit 1 unless policy.fetch("schema") == 1
+	  exit 1 unless policy.fetch("status") == "candidate-inventory"
+	  exit 1 unless policy_packages.length == policy.fetch("packages").length
 	  package_versions = packages.map do |item|
-	    [item.fetch("name").downcase, item.fetch("version")]
+	    [item.fetch("name"), item.fetch("version")]
 	  end
 	  exit 1 unless package_versions.include?(["pyatv", "0.18.0"])
+	  exit 1 unless package_versions.sort == policy_packages.keys.sort
+	  package_license_file_count = 0
 	  packages.each do |item|
+	    package_policy = policy_packages.fetch([item.fetch("name"), item.fetch("version")])
+	    expected_item = {
+	      "name" => package_policy.fetch("name"),
+	      "version" => package_policy.fetch("version"),
+	      "licenseExpression" => package_policy.fetch("expectedEvidence").fetch("licenseExpression"),
+	      "license" => package_policy.fetch("expectedEvidence").fetch("license"),
+	      "licenseClassifiers" => package_policy.fetch("expectedEvidence").fetch("licenseClassifiers"),
+	      "resolvedExpression" => package_policy.fetch("resolvedExpression"),
+	      "resolution" => package_policy.fetch("resolution"),
+	      "reviewStatus" => package_policy.fetch("reviewStatus"),
+	    }
+	    expected_item["reviewReason"] = package_policy.fetch("reviewReason") if
+	      package_policy.key?("reviewReason")
+	    exit 1 unless item.reject { |key, _value| key == "licenseFiles" } == expected_item
 	    license_files = item.fetch("licenseFiles")
 	    exit 1 if license_files.empty?
-	    license_files.each do |relative|
+	    package_license_file_count += license_files.length
+	    license_files.each do |license_file|
+	      relative = license_file.fetch("path")
 	      path = File.expand_path(relative, root)
-	      exit 1 unless path.start_with?(root + File::SEPARATOR) && File.file?(path)
+	      exit 1 unless path.start_with?(root + File::SEPARATOR) && File.file?(path) && !File.symlink?(path)
+	      exit 1 unless Digest::SHA256.file(path).hexdigest == license_file.fetch("sha256")
 	    end
 	  end
+	  exit 1 unless package_license_file_count == expected_staging.fetch("packageLicenseFileCount")
+	  review_items = packages.select { |item| item.fetch("reviewStatus") == "requires-review" }
+	  exit 1 unless review_items.map { |item| item.fetch("name") }.sort ==
+	    ["certifi", "chacha20poly1305-reuseable", "zeroconf"]
+	  exit 1 unless source.fetch("distribution").fetch("approved") == false
 	  pruned_record_entries = manifest.fetch("prunedRecordEntries")
 	  exit 1 unless pruned_record_entries.length == expected_staging.fetch("prunedRecordEntryCount")
 	  exit 1 unless pruned_record_entries.uniq.length == pruned_record_entries.length
@@ -188,7 +244,7 @@ if [ -n "$runtime_path" ]; then
 	  actual = Digest::SHA256.hexdigest(digest_lines.join("\n") + "\n")
 	  exit 1 unless actual == manifest.fetch("contentSha256")
 	  exit 1 unless actual == expected_staging.fetch("contentSha256")
-	' "$runtime_path" "$source_manifest" || {
+	' "$runtime_path" "$source_manifest" "$license_policy" "$committed_notices" || {
 		printf 'Staged Apple Companion runtime is invalid or stale\n' >&2
 		exit 1
 	}

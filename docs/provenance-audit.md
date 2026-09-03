@@ -116,6 +116,14 @@ by the App Store app.
     candidate's complete licenses and notices, nested signing, notarization,
     rollback, clean-Mac behavior, and App Store exclusion are qualified.
 
+14. The candidate's deterministic notice inventory is pinned in
+    `AppleCompanionHelper/license-policy.json` and generated into
+    `AppleCompanionHelper/NOTICES.md`. It records 19 same-release runtime-proxy
+    notice files and 38 retained license/notice files across all 31 locked
+    Python distributions. This completes the engineering inventory, not legal
+    clearance. The runtime proxy and the recorded certifi, chacha20poly1305-
+    reuseable, and zeroconf review items still block distribution.
+
 ## Required Follow-Up
 
 - Record exact source revisions and test-vector origins in protocol PRs.

@@ -5,6 +5,9 @@ set -eu
 repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 source_root="$repo_root/AppleCompanionHelper"
 source_manifest="$source_root/runtime-source.json"
+license_policy="$source_root/license-policy.json"
+committed_notices="$source_root/NOTICES.md"
+notice_generator="$repo_root/scripts/generate-apple-companion-notices.rb"
 scratch_root="$repo_root/scratch"
 cache_root="$scratch_root/apple-companion-runtime-cache"
 candidate_marker=".media-control-relay-apple-companion-runtime-candidate"
@@ -49,7 +52,7 @@ if [ -e "$output" ] || [ -L "$output" ]; then
 	}
 fi
 
-for command_name in curl file jq lipo ruby shasum tar uv; do
+for command_name in cmp curl file jq lipo ruby shasum tar uv zstd; do
 	command -v "$command_name" >/dev/null 2>&1 || {
 		printf '%s is required to stage the Apple Companion runtime\n' "$command_name" >&2
 		exit 69
@@ -61,31 +64,48 @@ asset_name="$(jq -er '.source.asset' "$source_manifest")"
 asset_url="$(jq -er '.source.url' "$source_manifest")"
 asset_sha256="$(jq -er '.source.sha256' "$source_manifest")"
 expected_architecture="$(jq -er '.source.architecture' "$source_manifest")"
+notice_asset_name="$(jq -er '.noticeSource.asset' "$source_manifest")"
+notice_asset_url="$(jq -er '.noticeSource.url' "$source_manifest")"
+notice_asset_sha256="$(jq -er '.noticeSource.sha256' "$source_manifest")"
 
 mkdir -p "$cache_root"
-asset_path="$cache_root/$asset_name"
-if [ -f "$asset_path" ]; then
-	actual_asset_sha256="$(shasum -a 256 "$asset_path" | awk '{ print $1 }')"
-	[ "$actual_asset_sha256" = "$asset_sha256" ] || rm -f "$asset_path"
-fi
-if [ ! -f "$asset_path" ]; then
-	partial_asset="$asset_path.part.$$"
-	rm -f "$partial_asset"
-	curl --fail --location --retry 3 --output "$partial_asset" "$asset_url"
-	partial_sha256="$(shasum -a 256 "$partial_asset" | awk '{ print $1 }')"
-	[ "$partial_sha256" = "$asset_sha256" ] || {
+downloaded_asset_path=""
+download_asset() {
+	asset_label="$1"
+	download_name="$2"
+	download_url="$3"
+	download_sha256="$4"
+	download_path="$cache_root/$download_name"
+	if [ -f "$download_path" ]; then
+		actual_download_sha256="$(shasum -a 256 "$download_path" | awk '{ print $1 }')"
+		[ "$actual_download_sha256" = "$download_sha256" ] || rm -f "$download_path"
+	fi
+	if [ ! -f "$download_path" ]; then
+		partial_asset="$download_path.part.$$"
 		rm -f "$partial_asset"
-		printf 'Downloaded Apple Companion runtime asset digest mismatch\n' >&2
+		curl --fail --location --retry 3 --output "$partial_asset" "$download_url"
+		partial_sha256="$(shasum -a 256 "$partial_asset" | awk '{ print $1 }')"
+		[ "$partial_sha256" = "$download_sha256" ] || {
+			rm -f "$partial_asset"
+			printf 'Downloaded %s digest mismatch\n' "$asset_label" >&2
+			exit 1
+		}
+		mv "$partial_asset" "$download_path"
+		partial_asset=""
+	fi
+	actual_download_sha256="$(shasum -a 256 "$download_path" | awk '{ print $1 }')"
+	[ "$actual_download_sha256" = "$download_sha256" ] || {
+		printf '%s digest mismatch\n' "$asset_label" >&2
 		exit 1
 	}
-	mv "$partial_asset" "$asset_path"
-	partial_asset=""
-fi
-actual_asset_sha256="$(shasum -a 256 "$asset_path" | awk '{ print $1 }')"
-[ "$actual_asset_sha256" = "$asset_sha256" ] || {
-	printf 'Apple Companion runtime asset digest mismatch\n' >&2
-	exit 1
+	downloaded_asset_path="$download_path"
 }
+
+download_asset "Apple Companion runtime asset" "$asset_name" "$asset_url" "$asset_sha256"
+asset_path="$downloaded_asset_path"
+download_asset "Apple Companion runtime notice asset" \
+	"$notice_asset_name" "$notice_asset_url" "$notice_asset_sha256"
+notice_asset_path="$downloaded_asset_path"
 
 ruby -rpathname -rrubygems/package -rzlib -e '
 	Zlib::GzipReader.open(ARGV.fetch(0)) do |gzip|
@@ -268,6 +288,19 @@ ruby -rcsv -rjson -e '
 	exit 1
 }
 
+license_inventory="$staging/.license-inventory.json"
+ruby "$notice_generator" \
+	"$staging" \
+	"$source_manifest" \
+	"$license_policy" \
+	"$notice_asset_path" \
+	"$staging/NOTICES.md" \
+	"$license_inventory"
+cmp -s "$staging/NOTICES.md" "$committed_notices" || {
+	printf 'Generated Apple Companion notices do not match the committed inventory\n' >&2
+	exit 1
+}
+
 find "$staging" -type d -exec chmod 755 {} +
 find "$staging" -type f -exec chmod 644 {} +
 chmod 755 "$staging/bin/apple-companion-helper" "$python_executable"
@@ -298,37 +331,13 @@ ruby -rfind -rjson -rdigest -ropen3 -e '
 	root = File.realpath(ARGV.fetch(0))
 	source = JSON.parse(File.read(ARGV.fetch(1)))
 	requirements_sha256 = ARGV.fetch(2)
+	license_inventory_path = File.join(root, ".license-inventory.json")
+	license_inventory = JSON.parse(File.read(license_inventory_path))
+	File.delete(license_inventory_path)
 	pruned_entries_path = File.join(root, ".pruned-record-entries.json")
 	pruned_record_entries = JSON.parse(File.read(pruned_entries_path))
 	File.delete(pruned_entries_path)
-	site_packages = File.join(root, "python/lib/python3.13/site-packages")
-	package_directories = Dir.children(site_packages)
-	  .select { |name| name.end_with?(".dist-info") }
-	  .map { |name| File.join(site_packages, name) }
-	  .sort
-	packages = package_directories.map do |directory|
-	  metadata = {}
-	  File.foreach(File.join(directory, "METADATA")) do |line|
-	    key, value = line.split(":", 2)
-	    next unless value && ["Name", "Version", "License", "License-Expression"].include?(key)
-	    metadata[key] ||= value.strip
-	  end
-	  license_files = Find.find(directory).select do |path|
-	    next false unless File.file?(path)
-	    relative = path.delete_prefix(directory + File::SEPARATOR)
-	    basename = File.basename(path)
-	    relative.start_with?("licenses/") || basename.match?(/\A(?:LICENSE|COPYING|NOTICE)/)
-	  end
-	    .map { |path| path.delete_prefix(root + File::SEPARATOR) }
-	    .sort
-	  {
-	    "name" => metadata.fetch("Name"),
-	    "version" => metadata.fetch("Version"),
-	    "licenseExpression" => metadata["License-Expression"],
-	    "license" => metadata["License"],
-	    "licenseFiles" => license_files,
-	  }
-	end
+	packages = license_inventory.fetch("packages")
 	mach_o_magics = %w[feedface feedfacf cefaedfe cffaedfe cafebabe bebafeca cafebabf bfbafeca]
 	paths = Find.find(root).to_a.sort
 	native_code = paths.map do |path|
@@ -362,6 +371,8 @@ ruby -rfind -rjson -rdigest -ropen3 -e '
 	  "requirementsSha256" => requirements_sha256,
 	  "packageCount" => packages.length,
 	  "packages" => packages,
+	  "runtimeNotices" => license_inventory.fetch("noticeSource"),
+	  "noticeSha256" => Digest::SHA256.file(File.join(root, "NOTICES.md")).hexdigest,
 	  "prunedRecordEntries" => pruned_record_entries,
 	  "nativeCode" => native_code,
 	  "contentSha256" => Digest::SHA256.hexdigest(digest_lines.join("\n") + "\n"),
@@ -373,18 +384,31 @@ expected_requirements_sha256="$(jq -er '.staging.requirementsSha256' "$source_ma
 expected_package_count="$(jq -er '.staging.packageCount' "$source_manifest")"
 expected_native_code_count="$(jq -er '.staging.nativeCodeCount' "$source_manifest")"
 expected_pruned_record_count="$(jq -er '.staging.prunedRecordEntryCount' "$source_manifest")"
+expected_runtime_notice_count="$(jq -er '.staging.runtimeNoticeFileCount' "$source_manifest")"
+expected_package_license_file_count="$(jq -er '.staging.packageLicenseFileCount' "$source_manifest")"
+expected_notice_sha256="$(jq -er '.staging.noticeSha256' "$source_manifest")"
 expected_content_sha256="$(jq -er '.staging.contentSha256' "$source_manifest")"
 actual_requirements_sha256="$(jq -er '.requirementsSha256' "$staging/manifest.json")"
 actual_package_count="$(jq -er '.packageCount' "$staging/manifest.json")"
 actual_native_code_count="$(jq -er '.nativeCode | length' "$staging/manifest.json")"
 actual_pruned_record_count="$(jq -er '.prunedRecordEntries | length' "$staging/manifest.json")"
+actual_runtime_notice_count="$(jq -er '.runtimeNotices.licenseFiles | length' "$staging/manifest.json")"
+actual_package_license_file_count="$(jq -er '[.packages[].licenseFiles[]] | length' "$staging/manifest.json")"
+actual_notice_sha256="$(jq -er '.noticeSha256' "$staging/manifest.json")"
 actual_content_sha256="$(jq -er '.contentSha256' "$staging/manifest.json")"
 [ "$actual_requirements_sha256" = "$expected_requirements_sha256" ] &&
 	[ "$actual_package_count" = "$expected_package_count" ] &&
 	[ "$actual_native_code_count" = "$expected_native_code_count" ] &&
 	[ "$actual_pruned_record_count" = "$expected_pruned_record_count" ] &&
+	[ "$actual_runtime_notice_count" = "$expected_runtime_notice_count" ] &&
+	[ "$actual_package_license_file_count" = "$expected_package_license_file_count" ] &&
+	[ "$actual_notice_sha256" = "$expected_notice_sha256" ] &&
 	[ "$actual_content_sha256" = "$expected_content_sha256" ] || {
 	printf 'Staged runtime does not match the pinned candidate manifest\n' >&2
+	printf 'runtime-notice-files %s\n' "$actual_runtime_notice_count" >&2
+	printf 'package-license-files %s\n' "$actual_package_license_file_count" >&2
+	printf 'notice-sha256 %s\n' "$actual_notice_sha256" >&2
+	printf 'content-sha256 %s\n' "$actual_content_sha256" >&2
 	exit 1
 }
 
