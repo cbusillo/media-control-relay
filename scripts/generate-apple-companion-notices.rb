@@ -24,6 +24,7 @@ def normalize_notice_text(data, path)
 end
 
 def write_atomic(path, data)
+  temporary = nil
   directory = File.dirname(path)
   FileUtils.mkdir_p(directory)
   temporary = File.join(directory, ".#{File.basename(path)}.#{Process.pid}.tmp")
@@ -31,7 +32,7 @@ def write_atomic(path, data)
   File.chmod(0o644, temporary)
   File.rename(temporary, path)
 ensure
-  File.delete(temporary) if defined?(temporary) && File.exist?(temporary)
+  File.delete(temporary) if temporary && File.exist?(temporary)
 end
 
 def parse_metadata(path)
