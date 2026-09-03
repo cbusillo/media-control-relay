@@ -35,7 +35,7 @@ struct RemoteControlRuntimeResolution: Sendable {
 }
 
 protocol RemoteControlRuntimeProviding: Sendable {
-    func resolve() -> RemoteControlRuntimeResolution
+    func resolve() async -> RemoteControlRuntimeResolution
 }
 
 protocol RemoteControlActuating: Sendable {
@@ -124,6 +124,7 @@ final class RemoteControlModel {
 
     private(set) var availability: RemoteControlRuntimeAvailability = .helperNotInstalled
     private(set) var state: RemoteControlSetupState = .helperNotInstalled
+    private(set) var isCheckingAvailability = false
     var pairingPIN = ""
     private(set) var operationMessage: String?
     private(set) var actionsAccepted = 0
@@ -139,6 +140,8 @@ final class RemoteControlModel {
     private let runtimeProvider: any RemoteControlRuntimeProviding
     private let clock: @Sendable () -> UInt64
     private var actuator: (any RemoteControlActuating)?
+    private var availabilityTask: Task<Void, Never>?
+    private var availabilityGeneration: UInt64 = 0
     private var operationTask: Task<Void, Never>?
     private var operationGeneration: UInt64 = 0
     private var commandPumpTask: Task<Void, Never>?
@@ -191,7 +194,27 @@ final class RemoteControlModel {
         commandPumpTask = nil
         commandPumpGeneration &+= 1
         invalidateCommands()
-        let resolution = runtimeProvider.resolve()
+        availabilityGeneration &+= 1
+        availabilityTask?.cancel()
+        actuator = nil
+        isCheckingAvailability = true
+        operationMessage = nil
+        let generation = availabilityGeneration
+        let runtimeProvider = runtimeProvider
+        availabilityTask = Task { [weak self] in
+            let resolution = await runtimeProvider.resolve()
+            guard !Task.isCancelled,
+                  let self,
+                  self.availabilityGeneration == generation else {
+                return
+            }
+            self.availabilityTask = nil
+            self.applyRuntimeResolution(resolution)
+        }
+    }
+
+    private func applyRuntimeResolution(_ resolution: RemoteControlRuntimeResolution) {
+        isCheckingAvailability = false
         availability = resolution.availability
         actuator = resolution.actuator
         operationMessage = nil
@@ -463,6 +486,10 @@ final class RemoteControlModel {
     }
 
     func shutdown() {
+        availabilityGeneration &+= 1
+        availabilityTask?.cancel()
+        availabilityTask = nil
+        isCheckingAvailability = false
         cancelCurrentOperation()
         commandPumpTask?.cancel()
         commandPumpTask = nil

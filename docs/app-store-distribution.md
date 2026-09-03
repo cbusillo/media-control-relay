@@ -34,6 +34,15 @@ permits the bound UDP socket that receives SSDP discovery replies.
 entitlement-file wiring, exact entitlement contents, and local-only export and
 validation options.
 
+Standalone Apple Companion runtime packaging is deliberately outside every
+Xcode build phase. The packaging script accepts only an already archived app
+whose executable contains the live Developer ID adapter and rejects the App
+Store partition before creating `Contents/Resources/AppleCompanionRuntime`.
+Validation continues to require the normal App Store product to contain no
+runtime path, dangling runtime symlink, helper code, Python material, or Apple
+Companion symbols. App Store builds do not download or invoke executable helper
+content.
+
 The complete macOS icon ladder and compiled `AppIcon.icns` are generated from
 original vector geometry by running `swift scripts/generate-app-icon.swift`.
 `scripts/check-app-icon.sh` verifies every source and built icon representation,

@@ -131,7 +131,7 @@
     },
     {
       "path": "AppleCompanionHelper/runtime-contract.json",
-      "sha256": "ba0bd905a1959c534c782f50a12eabf7586e98594a1961aaeab957f434192a0c"
+      "sha256": "e6ab0c217b42cde718f12fb7d809dec1d511448b3755fea1e32fc9e77cdaeced"
     },
     {
       "path": "AppleCompanionHelper/uv.lock",
@@ -165,13 +165,24 @@
     "noticeSha256": "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
     "contentSha256": "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331"
   },
+  "signing": {
+    "strategy": "manifest-native-code-inside-out",
+    "nativeCodeCount": 35,
+    "hardenedRuntime": true,
+    "shippedIntegrityBoundary": "outer-application-code-signature",
+    "forbiddenEntitlements": [
+      "com.apple.security.cs.disable-library-validation",
+      "com.apple.security.cs.allow-dyld-environment-variables",
+      "com.apple.security.cs.allow-unsigned-executable-memory",
+      "com.apple.security.cs.disable-executable-page-protection"
+    ]
+  },
   "distribution": {
     "approved": false,
     "blockedBy": [
       "Resolve the same-release runtime notice proxy and the recorded certifi, chacha20poly1305-reuseable, and zeroconf review items.",
-      "Prove inside-out Developer ID signing without weakened entitlements.",
-      "Pass notarization, quarantine, rollback, and clean-Mac qualification.",
-      "Wire the runtime into Developer ID builds while preserving App Store exclusion."
+      "Prove the locator accepts a same-Team Developer ID runtime-carrying app and the signed Python runtime launches without weakened entitlements.",
+      "Pass notarization, quarantine, rollback, and clean-Mac qualification."
     ]
   }
 }

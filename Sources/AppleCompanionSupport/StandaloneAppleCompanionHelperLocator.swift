@@ -38,7 +38,7 @@ struct AppleCompanionStandaloneRuntimeContract: Codable, Equatable, Sendable {
 
     static let current = AppleCompanionStandaloneRuntimeContract(
         schema: 1,
-        bundleRelativePath: "Contents/Helpers/AppleCompanionRuntime",
+        bundleRelativePath: "Contents/Resources/AppleCompanionRuntime",
         marker: Marker(
             relativePath: ".media-control-relay-apple-companion-runtime-candidate",
             contents: "media-control-relay-apple-companion-runtime-candidate-v1\n"
@@ -66,9 +66,19 @@ struct AppleCompanionStandaloneRuntimeContract: Codable, Equatable, Sendable {
 
 public struct StandaloneAppleCompanionHelperLocator: AppleCompanionHelperLocating, Sendable {
     private let bundleURL: URL
+    private let codeSignatureVerifier: any AppleCompanionRuntimeCodeSignatureVerifying
 
     public init(bundleURL: URL = Bundle.main.bundleURL) {
         self.bundleURL = bundleURL.standardizedFileURL
+        codeSignatureVerifier = AppleCompanionRuntimeCodeSignatureVerifier()
+    }
+
+    init(
+        bundleURL: URL,
+        codeSignatureVerifier: any AppleCompanionRuntimeCodeSignatureVerifying
+    ) {
+        self.bundleURL = bundleURL.standardizedFileURL
+        self.codeSignatureVerifier = codeSignatureVerifier
     }
 
     public func locate() -> AppleCompanionHelperAvailability {
@@ -83,10 +93,13 @@ public struct StandaloneAppleCompanionHelperLocator: AppleCompanionHelperLocatin
         let resolvedBundle = bundleURL.resolvingSymlinksInPath().standardizedFileURL
         let resolvedRuntimeRoot = runtimeRoot.resolvingSymlinksInPath().standardizedFileURL
         let contentsDirectory = bundleURL.appendingPathComponent("Contents", isDirectory: true)
-        let helpersDirectory = contentsDirectory.appendingPathComponent("Helpers", isDirectory: true)
+        let resourcesDirectory = contentsDirectory.appendingPathComponent(
+            "Resources",
+            isDirectory: true
+        )
         guard contains(resolvedRuntimeRoot, within: resolvedBundle),
               secureDirectory(at: contentsDirectory),
-              secureDirectory(at: helpersDirectory),
+              secureDirectory(at: resourcesDirectory),
               secureDirectory(at: runtimeRoot) else {
             return .damaged
         }
@@ -121,7 +134,8 @@ public struct StandaloneAppleCompanionHelperLocator: AppleCompanionHelperLocatin
               manifest.architecturePolicy.helperRuntime == contract.helperRuntimeArchitecture,
               manifest.architecturePolicy.intelBehavior == contract.intelBehavior,
               validSha256(manifest.contentSha256),
-              manifest.contentSha256 == contract.contentSha256 else {
+              manifest.contentSha256 == contract.contentSha256,
+              codeSignatureVerifier.verify(bundleURL: bundleURL) else {
             return .damaged
         }
 

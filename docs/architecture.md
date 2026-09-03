@@ -117,7 +117,7 @@ state is normal; damaged state fails closed.
 
 The Developer ID locator also understands the standalone candidate contract in
 `AppleCompanionHelper/runtime-contract.json`. It looks first at the declared
-`Contents/Helpers/AppleCompanionRuntime` bundle location, validates containment,
+`Contents/Resources/AppleCompanionRuntime` bundle location, validates containment,
 ownership, write permissions, marker, manifest, launcher, interpreter, Python
 version, and declared architecture, then falls back to the owner-installed
 runtime only when the bundle location is absent. A present damaged bundle never
@@ -125,9 +125,14 @@ falls back. Apple Companion is explicitly unsupported on Intel hosts; this does
 not affect the app's other media-control paths.
 
 The standalone locator pins the candidate digest declared by the runtime
-manifest but does not synchronously rehash the whole Python tree. Before a
-payload can ship, inside-out signing and code-signature verification must become
-the integrity boundary for those root-owned bundle files.
+manifest but does not synchronously rehash the whole Python tree. Developer ID
+qualification validates that unsigned provenance first, signs the exact 35
+manifested Mach-O leaves inside-out, signs the outer app after every leaf is
+final, and uses the outer application code signature as the shipped integrity
+boundary. The locator verifies the containing app with Security.framework and
+requires a Developer ID Application signature whose bundle identifier and Team
+ID match the running process. The live provider resolves the runtime away from
+the main actor so whole-bundle validation cannot block launch or settings UI.
 
 The helper's Unix socket remains under a short owner-only temporary directory
 because Darwin limits Unix-domain socket paths. The process boundary rejects an
@@ -136,12 +141,14 @@ environment.
 
 The local runtime is not a product payload. The standalone bundle contract is
 implemented, but current Release and App Store builds both prove the payload is
-absent. Developer ID staging remains blocked on nested signing, notarization,
-quarantine, rollback, clean-Mac qualification, and the recorded notice review
+absent. A separate packaging path proves Developer ID staging and inside-out
+signing on a copied archive without weakening entitlements. Distribution
+remains blocked on notarization, quarantine, rollback, clean-Mac qualification,
+same-Team locator and Python-launch acceptance, and the recorded notice review
 items in issue #90. App Store builds contain no helper or Python payload, do not
 link `AppleCompanionSupport`, and remain useful without Apple controls. That App
-Store configuration is the proof boundary for #90: the shipped app is still
-functional while the Apple companion helper is absent.
+Store configuration is the proof boundary for issue #90: the shipped app is
+still functional while the Apple companion helper is absent.
 
 ### External Volume Actuator
 

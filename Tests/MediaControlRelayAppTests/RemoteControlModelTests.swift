@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct RemoteControlModelTests {
     @Test("Helper availability is explicit and does not invent a runtime")
-    func helperAvailability() {
+    func helperAvailability() async {
         let missing = RemoteControlModel(
             runtimeProvider: FakeRemoteRuntimeProvider(
                 resolution: RemoteControlRuntimeResolution(
@@ -33,15 +33,43 @@ struct RemoteControlModelTests {
             )
         )
 
-        #expect(missing.state == .helperNotInstalled)
-        #expect(damaged.state == .helperDamaged)
-        #expect(unsupportedArchitecture.state == .helperUnsupportedArchitecture)
+        await eventually { missing.state == .helperNotInstalled }
+        await eventually { damaged.state == .helperDamaged }
+        await eventually { unsupportedArchitecture.state == .helperUnsupportedArchitecture }
         #expect(unsupportedArchitecture.state.targetState == .unsupported)
         #expect(
             unsupportedArchitecture.diagnosticsFields["remote_helper"]
                 == "unsupported-architecture"
         )
         #expect(missing.terminationStopper == nil)
+    }
+
+    @Test("Stale runtime resolutions cannot replace a newer refresh")
+    func staleRuntimeResolution() async {
+        let provider = ControlledRemoteRuntimeProvider()
+        let model = RemoteControlModel(runtimeProvider: provider)
+        await eventually { await provider.requestCount == 1 }
+        #expect(model.isCheckingAvailability)
+
+        model.refreshAvailability()
+        await eventually { await provider.requestCount == 2 }
+        #expect(await provider.completeNext(
+            with: RemoteControlRuntimeResolution(
+                availability: .available,
+                actuator: FakeRemoteActuator()
+            )
+        ))
+        #expect(model.availability == .helperNotInstalled)
+        #expect(model.isCheckingAvailability)
+
+        #expect(await provider.completeNext(
+            with: RemoteControlRuntimeResolution(
+                availability: .helperDamaged,
+                actuator: nil
+            )
+        ))
+        await eventually { model.state == .helperDamaged }
+        #expect(!model.isCheckingAvailability)
     }
 
     @Test("Stored credentials resume into the helper-reported ready state")
@@ -287,8 +315,26 @@ struct RemoteControlModelTests {
 private struct FakeRemoteRuntimeProvider: RemoteControlRuntimeProviding {
     let resolution: RemoteControlRuntimeResolution
 
-    func resolve() -> RemoteControlRuntimeResolution {
+    func resolve() async -> RemoteControlRuntimeResolution {
         resolution
+    }
+}
+
+private actor ControlledRemoteRuntimeProvider: RemoteControlRuntimeProviding {
+    private var continuations: [CheckedContinuation<RemoteControlRuntimeResolution, Never>] = []
+    private(set) var requestCount = 0
+
+    func resolve() async -> RemoteControlRuntimeResolution {
+        requestCount += 1
+        return await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+        }
+    }
+
+    func completeNext(with resolution: RemoteControlRuntimeResolution) -> Bool {
+        guard !continuations.isEmpty else { return false }
+        continuations.removeFirst().resume(returning: resolution)
+        return true
     }
 }
 

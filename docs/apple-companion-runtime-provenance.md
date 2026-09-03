@@ -133,17 +133,41 @@ locator constants to match that file, and staged-runtime validation requires
 the candidate to satisfy it.
 
 Debug and Developer ID code paths now check the future
-`Contents/Helpers/AppleCompanionRuntime` location before falling back to the
+`Contents/Resources/AppleCompanionRuntime` location before falling back to the
 owner-installed Application Support runtime. A present but invalid bundled
 runtime fails closed instead of silently falling back. Intel hosts report Apple
 Companion as unsupported while the rest of the app remains useful. No current
 build copies the candidate into an app bundle, and validation requires both
-Release and App Store artifacts to keep that location absent. The contract and
-locator do not establish signing integrity or make the app execute a shipped
-payload yet. The locator validates the signed manifest's candidate claim but
-does not rehash the full runtime tree on the UI path. A future bundling slice
-must establish inside-out code-signature verification as the shipped integrity
-boundary before removing the Release payload-absence gate.
+Release and App Store artifacts to keep that location absent.
+
+Developer ID qualification uses a separate out-of-band packaging step on a copy
+of the unsigned Release archive. `scripts/package-apple-companion-runtime.sh`
+validates the pristine candidate, copies it only into an application containing
+the live adapter, signs the exact 35 native-code leaves from the manifest
+inside-out with hardened runtime and no entitlements, and then requires the
+outer app to be signed after every leaf is final. It rejects the App Store
+partition before creating the runtime destination.
+
+The unsigned candidate digest, native-code hashes, and package `RECORD` entries
+remain the pre-sign provenance boundary. Because `codesign` changes Mach-O
+bytes, those hashes are not recomputed after signing. The outer application code
+signature is the shipped integrity boundary: it seals the signed native leaves
+and every runtime resource. The Swift locator verifies the containing
+application with Security.framework strict, nested-code, and all-architecture
+checks, and requires its bundle identifier and Team ID to match the running
+process under a Developer ID Application certificate before it accepts a
+present runtime. The live runtime provider performs that potentially expensive
+verification away from the main actor. Missing Team IDs, ad-hoc signatures,
+invalid nested code, or altered resources fail closed as damaged.
+
+The normal Release payload-absence gate remains in place, as does complete App
+Store exclusion. CI proves the packaging and integrity boundary on copied build
+products with ad-hoc signatures, including native, Python-resource, and marker
+tamper failures. Distribution remains unapproved until the recorded notice
+review, notarization, quarantine, rollback, and clean-Mac gates are complete.
+The same-Team Developer ID runbook must also prove that the locator accepts the
+runtime-carrying app and that Python launches without weakened entitlements;
+ad-hoc CI cannot establish that accepting direction.
 
 ## Verification
 
@@ -163,3 +187,13 @@ scripts/check-apple-companion-runtime.sh \
 ```
 
 No staged runtime or downloaded artifact belongs in Git.
+
+Exercise the Developer ID packaging and signature boundary against existing
+Release and App Store build products without a private identity:
+
+```sh
+scripts/check-apple-companion-runtime-signing.sh \
+  "<release-app>" \
+  scratch/apple-companion-runtime-candidate \
+  "<app-store-app>"
+```

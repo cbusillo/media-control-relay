@@ -44,6 +44,21 @@ struct RemoteControlSettingsView: View {
 
     @ViewBuilder
     private var statusContent: some View {
+        if model.isCheckingAvailability {
+            status(
+                title: "Checking Apple TV helper",
+                detail: "Verifying the optional helper before it can be used.",
+                systemImage: "checkmark.shield"
+            )
+            ProgressView()
+                .accessibilityLabel("Checking Apple TV helper")
+        } else {
+            resolvedStatusContent
+        }
+    }
+
+    @ViewBuilder
+    private var resolvedStatusContent: some View {
         switch model.state {
         case .helperNotInstalled:
             status(
