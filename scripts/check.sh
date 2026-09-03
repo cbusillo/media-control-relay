@@ -129,7 +129,8 @@ app_store_product_name="$(printf '%s\n' "$app_store_build_settings" | awk -F' = 
 	exit 1
 }
 scripts/check-app-icon.sh "$app_store_build_dir/$app_store_product_name"
-[ ! -e "$app_store_build_dir/$app_store_product_name/$runtime_bundle_relative_path" ] || {
+[ ! -e "$app_store_build_dir/$app_store_product_name/$runtime_bundle_relative_path" ] &&
+	[ ! -L "$app_store_build_dir/$app_store_product_name/$runtime_bundle_relative_path" ] || {
 	printf 'App Store build unexpectedly contains the standalone Apple Companion runtime\n' >&2
 	exit 1
 }
@@ -180,7 +181,8 @@ release_product_name="$(printf '%s\n' "$release_build_settings" | awk -F' = ' '
 	printf 'Unable to resolve the Release application build path\n' >&2
 	exit 1
 }
-[ ! -e "$release_build_dir/$release_product_name/$runtime_bundle_relative_path" ] || {
+[ ! -e "$release_build_dir/$release_product_name/$runtime_bundle_relative_path" ] &&
+	[ ! -L "$release_build_dir/$release_product_name/$runtime_bundle_relative_path" ] || {
 	printf 'Release build unexpectedly contains an unqualified Apple Companion runtime\n' >&2
 	exit 1
 }

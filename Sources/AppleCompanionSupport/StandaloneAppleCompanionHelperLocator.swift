@@ -82,7 +82,11 @@ public struct StandaloneAppleCompanionHelperLocator: AppleCompanionHelperLocatin
         }
         let resolvedBundle = bundleURL.resolvingSymlinksInPath().standardizedFileURL
         let resolvedRuntimeRoot = runtimeRoot.resolvingSymlinksInPath().standardizedFileURL
+        let contentsDirectory = bundleURL.appendingPathComponent("Contents", isDirectory: true)
+        let helpersDirectory = contentsDirectory.appendingPathComponent("Helpers", isDirectory: true)
         guard contains(resolvedRuntimeRoot, within: resolvedBundle),
+              secureDirectory(at: contentsDirectory),
+              secureDirectory(at: helpersDirectory),
               secureDirectory(at: runtimeRoot) else {
             return .damaged
         }

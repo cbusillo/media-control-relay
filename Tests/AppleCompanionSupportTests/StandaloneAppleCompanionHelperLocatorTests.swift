@@ -123,6 +123,28 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         )
     }
 
+    @Test("Intermediate bundle symlink cannot escape containment")
+    func intermediateSymlinkEscape() throws {
+        let fixture = try makeStandaloneFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.temporaryRoot) }
+        let helpersDirectory = fixture.runtimeRoot.deletingLastPathComponent()
+        let outsideRuntime = fixture.temporaryRoot.appendingPathComponent(
+            "AppleCompanionRuntime",
+            isDirectory: true
+        )
+        try FileManager.default.moveItem(at: fixture.runtimeRoot, to: outsideRuntime)
+        try FileManager.default.removeItem(at: helpersDirectory)
+        try FileManager.default.createSymbolicLink(
+            at: helpersDirectory,
+            withDestinationURL: fixture.temporaryRoot
+        )
+
+        #expect(
+            StandaloneAppleCompanionHelperLocator(bundleURL: fixture.bundleURL).locate()
+                == .damaged
+        )
+    }
+
     @Test("Unsupported hosts stop before filesystem fallback")
     func unsupportedHost() {
         let locator = DefaultAppleCompanionHelperLocator(
@@ -176,11 +198,13 @@ private func makeStandaloneFixture() throws -> StandaloneFixture {
         contract.bundleRelativePath,
         isDirectory: true
     )
+    let contents = bundleURL.appendingPathComponent("Contents", isDirectory: true)
+    let helpers = contents.appendingPathComponent("Helpers", isDirectory: true)
     let bin = runtimeRoot.appendingPathComponent("bin", isDirectory: true)
     let pythonBin = runtimeRoot
         .appendingPathComponent("python", isDirectory: true)
         .appendingPathComponent("bin", isDirectory: true)
-    for directory in [bundleURL, runtimeRoot, bin, pythonBin] {
+    for directory in [bundleURL, contents, helpers, runtimeRoot, bin, pythonBin] {
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true,

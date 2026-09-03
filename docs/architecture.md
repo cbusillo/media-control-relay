@@ -124,6 +124,11 @@ runtime only when the bundle location is absent. A present damaged bundle never
 falls back. Apple Companion is explicitly unsupported on Intel hosts; this does
 not affect the app's other media-control paths.
 
+The standalone locator pins the candidate digest declared by the runtime
+manifest but does not synchronously rehash the whole Python tree. Before a
+payload can ship, inside-out signing and code-signature verification must become
+the integrity boundary for those root-owned bundle files.
+
 The helper's Unix socket remains under a short owner-only temporary directory
 because Darwin limits Unix-domain socket paths. The process boundary rejects an
 overlong path before launch and passes only the socket location through the
