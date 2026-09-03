@@ -147,10 +147,11 @@ validates the pristine candidate, copies it only into an application containing
 the live adapter, signs the exact 35 native-code leaves from the manifest
 inside-out with hardened runtime and no entitlements, and then requires the
 outer app to be signed after every leaf is final. It rejects the App Store
-partition before creating the runtime destination. Because Xcode strips global
-Swift symbols from archives, the live-adapter gate also accepts retained
-Apple Companion executable metadata; validation exercises both the ordinary
-Release product and a symbol-stripped copy.
+partition before creating the runtime destination. Developer ID archives retain
+their global Swift symbol table through runtime admission so the live-adapter
+gate stays tied to linked code. The outer executable is stripped only after the
+runtime is admitted and before final application signing; validation proves a
+symbol-stripped input is rejected without leaving runtime material behind.
 
 The unsigned candidate digest, native-code hashes, and package `RECORD` entries
 remain the pre-sign provenance boundary. Because `codesign` changes Mach-O

@@ -25,16 +25,19 @@ candidate="$2"
 app_store_app="$3"
 app_store_entitlements="$repo_root/Config/MediaControlRelayAppStore.entitlements"
 
-for command_name in codesign ditto jq nm rg ruby strings strip; do
+for command_name in codesign ditto jq nm rg ruby strip; do
 	command -v "$command_name" >/dev/null 2>&1 || {
 		printf '%s is required to check Apple Companion runtime signing\n' "$command_name" >&2
 		exit 69
 	}
 done
 
+runtime_relative_path="$(jq -er '.bundleRelativePath' "$runtime_contract")"
+
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-signing-check.XXXXXX")"
 signed_app="$temporary_directory/Media Control Relay.app"
 stripped_app="$temporary_directory/Stripped Media Control Relay.app"
+stripped_refusal="$temporary_directory/stripped-refusal"
 rejected_app="$temporary_directory/App Store.app"
 sandbox_refusal="$temporary_directory/sandbox-refusal"
 invalid_candidate="$temporary_directory/invalid-candidate"
@@ -52,16 +55,21 @@ if nm -gU "$stripped_executable" | rg -q 'AppleCompanion'; then
 	printf 'Stripped Release executable unexpectedly retained the adapter symbol\n' >&2
 	exit 1
 fi
-strings "$stripped_executable" |
-	rg -Fxq 'AppleCompanionRemoteRuntimeProvider' || {
-	printf 'Stripped Release executable lost the adapter metadata\n' >&2
+if "$packager" "$stripped_app" "$candidate" - \
+	>/dev/null 2>"$stripped_refusal"; then
+	printf 'Stripped Release executable unexpectedly accepted runtime packaging\n' >&2
+	exit 1
+fi
+rg -Fxq 'Application does not contain the live Apple Companion adapter' \
+	"$stripped_refusal" || {
+	printf 'Stripped Release packaging did not exercise the adapter refusal boundary\n' >&2
 	exit 1
 }
-"$packager" "$stripped_app" "$candidate" -
-codesign --force --options runtime --timestamp=none \
-	--entitlements "$entitlements" --sign - "$stripped_app" >/dev/null 2>&1
-codesign --verify --deep --strict --all-architectures "$stripped_app" \
-	>/dev/null 2>&1
+[ ! -e "$stripped_app/$runtime_relative_path" ] &&
+	[ ! -L "$stripped_app/$runtime_relative_path" ] || {
+	printf 'Rejected stripped Release packaging left runtime material behind\n' >&2
+	exit 1
+}
 
 "$packager" "$signed_app" "$candidate" -
 codesign --force --options runtime --timestamp=none \
@@ -69,7 +77,6 @@ codesign --force --options runtime --timestamp=none \
 codesign --verify --deep --strict --all-architectures "$signed_app" \
 	>/dev/null 2>&1
 
-runtime_relative_path="$(jq -er '.bundleRelativePath' "$runtime_contract")"
 runtime_root="$signed_app/$runtime_relative_path"
 native_code_count="$(jq -er '.nativeCode | length' "$runtime_root/manifest.json")"
 expected_native_code_count="$(jq -er '.signing.nativeCodeCount' \

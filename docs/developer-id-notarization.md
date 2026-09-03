@@ -115,6 +115,7 @@ xcodebuild \
   -configuration Release \
   -archivePath "${ARCHIVE}" \
   CODE_SIGNING_ALLOWED=NO \
+  STRIP_INSTALLED_PRODUCT=NO \
   archive
 
 scripts/stage-apple-companion-runtime.sh "${RUNTIME_CANDIDATE}"
@@ -123,6 +124,8 @@ scripts/package-apple-companion-runtime.sh \
   "${APP}" \
   "${RUNTIME_CANDIDATE}" \
   "${IDENTITY}"
+
+strip "${APP}/Contents/MacOS/Media Control Relay"
 
 if [ "${HAS_ROLLBACK}" = true ]; then
   DESIGNATED_REQUIREMENT="$(
@@ -169,10 +172,12 @@ validates the pristine candidate before copying it, signs exactly the 35 Mach-O
 leaves recorded in `manifest.json` with hardened runtime and no entitlements,
 and leaves the outer application signing to the following command. Do not write
 anything into the application bundle after that outer signature is applied.
-Xcode may strip the archive's global Swift symbol table, so the packaging gate
-accepts the adapter's retained executable metadata when the global symbol is no
-longer available. The sandbox refusal remains authoritative for preventing the
-App Store partition from receiving the runtime.
+The archive intentionally keeps its global Swift symbol table until the
+packaging gate proves that the live adapter is present. Strip the outer
+executable only after runtime admission and before applying the final outer
+signature. A symbol-stripped input is rejected, and the sandbox refusal remains
+authoritative for preventing the App Store partition from receiving the
+runtime.
 
 Signing changes Mach-O bytes, so the candidate manifest and package `RECORD`
 hashes are intentionally a pre-sign provenance boundary. They remain unchanged
