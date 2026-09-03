@@ -109,6 +109,13 @@ by the App Store app.
     exact embedded runtime, transitive artifacts, licenses, hashes, signing,
     notarization, and notices.
 
+13. Issue #90's first distribution candidate is the exact arm64 standalone
+    CPython artifact pinned in `AppleCompanionHelper/runtime-source.json` and
+    assessed in `docs/apple-companion-runtime-provenance.md`. The pin and staging
+    proof do not approve distribution. Shipping remains blocked until the
+    candidate's complete licenses and notices, nested signing, notarization,
+    rollback, clean-Mac behavior, and App Store exclusion are qualified.
+
 ## Required Follow-Up
 
 - Record exact source revisions and test-vector origins in protocol PRs.

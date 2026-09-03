@@ -30,7 +30,8 @@ swift test
 helper_temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-uv.XXXXXX")"
 helper_environment="$helper_temporary_directory/environment"
 runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-runtime.XXXXXX")"
-trap 'rm -rf "$helper_temporary_directory" "$runtime_check_root"' EXIT HUP INT TERM
+runtime_candidate="$repo_root/scratch/.validation-apple-companion-runtime.$$"
+trap 'rm -rf "$helper_temporary_directory" "$runtime_check_root" "$runtime_candidate"' EXIT HUP INT TERM
 (
 	cd AppleCompanionHelper
 	UV_PROJECT_ENVIRONMENT="$helper_environment" \
@@ -53,6 +54,9 @@ else
 	}
 fi
 scripts/check-apple-companion-helper.sh
+scripts/check-apple-companion-runtime.sh
+scripts/stage-apple-companion-runtime.sh "$runtime_candidate"
+scripts/check-apple-companion-runtime.sh "$runtime_candidate"
 swiftc -typecheck scripts/generate-app-icon.swift
 scripts/check-secrets.sh
 scripts/check-action-pins.sh
@@ -67,7 +71,9 @@ shellcheck \
 	scripts/check-privacy-manifest.sh \
 	scripts/check-secrets.sh \
 	scripts/check-apple-companion-helper.sh \
+	scripts/check-apple-companion-runtime.sh \
 	scripts/apple-companion-helper.sh \
+	scripts/stage-apple-companion-runtime.sh \
 	scripts/generate-project.sh
 find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
 	-print0 | xargs -0 actionlint
@@ -140,7 +146,10 @@ if strings \
 fi
 if find "$app_store_build_dir/$app_store_product_name" \
 	\( -name '*.py' -o -name '*.pyc' -o -name 'pyatv*' \
-	-o -name 'AppleCompanionHelper*' \) -print -quit | rg -q .; then
+	-o -name 'AppleCompanionHelper*' -o -name 'apple-companion-helper*' \
+	-o -name '*.pyi' -o -name '*.pth' -o -name '*.whl' \
+	-o -name '*.dist-info' -o -name 'pyvenv.cfg' -o -name 'site-packages' \
+	-o -name 'libpython*' \) -print -quit | rg -q .; then
 	printf 'App Store build unexpectedly contains Apple Companion helper material\n' >&2
 	exit 1
 fi
