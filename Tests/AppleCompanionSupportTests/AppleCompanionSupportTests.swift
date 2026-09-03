@@ -50,10 +50,13 @@ struct AppleCompanionSupportTests {
         #expect(security.readBuckets == [.current, .legacy])
     }
 
-    @Test("Credential removal reports an undeletable legacy value")
+    @Test("Credential removal preserves the current value when legacy deletion fails")
     func legacyKeychainDeleteFailure() {
+        let currentData = Data("current-credential".utf8)
+        let legacyData = Data("legacy-credential".utf8)
         let security = FakeKeychainSecurity(
-            legacyData: Data("legacy-credential".utf8),
+            currentData: currentData,
+            legacyData: legacyData,
             legacyDeleteStatus: errSecInteractionNotAllowed
         )
         let keychain = SystemAppleCompanionKeychain(
@@ -64,7 +67,8 @@ struct AppleCompanionSupportTests {
         #expect(throws: AppleCompanionKeychainError.accessDenied) {
             try keychain.delete(account: "fixture-account")
         }
-        #expect(security.legacyData != nil)
+        #expect(security.currentData == currentData)
+        #expect(security.legacyData == legacyData)
     }
 
     @Test("Frame codec handles split messages and rejects malformed input")

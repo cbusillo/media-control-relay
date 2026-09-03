@@ -127,17 +127,17 @@ public struct SystemAppleCompanionKeychain: AppleCompanionKeychain, Sendable {
     }
 
     public func delete(account: String) throws {
-        let currentStatus = security.delete(
-            baseQuery(account: account, usesDataProtectionKeychain: false) as CFDictionary
-        )
-        guard currentStatus == errSecSuccess || currentStatus == errSecItemNotFound else {
-            throw map(currentStatus)
-        }
         let legacyStatus = security.delete(
             baseQuery(account: account, usesDataProtectionKeychain: true) as CFDictionary
         )
         guard legacyStatus == errSecSuccess || legacyStatus == errSecItemNotFound else {
             throw map(legacyStatus)
+        }
+        let currentStatus = security.delete(
+            baseQuery(account: account, usesDataProtectionKeychain: false) as CFDictionary
+        )
+        guard currentStatus == errSecSuccess || currentStatus == errSecItemNotFound else {
+            throw map(currentStatus)
         }
     }
 
