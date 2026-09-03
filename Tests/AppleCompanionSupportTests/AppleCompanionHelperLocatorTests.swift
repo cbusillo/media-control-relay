@@ -36,8 +36,12 @@ struct AppleCompanionHelperLocatorTests {
             Issue.record("Secure installation was not located")
             return
         }
-        #expect(installation.manifest.digest == fixture.digest)
-        #expect(installation.manifest.pythonVersion == "3.13.7")
+        guard case let .ownerInstalled(manifest) = installation.kind else {
+            Issue.record("Owner-installed runtime had the wrong installation kind")
+            return
+        }
+        #expect(manifest.digest == fixture.digest)
+        #expect(installation.pythonVersion == "3.13.7")
         #expect(installation.executableURL.lastPathComponent == "apple-companion-helper")
 
         let runtime = AppleCompanionRuntime.makeSession(

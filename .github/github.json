@@ -13,6 +13,7 @@
     "provenance": "docs/provenance-audit.md",
     "appleCompanionRuntimeProvenance": "docs/apple-companion-runtime-provenance.md",
     "appleCompanionRuntimeNotices": "AppleCompanionHelper/NOTICES.md",
+    "appleCompanionRuntimeContract": "AppleCompanionHelper/runtime-contract.json",
     "privacy": "docs/privacy.md",
     "appStoreDistribution": "docs/app-store-distribution.md",
     "security": "SECURITY.md",

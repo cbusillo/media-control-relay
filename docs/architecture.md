@@ -115,17 +115,33 @@ validates ownership, permissions, symlink containment, manifest schema, source
 digest, launcher, and interpreter before constructing a session. Missing local
 state is normal; damaged state fails closed.
 
+The Developer ID locator also understands the standalone candidate contract in
+`AppleCompanionHelper/runtime-contract.json`. It looks first at the declared
+`Contents/Helpers/AppleCompanionRuntime` bundle location, validates containment,
+ownership, write permissions, marker, manifest, launcher, interpreter, Python
+version, and declared architecture, then falls back to the owner-installed
+runtime only when the bundle location is absent. A present damaged bundle never
+falls back. Apple Companion is explicitly unsupported on Intel hosts; this does
+not affect the app's other media-control paths.
+
+The standalone locator pins the candidate digest declared by the runtime
+manifest but does not synchronously rehash the whole Python tree. Before a
+payload can ship, inside-out signing and code-signature verification must become
+the integrity boundary for those root-owned bundle files.
+
 The helper's Unix socket remains under a short owner-only temporary directory
 because Darwin limits Unix-domain socket paths. The process boundary rejects an
 overlong path before launch and passes only the socket location through the
 environment.
 
-The local runtime is not a product payload. Developer ID staging remains
-blocked on provenance review of the embedded runtime and complete dependency
-closure in issue #90. App Store builds contain no helper or Python payload, do
-not link `AppleCompanionSupport`, and remain useful without Apple controls.
-That App Store configuration is the proof boundary for #90: the shipped app is
-still functional while the Apple companion helper is absent.
+The local runtime is not a product payload. The standalone bundle contract is
+implemented, but current Release and App Store builds both prove the payload is
+absent. Developer ID staging remains blocked on nested signing, notarization,
+quarantine, rollback, clean-Mac qualification, and the recorded notice review
+items in issue #90. App Store builds contain no helper or Python payload, do not
+link `AppleCompanionSupport`, and remain useful without Apple controls. That App
+Store configuration is the proof boundary for #90: the shipped app is still
+functional while the Apple companion helper is absent.
 
 ### External Volume Actuator
 

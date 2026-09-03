@@ -124,6 +124,14 @@ by the App Store app.
     clearance. The runtime proxy and the recorded certifi, chacha20poly1305-
     reuseable, and zeroconf review items still block distribution.
 
+15. `AppleCompanionHelper/runtime-contract.json` binds the standalone marker,
+    manifest, launcher, interpreter, Python version, arm64 policy, exact content
+    digest, and future Developer ID bundle location across staging validation
+    and the Swift locator. A present invalid bundled runtime fails closed; an
+    absent bundle still permits the owner-installed local runtime. This contract
+    does not approve copying or signing the payload, and current Release and App
+    Store artifacts must both prove the bundle location is absent.
+
 ## Required Follow-Up
 
 - Record exact source revisions and test-vector origins in protocol PRs.

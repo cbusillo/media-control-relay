@@ -4,6 +4,7 @@ set -eu
 
 repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 source_manifest="$repo_root/AppleCompanionHelper/runtime-source.json"
+runtime_contract="$repo_root/AppleCompanionHelper/runtime-contract.json"
 license_policy="$repo_root/AppleCompanionHelper/license-policy.json"
 committed_notices="$repo_root/AppleCompanionHelper/NOTICES.md"
 notice_generator="$repo_root/scripts/generate-apple-companion-notices.rb"
@@ -37,6 +38,24 @@ ruby -rjson -rdigest -e '
 	exit 1 unless manifest.fetch("lastVerified") == "2026-09-03"
 	exit 1 unless manifest.fetch("pythonVersion") == "3.13.7"
 	exit 1 unless manifest.fetch("source") == expected_source
+	contract = JSON.parse(
+	  File.read(File.join(repo_root, "AppleCompanionHelper/runtime-contract.json"))
+	)
+	exit 1 unless contract == {
+	  "schema" => 1,
+	  "bundleRelativePath" => "Contents/Helpers/AppleCompanionRuntime",
+	  "marker" => {
+	    "relativePath" => ".media-control-relay-apple-companion-runtime-candidate",
+	    "contents" => "media-control-relay-apple-companion-runtime-candidate-v1\n",
+	  },
+	  "manifestRelativePath" => "manifest.json",
+	  "launcherRelativePath" => "bin/apple-companion-helper",
+	  "interpreterRelativePath" => "python/bin/python3.13",
+	  "pythonVersion" => "3.13.7",
+	  "helperRuntimeArchitecture" => "arm64",
+	  "intelBehavior" => "unsupported",
+	  "contentSha256" => "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331",
+	}
 	notice_source = manifest.fetch("noticeSource")
 	exit 1 unless notice_source.fetch("project") == "astral-sh/python-build-standalone"
 	exit 1 unless notice_source.fetch("release") == "20250818"
@@ -85,6 +104,7 @@ ruby -rjson -rdigest -e '
 	  "AppleCompanionHelper/license-policy.json" => "833f4fcef5b531dc0519dbee6a6e29ca92f9674522aa64fd29a281772fd81058",
 	  "AppleCompanionHelper/NOTICES.md" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
 	  "AppleCompanionHelper/pyproject.toml" => "2996be95515a1151cde0c811e24562f5da7cdbd4575fc560cfe85fa6a567410f",
+	  "AppleCompanionHelper/runtime-contract.json" => "ba0bd905a1959c534c782f50a12eabf7586e98594a1961aaeab957f434192a0c",
 	  "AppleCompanionHelper/uv.lock" => "80725a973bfbb4d117f095da671583b554eb18f3d45d1424f1399748f1d6bd01",
 	}
 	inputs = manifest.fetch("inputs").to_h do |input|
@@ -107,18 +127,38 @@ if [ -n "$runtime_path" ]; then
 		printf 'lipo is required to check a staged Apple Companion runtime\n' >&2
 		exit 69
 	}
+	launcher_relative="$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV.fetch(0))).fetch("launcherRelativePath")' "$runtime_contract")"
 	ruby -rbase64 -rcsv -rfind -rjson -rdigest -ropen3 -e '
 	  root = File.realpath(ARGV.fetch(0))
-	  manifest = JSON.parse(File.read(File.join(root, "manifest.json")))
 	  source = JSON.parse(File.read(ARGV.fetch(1)))
 	  policy = JSON.parse(File.read(ARGV.fetch(2)))
 	  committed_notices = File.binread(ARGV.fetch(3))
-	  marker = File.join(root, ".media-control-relay-apple-companion-runtime-candidate")
-	  exit 1 unless File.read(marker) == "media-control-relay-apple-companion-runtime-candidate-v1\n"
+	  contract = JSON.parse(File.read(ARGV.fetch(4)))
+	  marker = File.join(root, contract.fetch("marker").fetch("relativePath"))
+	  manifest_path = File.join(root, contract.fetch("manifestRelativePath"))
+	  launcher_path = File.join(root, contract.fetch("launcherRelativePath"))
+	  interpreter_path = File.join(root, contract.fetch("interpreterRelativePath"))
+	  manifest = JSON.parse(File.read(manifest_path))
+	  exit 1 unless File.read(marker) == contract.fetch("marker").fetch("contents")
+	  [launcher_path, interpreter_path].each do |path|
+	    info = File.lstat(path)
+	    exit 1 unless info.file? && !info.symlink? && (info.mode & 0o111) != 0
+	    exit 1 unless (info.mode & 0o022) == 0
+	    exit 1 unless File.realpath(path).start_with?(root + File::SEPARATOR)
+	  end
+	  interpreter_architectures, interpreter_status = Open3.capture2("lipo", "-archs", interpreter_path)
+	  exit 1 unless interpreter_status.success?
+	  exit 1 unless interpreter_architectures.split == [contract.fetch("helperRuntimeArchitecture")]
 	  exit 1 unless manifest.fetch("schema") == 1
 	  exit 1 unless manifest.fetch("source") == source.fetch("source")
 	  exit 1 unless manifest.fetch("pythonVersion") == source.fetch("pythonVersion")
+	  exit 1 unless manifest.fetch("pythonVersion") == contract.fetch("pythonVersion")
 	  exit 1 unless manifest.fetch("architecturePolicy") == source.fetch("architecturePolicy")
+	  exit 1 unless manifest.fetch("architecturePolicy").fetch("helperRuntime") ==
+	    contract.fetch("helperRuntimeArchitecture")
+	  exit 1 unless manifest.fetch("architecturePolicy").fetch("intelBehavior") ==
+	    contract.fetch("intelBehavior")
+	  exit 1 unless manifest.fetch("contentSha256") == contract.fetch("contentSha256")
 	  exit 1 unless manifest.fetch("inputs") == source.fetch("inputs")
 	  expected_staging = source.fetch("staging")
 	  exit 1 unless manifest.fetch("requirementsSha256") == expected_staging.fetch("requirementsSha256")
@@ -244,7 +284,7 @@ if [ -n "$runtime_path" ]; then
 	  actual = Digest::SHA256.hexdigest(digest_lines.join("\n") + "\n")
 	  exit 1 unless actual == manifest.fetch("contentSha256")
 	  exit 1 unless actual == expected_staging.fetch("contentSha256")
-	' "$runtime_path" "$source_manifest" "$license_policy" "$committed_notices" || {
+	' "$runtime_path" "$source_manifest" "$license_policy" "$committed_notices" "$runtime_contract" || {
 		printf 'Staged Apple Companion runtime is invalid or stale\n' >&2
 		exit 1
 	}
@@ -272,7 +312,7 @@ if [ -n "$runtime_path" ]; then
 		exit 1
 	fi
 	set +e
-	MEDIA_CONTROL_RELAY_SOCKET='' "$runtime_path/bin/apple-companion-helper" >/dev/null 2>&1
+	MEDIA_CONTROL_RELAY_SOCKET='' "$runtime_path/$launcher_relative" >/dev/null 2>&1
 	launcher_status="$?"
 	set -e
 	[ "$launcher_status" -eq 2 ] || {

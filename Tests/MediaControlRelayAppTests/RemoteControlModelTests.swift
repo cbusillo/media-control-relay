@@ -24,9 +24,23 @@ struct RemoteControlModelTests {
                 )
             )
         )
+        let unsupportedArchitecture = RemoteControlModel(
+            runtimeProvider: FakeRemoteRuntimeProvider(
+                resolution: RemoteControlRuntimeResolution(
+                    availability: .helperUnsupportedArchitecture,
+                    actuator: nil
+                )
+            )
+        )
 
         #expect(missing.state == .helperNotInstalled)
         #expect(damaged.state == .helperDamaged)
+        #expect(unsupportedArchitecture.state == .helperUnsupportedArchitecture)
+        #expect(unsupportedArchitecture.state.targetState == .unsupported)
+        #expect(
+            unsupportedArchitecture.diagnosticsFields["remote_helper"]
+                == "unsupported-architecture"
+        )
         #expect(missing.terminationStopper == nil)
     }
 

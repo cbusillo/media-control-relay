@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "bundleRelativePath": "Contents/Helpers/AppleCompanionRuntime",
+  "marker": {
+    "relativePath": ".media-control-relay-apple-companion-runtime-candidate",
+    "contents": "media-control-relay-apple-companion-runtime-candidate-v1\n"
+  },
+  "manifestRelativePath": "manifest.json",
+  "launcherRelativePath": "bin/apple-companion-helper",
+  "interpreterRelativePath": "python/bin/python3.13",
+  "pythonVersion": "3.13.7",
+  "helperRuntimeArchitecture": "arm64",
+  "intelBehavior": "unsupported",
+  "contentSha256": "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331"
+}
