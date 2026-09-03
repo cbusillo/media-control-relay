@@ -57,6 +57,7 @@ scripts/check-apple-companion-helper.sh
 scripts/check-apple-companion-runtime.sh
 scripts/stage-apple-companion-runtime.sh "$runtime_candidate"
 scripts/check-apple-companion-runtime.sh "$runtime_candidate"
+ruby -c scripts/generate-apple-companion-notices.rb
 swiftc -typecheck scripts/generate-app-icon.swift
 scripts/check-secrets.sh
 scripts/check-action-pins.sh
