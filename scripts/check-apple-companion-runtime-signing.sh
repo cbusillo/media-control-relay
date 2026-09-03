@@ -25,7 +25,7 @@ candidate="$2"
 app_store_app="$3"
 app_store_entitlements="$repo_root/Config/MediaControlRelayAppStore.entitlements"
 
-for command_name in codesign ditto jq rg ruby; do
+for command_name in codesign ditto jq nm rg ruby strings strip; do
 	command -v "$command_name" >/dev/null 2>&1 || {
 		printf '%s is required to check Apple Companion runtime signing\n' "$command_name" >&2
 		exit 69
@@ -34,6 +34,7 @@ done
 
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-signing-check.XXXXXX")"
 signed_app="$temporary_directory/Media Control Relay.app"
+stripped_app="$temporary_directory/Stripped Media Control Relay.app"
 rejected_app="$temporary_directory/App Store.app"
 sandbox_refusal="$temporary_directory/sandbox-refusal"
 invalid_candidate="$temporary_directory/invalid-candidate"
@@ -41,6 +42,26 @@ invalid_candidate_app="$temporary_directory/Invalid Candidate.app"
 escaping_app="$temporary_directory/Escaping Resources.app"
 partial_failure_app="$temporary_directory/Partial Failure.app"
 ditto --norsrc --noextattr --noqtn "$release_app" "$signed_app"
+
+ditto --norsrc --noextattr --noqtn "$release_app" "$stripped_app"
+stripped_executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
+	"$stripped_app/Contents/Info.plist")"
+stripped_executable="$stripped_app/Contents/MacOS/$stripped_executable_name"
+strip "$stripped_executable"
+if nm -gU "$stripped_executable" | rg -q 'AppleCompanion'; then
+	printf 'Stripped Release executable unexpectedly retained the adapter symbol\n' >&2
+	exit 1
+fi
+strings "$stripped_executable" |
+	rg -Fxq 'AppleCompanionRemoteRuntimeProvider' || {
+	printf 'Stripped Release executable lost the adapter metadata\n' >&2
+	exit 1
+}
+"$packager" "$stripped_app" "$candidate" -
+codesign --force --options runtime --timestamp=none \
+	--entitlements "$entitlements" --sign - "$stripped_app" >/dev/null 2>&1
+codesign --verify --deep --strict --all-architectures "$stripped_app" \
+	>/dev/null 2>&1
 
 "$packager" "$signed_app" "$candidate" -
 codesign --force --options runtime --timestamp=none \

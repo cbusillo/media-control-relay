@@ -169,6 +169,10 @@ validates the pristine candidate before copying it, signs exactly the 35 Mach-O
 leaves recorded in `manifest.json` with hardened runtime and no entitlements,
 and leaves the outer application signing to the following command. Do not write
 anything into the application bundle after that outer signature is applied.
+Xcode may strip the archive's global Swift symbol table, so the packaging gate
+accepts the adapter's retained executable metadata when the global symbol is no
+longer available. The sandbox refusal remains authoritative for preventing the
+App Store partition from receiving the runtime.
 
 Signing changes Mach-O bytes, so the candidate manifest and package `RECORD`
 hashes are intentionally a pre-sign provenance boundary. They remain unchanged

@@ -28,7 +28,7 @@ app_input="$1"
 candidate_input="$2"
 signing_identity="$3"
 
-for command_name in codesign ditto jq lipo nm rg ruby; do
+for command_name in codesign ditto jq lipo nm rg ruby strings; do
 	command -v "$command_name" >/dev/null 2>&1 || {
 		printf '%s is required to package the Apple Companion runtime\n' "$command_name" >&2
 		exit 69
@@ -82,7 +82,8 @@ if app_entitlements="$(codesign -d --entitlements - "$app" 2>/dev/null || true)"
 	printf 'Refusing to package the runtime into a sandboxed application\n' >&2
 	exit 2
 fi
-if ! nm -gU "$app_executable" | rg -q 'AppleCompanion'; then
+if ! nm -gU "$app_executable" | rg -q 'AppleCompanion' &&
+	! strings "$app_executable" | rg -Fxq 'AppleCompanionRemoteRuntimeProvider'; then
 	printf 'Application does not contain the live Apple Companion adapter\n' >&2
 	exit 2
 fi
