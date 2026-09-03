@@ -133,8 +133,9 @@ by the App Store app.
     all 35 manifested Mach-O leaves before the outer app, and establishes the
     application code signature as the shipped integrity boundary. Current
     Release and App Store build products must still prove the bundle location is
-    absent, and distribution remains unapproved pending the recorded notice,
-    notarization, quarantine, rollback, and clean-Mac gates.
+    absent, and distribution remains unapproved pending same-Team locator and
+    Python-launch acceptance plus the recorded notice, notarization, quarantine,
+    rollback, and clean-Mac gates.
 
 ## Required Follow-Up
 

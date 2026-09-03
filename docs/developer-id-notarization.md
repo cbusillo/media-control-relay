@@ -208,6 +208,8 @@ RUNTIME_LAUNCH_STATUS=$?
 set -e
 test "${RUNTIME_LAUNCH_STATUS}" -eq 2
 
+open "${APP}"
+
 ENTITLEMENTS_JSON="$(
   codesign -d --entitlements - --xml "${APP}" 2>/dev/null |
     plutil -convert json -o - -
@@ -247,6 +249,12 @@ prove Python library loading because independently ad-hoc-signed Mach-O files
 have no shared Team ID and hardened library validation rejects them. The
 same-Team Developer ID launch check above is therefore mandatory and must not be
 replaced with `disable-library-validation` or another weakened entitlement.
+After the app opens, use **Check Again** in Apple TV Controls and confirm the
+bundled runtime reaches the unconfigured, pairing, connecting, or ready flow
+rather than **Helper Damaged**. This is the explicit acceptance check for the
+Security.framework locator requirement. Record the result privately with the
+exact reviewed commit; until that evidence exists, same-Team locator acceptance
+remains a distribution blocker.
 
 ## Submit and Staple
 

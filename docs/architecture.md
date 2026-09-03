@@ -130,8 +130,9 @@ qualification validates that unsigned provenance first, signs the exact 35
 manifested Mach-O leaves inside-out, signs the outer app after every leaf is
 final, and uses the outer application code signature as the shipped integrity
 boundary. The locator verifies the containing app with Security.framework and
-requires an Apple-anchored signature whose bundle identifier and Team ID match
-the running process.
+requires a Developer ID Application signature whose bundle identifier and Team
+ID match the running process. The live provider resolves the runtime away from
+the main actor so whole-bundle validation cannot block launch or settings UI.
 
 The helper's Unix socket remains under a short owner-only temporary directory
 because Darwin limits Unix-domain socket paths. The process boundary rejects an
@@ -143,11 +144,11 @@ implemented, but current Release and App Store builds both prove the payload is
 absent. A separate packaging path proves Developer ID staging and inside-out
 signing on a copied archive without weakening entitlements. Distribution
 remains blocked on notarization, quarantine, rollback, clean-Mac qualification,
-and the recorded notice review items in issue #90. App Store builds contain no
-helper or Python payload, do not link `AppleCompanionSupport`, and remain useful
-without Apple controls. That App Store configuration is the proof boundary for
-issue #90: the shipped app is still functional while the Apple companion helper
-is absent.
+same-Team locator and Python-launch acceptance, and the recorded notice review
+items in issue #90. App Store builds contain no helper or Python payload, do not
+link `AppleCompanionSupport`, and remain useful without Apple controls. That App
+Store configuration is the proof boundary for issue #90: the shipped app is
+still functional while the Apple companion helper is absent.
 
 ### External Volume Actuator
 

@@ -7,8 +7,13 @@ runtime_contract="$repo_root/AppleCompanionHelper/runtime-contract.json"
 runtime_source="$repo_root/AppleCompanionHelper/runtime-source.json"
 runtime_checker="$repo_root/scripts/check-apple-companion-runtime.sh"
 temporary_directory=""
+runtime_destination=""
+remove_runtime_destination=false
 
 cleanup() {
+	if [ "$remove_runtime_destination" = true ] && [ -n "$runtime_destination" ]; then
+		rm -rf "$runtime_destination"
+	fi
 	[ -z "$temporary_directory" ] || rm -rf "$temporary_directory"
 }
 trap cleanup EXIT HUP INT TERM
@@ -72,13 +77,13 @@ app_executable="$app/Contents/MacOS/$app_executable_name"
 	printf 'Developer ID application executable is missing\n' >&2
 	exit 2
 }
-if ! nm -gU "$app_executable" | rg -q 'AppleCompanion'; then
-	printf 'Application does not contain the live Apple Companion adapter\n' >&2
-	exit 2
-fi
 if app_entitlements="$(codesign -d --entitlements - "$app" 2>/dev/null || true)" &&
 	printf '%s\n' "$app_entitlements" | rg -q 'com\.apple\.security\.app-sandbox'; then
 	printf 'Refusing to package the runtime into a sandboxed application\n' >&2
+	exit 2
+fi
+if ! nm -gU "$app_executable" | rg -q 'AppleCompanion'; then
+	printf 'Application does not contain the live Apple Companion adapter\n' >&2
 	exit 2
 fi
 [ ! -e "$runtime_destination" ] && [ ! -L "$runtime_destination" ] || {
@@ -94,6 +99,7 @@ resolved_resources="$(ruby -e 'puts File.realpath(ARGV.fetch(0))' "$resources_di
 	printf 'Application Resources directory escapes the application bundle\n' >&2
 	exit 2
 }
+remove_runtime_destination=true
 ditto --norsrc --noextattr --noqtn "$candidate" "$runtime_destination"
 "$runtime_checker" "$runtime_destination"
 
@@ -104,7 +110,7 @@ signing_paths="$temporary_directory/signing-paths"
 
 ruby -rjson -e '
 	manifest = JSON.parse(File.read(ARGV.fetch(0)))
-	expected_count = Integer(JSON.parse(File.read(ARGV.fetch(1))).fetch("staging").fetch("nativeCodeCount"))
+	expected_count = Integer(JSON.parse(File.read(ARGV.fetch(1))).fetch("signing").fetch("nativeCodeCount"))
 	interpreter = JSON.parse(File.read(ARGV.fetch(2))).fetch("interpreterRelativePath")
 	paths = manifest.fetch("nativeCode").map { |item| item.fetch("path") }
 	exit 1 unless paths.length == expected_count && paths.uniq.length == paths.length
@@ -181,11 +187,12 @@ while IFS= read -r relative_path; do
 	signed_count=$((signed_count + 1))
 done <"$signing_paths"
 
-expected_count="$(jq -er '.staging.nativeCodeCount' "$runtime_source")"
+expected_count="$(jq -er '.signing.nativeCodeCount' "$runtime_source")"
 [ "$signed_count" -eq "$expected_count" ] || {
 	printf 'Apple Companion native-code signing count is invalid\n' >&2
 	exit 1
 }
 
+remove_runtime_destination=false
 printf 'packaged Apple Companion runtime\n'
 printf 'signed-native-code %s\n' "$signed_count"

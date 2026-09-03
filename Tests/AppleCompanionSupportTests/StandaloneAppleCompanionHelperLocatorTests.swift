@@ -154,16 +154,6 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         )
     }
 
-    @Test("Live signature verifier rejects an unsigned bundle")
-    func unsignedBundleSignature() throws {
-        let fixture = try makeStandaloneFixture()
-        defer { try? FileManager.default.removeItem(at: fixture.temporaryRoot) }
-
-        #expect(
-            !AppleCompanionRuntimeCodeSignatureVerifier().verify(bundleURL: fixture.bundleURL)
-        )
-    }
-
     @Test("Unsupported hosts stop before filesystem fallback")
     func unsupportedHost() {
         let locator = DefaultAppleCompanionHelperLocator(

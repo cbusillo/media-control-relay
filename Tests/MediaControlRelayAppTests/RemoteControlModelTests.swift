@@ -7,7 +7,7 @@ import Testing
 @MainActor
 struct RemoteControlModelTests {
     @Test("Helper availability is explicit and does not invent a runtime")
-    func helperAvailability() {
+    func helperAvailability() async {
         let missing = RemoteControlModel(
             runtimeProvider: FakeRemoteRuntimeProvider(
                 resolution: RemoteControlRuntimeResolution(
@@ -33,9 +33,9 @@ struct RemoteControlModelTests {
             )
         )
 
-        #expect(missing.state == .helperNotInstalled)
-        #expect(damaged.state == .helperDamaged)
-        #expect(unsupportedArchitecture.state == .helperUnsupportedArchitecture)
+        await eventually { missing.state == .helperNotInstalled }
+        await eventually { damaged.state == .helperDamaged }
+        await eventually { unsupportedArchitecture.state == .helperUnsupportedArchitecture }
         #expect(unsupportedArchitecture.state.targetState == .unsupported)
         #expect(
             unsupportedArchitecture.diagnosticsFields["remote_helper"]
@@ -287,7 +287,7 @@ struct RemoteControlModelTests {
 private struct FakeRemoteRuntimeProvider: RemoteControlRuntimeProviding {
     let resolution: RemoteControlRuntimeResolution
 
-    func resolve() -> RemoteControlRuntimeResolution {
+    func resolve() async -> RemoteControlRuntimeResolution {
         resolution
     }
 }

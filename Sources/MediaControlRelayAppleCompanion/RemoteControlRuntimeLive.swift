@@ -10,8 +10,10 @@ enum RemoteControlRuntimeFactory {
 }
 
 private struct AppleCompanionRemoteRuntimeProvider: RemoteControlRuntimeProviding {
-    func resolve() -> RemoteControlRuntimeResolution {
-        let resolution = AppleCompanionRuntime.makeSession()
+    func resolve() async -> RemoteControlRuntimeResolution {
+        let resolution = await Task.detached(priority: .userInitiated) {
+            AppleCompanionRuntime.makeSession()
+        }.value
         switch resolution.availability {
         case .notInstalled:
             return RemoteControlRuntimeResolution(

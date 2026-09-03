@@ -106,6 +106,7 @@ ruby -rjson -rdigest -e '
 	exit 1 unless distribution.fetch("approved") == false
 	exit 1 unless distribution.fetch("blockedBy") == [
 	  "Resolve the same-release runtime notice proxy and the recorded certifi, chacha20poly1305-reuseable, and zeroconf review items.",
+	  "Prove the locator accepts a same-Team Developer ID runtime-carrying app and the signed Python runtime launches without weakened entitlements.",
 	  "Pass notarization, quarantine, rollback, and clean-Mac qualification.",
 	]
 	expected_inputs = {

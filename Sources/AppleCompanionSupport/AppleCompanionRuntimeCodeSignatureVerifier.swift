@@ -10,9 +10,10 @@ struct AppleCompanionRuntimeCodeSignatureVerifier:
     Sendable
 {
     func verify(bundleURL: URL) -> Bool {
+        let resolvedBundleURL = bundleURL.resolvingSymlinksInPath().standardizedFileURL
         guard let currentIdentity = signingIdentity(forCurrentProcess: true, code: nil),
               let requirement = requirement(for: currentIdentity),
-              let staticCode = staticCode(at: bundleURL),
+              let staticCode = staticCode(at: resolvedBundleURL),
               SecStaticCodeCheckValidity(
                   staticCode,
                   SecCSFlags(
@@ -43,6 +44,8 @@ struct AppleCompanionRuntimeCodeSignatureVerifier:
         }
         let expression = """
         anchor apple generic and identifier "\(identity.identifier)" and \
+        certificate 1[field.1.2.840.113635.100.6.2.6] exists and \
+        certificate leaf[field.1.2.840.113635.100.6.1.13] exists and \
         certificate leaf[subject.OU] = "\(identity.teamIdentifier)"
         """
         var requirement: SecRequirement?

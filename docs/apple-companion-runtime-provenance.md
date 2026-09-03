@@ -155,7 +155,9 @@ signature is the shipped integrity boundary: it seals the signed native leaves
 and every runtime resource. The Swift locator verifies the containing
 application with Security.framework strict, nested-code, and all-architecture
 checks, and requires its bundle identifier and Team ID to match the running
-process before it accepts a present runtime. Missing Team IDs, ad-hoc signatures,
+process under a Developer ID Application certificate before it accepts a
+present runtime. The live runtime provider performs that potentially expensive
+verification away from the main actor. Missing Team IDs, ad-hoc signatures,
 invalid nested code, or altered resources fail closed as damaged.
 
 The normal Release payload-absence gate remains in place, as does complete App
@@ -163,6 +165,9 @@ Store exclusion. CI proves the packaging and integrity boundary on copied build
 products with ad-hoc signatures, including native, Python-resource, and marker
 tamper failures. Distribution remains unapproved until the recorded notice
 review, notarization, quarantine, rollback, and clean-Mac gates are complete.
+The same-Team Developer ID runbook must also prove that the locator accepts the
+runtime-carrying app and that Python launches without weakened entitlements;
+ad-hoc CI cannot establish that accepting direction.
 
 ## Verification
 

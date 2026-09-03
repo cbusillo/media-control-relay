@@ -23,6 +23,7 @@ usage() {
 release_app="$1"
 candidate="$2"
 app_store_app="$3"
+app_store_entitlements="$repo_root/Config/MediaControlRelayAppStore.entitlements"
 
 for command_name in codesign ditto jq rg ruby; do
 	command -v "$command_name" >/dev/null 2>&1 || {
@@ -37,6 +38,7 @@ rejected_app="$temporary_directory/App Store.app"
 invalid_candidate="$temporary_directory/invalid-candidate"
 invalid_candidate_app="$temporary_directory/Invalid Candidate.app"
 escaping_app="$temporary_directory/Escaping Resources.app"
+partial_failure_app="$temporary_directory/Partial Failure.app"
 ditto --norsrc --noextattr --noqtn "$release_app" "$signed_app"
 
 "$packager" "$signed_app" "$candidate" -
@@ -48,7 +50,7 @@ codesign --verify --deep --strict --all-architectures "$signed_app" \
 runtime_relative_path="$(jq -er '.bundleRelativePath' "$runtime_contract")"
 runtime_root="$signed_app/$runtime_relative_path"
 native_code_count="$(jq -er '.nativeCode | length' "$runtime_root/manifest.json")"
-expected_native_code_count="$(jq -er '.staging.nativeCodeCount' \
+expected_native_code_count="$(jq -er '.signing.nativeCodeCount' \
 	"$repo_root/AppleCompanionHelper/runtime-source.json")"
 [ "$native_code_count" -eq "$expected_native_code_count" ] || {
 	printf 'Signed Apple Companion native-code count is invalid\n' >&2
@@ -115,6 +117,9 @@ codesign --verify --deep --strict --all-architectures "$signed_app" \
 	>/dev/null 2>&1
 
 ditto --norsrc --noextattr --noqtn "$app_store_app" "$rejected_app"
+codesign --force --options runtime --timestamp=none \
+	--entitlements "$app_store_entitlements" --sign - "$rejected_app" \
+	>/dev/null 2>&1
 if "$packager" "$rejected_app" "$candidate" - >/dev/null 2>&1; then
 	printf 'App Store application unexpectedly accepted the Apple Companion runtime\n' >&2
 	exit 1
@@ -154,6 +159,18 @@ fi
 [ ! -e "$escaping_resources/AppleCompanionRuntime" ] &&
 	[ ! -L "$escaping_resources/AppleCompanionRuntime" ] || {
 	printf 'Rejected escaping Resources directory received runtime material\n' >&2
+	exit 1
+}
+
+ditto --norsrc --noextattr --noqtn "$release_app" "$partial_failure_app"
+if "$packager" "$partial_failure_app" "$candidate" \
+	'Missing Apple Companion Signing Identity' >/dev/null 2>&1; then
+	printf 'Missing signing identity unexpectedly packaged the runtime\n' >&2
+	exit 1
+fi
+[ ! -e "$partial_failure_app/$runtime_relative_path" ] &&
+	[ ! -L "$partial_failure_app/$runtime_relative_path" ] || {
+	printf 'Failed runtime signing left partial material behind\n' >&2
 	exit 1
 }
 
