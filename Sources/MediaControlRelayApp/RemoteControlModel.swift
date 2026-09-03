@@ -124,6 +124,7 @@ final class RemoteControlModel {
 
     private(set) var availability: RemoteControlRuntimeAvailability = .helperNotInstalled
     private(set) var state: RemoteControlSetupState = .helperNotInstalled
+    private(set) var isCheckingAvailability = false
     var pairingPIN = ""
     private(set) var operationMessage: String?
     private(set) var actionsAccepted = 0
@@ -196,6 +197,7 @@ final class RemoteControlModel {
         availabilityGeneration &+= 1
         availabilityTask?.cancel()
         actuator = nil
+        isCheckingAvailability = true
         operationMessage = nil
         let generation = availabilityGeneration
         let runtimeProvider = runtimeProvider
@@ -212,6 +214,7 @@ final class RemoteControlModel {
     }
 
     private func applyRuntimeResolution(_ resolution: RemoteControlRuntimeResolution) {
+        isCheckingAvailability = false
         availability = resolution.availability
         actuator = resolution.actuator
         operationMessage = nil
@@ -483,6 +486,10 @@ final class RemoteControlModel {
     }
 
     func shutdown() {
+        availabilityGeneration &+= 1
+        availabilityTask?.cancel()
+        availabilityTask = nil
+        isCheckingAvailability = false
         cancelCurrentOperation()
         commandPumpTask?.cancel()
         commandPumpTask = nil

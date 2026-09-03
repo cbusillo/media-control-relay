@@ -58,14 +58,14 @@ struct RemoteControlSettingsView: View {
                     forType: .string
                 )
             }
-            Button("Check Again") { model.refreshAvailability() }
+            availabilityCheckControl
         case .helperDamaged:
             status(
                 title: "Apple TV helper needs attention",
                 detail: "The local helper failed verification and won’t be used.",
                 systemImage: "exclamationmark.triangle"
             )
-            Button("Check Again") { model.refreshAvailability() }
+            availabilityCheckControl
         case .helperUnsupportedArchitecture:
             status(
                 title: "Apple TV controls need Apple silicon",
@@ -191,6 +191,15 @@ struct RemoteControlSettingsView: View {
                 .font(.footnote)
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var availabilityCheckControl: some View {
+        if model.isCheckingAvailability {
+            ProgressView("Checking Apple TV helper…")
+        } else {
+            Button("Check Again") { model.refreshAvailability() }
         }
     }
 

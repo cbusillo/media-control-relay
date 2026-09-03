@@ -44,6 +44,34 @@ struct RemoteControlModelTests {
         #expect(missing.terminationStopper == nil)
     }
 
+    @Test("Stale runtime resolutions cannot replace a newer refresh")
+    func staleRuntimeResolution() async {
+        let provider = ControlledRemoteRuntimeProvider()
+        let model = RemoteControlModel(runtimeProvider: provider)
+        await eventually { await provider.requestCount == 1 }
+        #expect(model.isCheckingAvailability)
+
+        model.refreshAvailability()
+        await eventually { await provider.requestCount == 2 }
+        await provider.completeNext(
+            with: RemoteControlRuntimeResolution(
+                availability: .available,
+                actuator: FakeRemoteActuator()
+            )
+        )
+        #expect(model.availability == .helperNotInstalled)
+        #expect(model.isCheckingAvailability)
+
+        await provider.completeNext(
+            with: RemoteControlRuntimeResolution(
+                availability: .helperDamaged,
+                actuator: nil
+            )
+        )
+        await eventually { model.state == .helperDamaged }
+        #expect(!model.isCheckingAvailability)
+    }
+
     @Test("Stored credentials resume into the helper-reported ready state")
     func resumeStoredCredential() async {
         let actuator = FakeRemoteActuator(
@@ -289,6 +317,22 @@ private struct FakeRemoteRuntimeProvider: RemoteControlRuntimeProviding {
 
     func resolve() async -> RemoteControlRuntimeResolution {
         resolution
+    }
+}
+
+private actor ControlledRemoteRuntimeProvider: RemoteControlRuntimeProviding {
+    private var continuations: [CheckedContinuation<RemoteControlRuntimeResolution, Never>] = []
+    private(set) var requestCount = 0
+
+    func resolve() async -> RemoteControlRuntimeResolution {
+        requestCount += 1
+        return await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+        }
+    }
+
+    func completeNext(with resolution: RemoteControlRuntimeResolution) {
+        continuations.removeFirst().resume(returning: resolution)
     }
 }
 

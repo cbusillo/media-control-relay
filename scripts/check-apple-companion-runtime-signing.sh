@@ -35,6 +35,7 @@ done
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-signing-check.XXXXXX")"
 signed_app="$temporary_directory/Media Control Relay.app"
 rejected_app="$temporary_directory/App Store.app"
+sandbox_refusal="$temporary_directory/sandbox-refusal"
 invalid_candidate="$temporary_directory/invalid-candidate"
 invalid_candidate_app="$temporary_directory/Invalid Candidate.app"
 escaping_app="$temporary_directory/Escaping Resources.app"
@@ -120,10 +121,15 @@ ditto --norsrc --noextattr --noqtn "$app_store_app" "$rejected_app"
 codesign --force --options runtime --timestamp=none \
 	--entitlements "$app_store_entitlements" --sign - "$rejected_app" \
 	>/dev/null 2>&1
-if "$packager" "$rejected_app" "$candidate" - >/dev/null 2>&1; then
+if "$packager" "$rejected_app" "$candidate" - >/dev/null 2>"$sandbox_refusal"; then
 	printf 'App Store application unexpectedly accepted the Apple Companion runtime\n' >&2
 	exit 1
 fi
+rg -Fxq 'Refusing to package the runtime into a sandboxed application' \
+	"$sandbox_refusal" || {
+	printf 'App Store packaging did not exercise the sandbox refusal boundary\n' >&2
+	exit 1
+}
 [ ! -e "$rejected_app/$runtime_relative_path" ] &&
 	[ ! -L "$rejected_app/$runtime_relative_path" ] || {
 	printf 'Rejected App Store packaging left runtime material behind\n' >&2
