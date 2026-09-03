@@ -33,6 +33,8 @@ for command_name in codesign ditto jq nm rg ruby strip; do
 done
 
 runtime_relative_path="$(jq -er '.bundleRelativePath' "$runtime_contract")"
+release_executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
+	"$release_app/Contents/Info.plist")"
 
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-signing-check.XXXXXX")"
 signed_app="$temporary_directory/Media Control Relay.app"
@@ -47,11 +49,9 @@ partial_failure_app="$temporary_directory/Partial Failure.app"
 ditto --norsrc --noextattr --noqtn "$release_app" "$signed_app"
 
 ditto --norsrc --noextattr --noqtn "$release_app" "$stripped_app"
-stripped_executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
-	"$stripped_app/Contents/Info.plist")"
-stripped_executable="$stripped_app/Contents/MacOS/$stripped_executable_name"
+stripped_executable="$stripped_app/Contents/MacOS/$release_executable_name"
 strip "$stripped_executable"
-if nm -gU "$stripped_executable" | rg -q 'AppleCompanion'; then
+if nm -arch arm64 -gU "$stripped_executable" | rg -q 'AppleCompanion'; then
 	printf 'Stripped Release executable unexpectedly retained the adapter symbol\n' >&2
 	exit 1
 fi
@@ -60,7 +60,7 @@ if "$packager" "$stripped_app" "$candidate" - \
 	printf 'Stripped Release executable unexpectedly accepted runtime packaging\n' >&2
 	exit 1
 fi
-rg -Fxq 'Application does not contain the live Apple Companion adapter' \
+rg -Fxq 'Application does not contain the live arm64 Apple Companion adapter' \
 	"$stripped_refusal" || {
 	printf 'Stripped Release packaging did not exercise the adapter refusal boundary\n' >&2
 	exit 1
@@ -72,6 +72,12 @@ rg -Fxq 'Application does not contain the live Apple Companion adapter' \
 }
 
 "$packager" "$signed_app" "$candidate" -
+signed_executable="$signed_app/Contents/MacOS/$release_executable_name"
+strip "$signed_executable"
+if nm -arch arm64 -gU "$signed_executable" | rg -q 'AppleCompanion'; then
+	printf 'Packaged Release executable unexpectedly retained the adapter symbol after stripping\n' >&2
+	exit 1
+fi
 codesign --force --options runtime --timestamp=none \
 	--entitlements "$entitlements" --sign - "$signed_app" >/dev/null 2>&1
 codesign --verify --deep --strict --all-architectures "$signed_app" \

@@ -31,6 +31,7 @@ helper_temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-uv.
 helper_environment="$helper_temporary_directory/environment"
 runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-runtime.XXXXXX")"
 runtime_candidate="$repo_root/scratch/.validation-apple-companion-runtime.$$"
+release_archive="$runtime_check_root/MediaControlRelay.xcarchive"
 runtime_bundle_relative_path="$(ruby -rjson -e '
   contract = JSON.parse(File.read("AppleCompanionHelper/runtime-contract.json"))
   puts contract.fetch("bundleRelativePath")
@@ -108,6 +109,14 @@ xcodebuild \
 	-destination 'platform=macOS' \
 	CODE_SIGNING_ALLOWED=NO \
 	build
+xcodebuild \
+	-project MediaControlRelay.xcodeproj \
+	-scheme MediaControlRelay \
+	-configuration Release \
+	-archivePath "$release_archive" \
+	CODE_SIGNING_ALLOWED=NO \
+	STRIP_INSTALLED_PRODUCT=NO \
+	archive
 xcodebuild \
 	-project MediaControlRelay.xcodeproj \
 	-scheme MediaControlRelay \
@@ -193,13 +202,21 @@ release_product_name="$(printf '%s\n' "$release_build_settings" | awk -F' = ' '
 }
 release_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
 	"$release_build_dir/$release_product_name/Contents/Info.plist")"
-if ! nm -gU \
-	"$release_build_dir/$release_product_name/Contents/MacOS/$release_executable" |
+if ! lipo \
+	"$release_build_dir/$release_product_name/Contents/MacOS/$release_executable" \
+	-verify_arch arm64 ||
+	! nm -arch arm64 -gU \
+		"$release_build_dir/$release_product_name/Contents/MacOS/$release_executable" |
 	rg -q 'AppleCompanion'; then
-	printf 'Release executable does not contain the live Apple Companion adapter\n' >&2
+	printf 'Release executable does not contain the live arm64 Apple Companion adapter\n' >&2
 	exit 1
 fi
+archived_release_app="$release_archive/Products/Applications/$release_product_name"
+[ -d "$archived_release_app" ] && [ ! -L "$archived_release_app" ] || {
+	printf 'Unable to resolve the unstripped Release archive product\n' >&2
+	exit 1
+}
 scripts/check-apple-companion-runtime-signing.sh \
-	"$release_build_dir/$release_product_name" \
+	"$archived_release_app" \
 	"$runtime_candidate" \
 	"$app_store_build_dir/$app_store_product_name"

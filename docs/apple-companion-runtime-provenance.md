@@ -149,9 +149,10 @@ inside-out with hardened runtime and no entitlements, and then requires the
 outer app to be signed after every leaf is final. It rejects the App Store
 partition before creating the runtime destination. Developer ID archives retain
 their global Swift symbol table through runtime admission so the live-adapter
-gate stays tied to linked code. The outer executable is stripped only after the
-runtime is admitted and before final application signing; validation proves a
-symbol-stripped input is rejected without leaving runtime material behind.
+gate stays tied to linked arm64 code. The outer executable is stripped only
+after the runtime is admitted and before final application signing; validation
+exercises that exact archive-to-sign sequence and proves a symbol-stripped input
+is rejected without leaving runtime material behind.
 
 The unsigned candidate digest, native-code hashes, and package `RECORD` entries
 remain the pre-sign provenance boundary. Because `codesign` changes Mach-O

@@ -173,7 +173,8 @@ leaves recorded in `manifest.json` with hardened runtime and no entitlements,
 and leaves the outer application signing to the following command. Do not write
 anything into the application bundle after that outer signature is applied.
 The archive intentionally keeps its global Swift symbol table until the
-packaging gate proves that the live adapter is present. Strip the outer
+packaging gate proves that the live adapter is present in the arm64 slice that
+runs the packaged helper. Strip the outer
 executable only after runtime admission and before applying the final outer
 signature. A symbol-stripped input is rejected, and the sandbox refusal remains
 authoritative for preventing the App Store partition from receiving the
