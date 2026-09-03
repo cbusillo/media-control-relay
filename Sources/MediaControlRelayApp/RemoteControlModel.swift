@@ -11,6 +11,7 @@ enum RemoteControlRuntimeAvailability: String, Equatable, Sendable {
     case available
     case helperNotInstalled = "not-installed"
     case helperDamaged = "damaged"
+    case helperUnsupportedArchitecture = "unsupported-architecture"
 }
 
 enum RemoteControlCredentialOperation: String, Equatable, Sendable {
@@ -53,6 +54,7 @@ protocol RemoteControlActuating: Sendable {
 enum RemoteControlSetupState: Equatable, Sendable {
     case helperNotInstalled
     case helperDamaged
+    case helperUnsupportedArchitecture
     case unconfigured
     case discovering
     case empty
@@ -68,6 +70,8 @@ enum RemoteControlSetupState: Equatable, Sendable {
         switch self {
         case .helperNotInstalled, .helperDamaged, .unconfigured, .discovering, .empty, .choosing:
             return .unconfigured
+        case .helperUnsupportedArchitecture:
+            return .unsupported
         case .pairing:
             return .pairingRequired
         case .connecting:
@@ -85,6 +89,7 @@ enum RemoteControlSetupState: Equatable, Sendable {
         switch self {
         case .helperNotInstalled: "helper-not-installed"
         case .helperDamaged: "helper-damaged"
+        case .helperUnsupportedArchitecture: "helper-unsupported-architecture"
         case .unconfigured: "unconfigured"
         case .discovering: "discovering"
         case .empty: "empty"
@@ -198,6 +203,8 @@ final class RemoteControlModel {
             state = .helperNotInstalled
         case .helperDamaged:
             state = .helperDamaged
+        case .helperUnsupportedArchitecture:
+            state = .helperUnsupportedArchitecture
         }
     }
 

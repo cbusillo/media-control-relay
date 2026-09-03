@@ -66,6 +66,12 @@ struct RemoteControlSettingsView: View {
                 systemImage: "exclamationmark.triangle"
             )
             Button("Check Again") { model.refreshAvailability() }
+        case .helperUnsupportedArchitecture:
+            status(
+                title: "Apple TV controls need Apple silicon",
+                detail: "This helper runtime isn’t available on Intel Macs. Other Media Control Relay features remain available.",
+                systemImage: "desktopcomputer"
+            )
         case .unconfigured:
             status(
                 title: "No Apple TV connected",

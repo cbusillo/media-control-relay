@@ -130,6 +130,10 @@
       "sha256": "2996be95515a1151cde0c811e24562f5da7cdbd4575fc560cfe85fa6a567410f"
     },
     {
+      "path": "AppleCompanionHelper/runtime-contract.json",
+      "sha256": "ba0bd905a1959c534c782f50a12eabf7586e98594a1961aaeab957f434192a0c"
+    },
+    {
       "path": "AppleCompanionHelper/uv.lock",
       "sha256": "80725a973bfbb4d117f095da671583b554eb18f3d45d1424f1399748f1d6bd01"
     }

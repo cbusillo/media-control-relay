@@ -126,10 +126,21 @@ prove:
 - the App Store artifact contains no helper, Python runtime, package metadata,
   native extension, or executable-download path.
 
-The current Application Support runtime contract expects a uv-created virtual
-environment and a different three-field manifest. Adopting this candidate will
-require a separately reviewed locator/runtime-contract change; the staging
-evidence alone does not make the app execute this layout.
+`AppleCompanionHelper/runtime-contract.json` now defines the staged marker,
+manifest, launcher, interpreter, Python version, architecture, exact candidate
+content digest, and future bundle location. Swift tests require the compiled
+locator constants to match that file, and staged-runtime validation requires
+the candidate to satisfy it.
+
+Developer ID builds now check the future
+`Contents/Helpers/AppleCompanionRuntime` location before falling back to the
+owner-installed Application Support runtime. A present but invalid bundled
+runtime fails closed instead of silently falling back. Intel hosts report Apple
+Companion as unsupported while the rest of the app remains useful. No current
+build copies the candidate into an app bundle, and validation requires both
+Release and App Store artifacts to keep that location absent. The contract and
+locator do not establish signing integrity or make the app execute a shipped
+payload yet.
 
 ## Verification
 

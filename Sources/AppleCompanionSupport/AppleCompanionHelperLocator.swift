@@ -18,11 +18,27 @@ public struct AppleCompanionHelperManifest: Codable, Equatable, Sendable {
 
 public struct AppleCompanionHelperInstallation: Equatable, Sendable {
     public let executableURL: URL
-    public let manifest: AppleCompanionHelperManifest
+    public let kind: AppleCompanionHelperInstallationKind
 
-    public init(executableURL: URL, manifest: AppleCompanionHelperManifest) {
+    public init(executableURL: URL, kind: AppleCompanionHelperInstallationKind) {
         self.executableURL = executableURL
-        self.manifest = manifest
+        self.kind = kind
+    }
+
+    public var pythonVersion: String {
+        kind.pythonVersion
+    }
+}
+
+public enum AppleCompanionHelperInstallationKind: Equatable, Sendable {
+    case ownerInstalled(AppleCompanionHelperManifest)
+    case bundledStandalone(AppleCompanionRuntimeManifest)
+
+    public var pythonVersion: String {
+        switch self {
+        case let .ownerInstalled(manifest): manifest.pythonVersion
+        case let .bundledStandalone(manifest): manifest.pythonVersion
+        }
     }
 }
 
@@ -30,6 +46,7 @@ public enum AppleCompanionHelperAvailability: Equatable, Sendable {
     case installed(AppleCompanionHelperInstallation)
     case notInstalled
     case damaged
+    case unsupportedArchitecture
 }
 
 public protocol AppleCompanionHelperLocating: Sendable {
@@ -109,7 +126,7 @@ public struct ApplicationSupportAppleCompanionHelperLocator: AppleCompanionHelpe
         return .installed(
             AppleCompanionHelperInstallation(
                 executableURL: executableURL,
-                manifest: manifest
+                kind: .ownerInstalled(manifest)
             )
         )
     }
@@ -180,7 +197,7 @@ public enum AppleCompanionRuntime {
     }
 
     public static func makeSession(
-        locator: any AppleCompanionHelperLocating = ApplicationSupportAppleCompanionHelperLocator(),
+        locator: any AppleCompanionHelperLocating = DefaultAppleCompanionHelperLocator(),
         keychain: any AppleCompanionKeychain = SystemAppleCompanionKeychain(),
         socketPath: String = defaultSocketPath
     ) -> AppleCompanionRuntimeResolution {

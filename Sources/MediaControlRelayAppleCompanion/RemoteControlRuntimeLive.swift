@@ -23,6 +23,11 @@ private struct AppleCompanionRemoteRuntimeProvider: RemoteControlRuntimeProvidin
                 availability: .helperDamaged,
                 actuator: nil
             )
+        case .unsupportedArchitecture:
+            return RemoteControlRuntimeResolution(
+                availability: .helperUnsupportedArchitecture,
+                actuator: nil
+            )
         case .installed:
             guard let session = resolution.session,
                   let helperProcess = resolution.helperProcess else {

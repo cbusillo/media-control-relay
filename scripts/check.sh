@@ -31,6 +31,10 @@ helper_temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-uv.
 helper_environment="$helper_temporary_directory/environment"
 runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-runtime.XXXXXX")"
 runtime_candidate="$repo_root/scratch/.validation-apple-companion-runtime.$$"
+runtime_bundle_relative_path="$(ruby -rjson -e '
+  contract = JSON.parse(File.read("AppleCompanionHelper/runtime-contract.json"))
+  puts contract.fetch("bundleRelativePath")
+')"
 trap 'rm -rf "$helper_temporary_directory" "$runtime_check_root" "$runtime_candidate"' EXIT HUP INT TERM
 (
 	cd AppleCompanionHelper
@@ -125,6 +129,10 @@ app_store_product_name="$(printf '%s\n' "$app_store_build_settings" | awk -F' = 
 	exit 1
 }
 scripts/check-app-icon.sh "$app_store_build_dir/$app_store_product_name"
+[ ! -e "$app_store_build_dir/$app_store_product_name/$runtime_bundle_relative_path" ] || {
+	printf 'App Store build unexpectedly contains the standalone Apple Companion runtime\n' >&2
+	exit 1
+}
 app_store_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
 	"$app_store_build_dir/$app_store_product_name/Contents/Info.plist")"
 if nm -gU \
@@ -170,6 +178,10 @@ release_product_name="$(printf '%s\n' "$release_build_settings" | awk -F' = ' '
 	')"
 [ -n "$release_build_dir" ] && [ -n "$release_product_name" ] || {
 	printf 'Unable to resolve the Release application build path\n' >&2
+	exit 1
+}
+[ ! -e "$release_build_dir/$release_product_name/$runtime_bundle_relative_path" ] || {
+	printf 'Release build unexpectedly contains an unqualified Apple Companion runtime\n' >&2
 	exit 1
 }
 release_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
