@@ -197,7 +197,7 @@ packages = package_directories.map do |directory|
       evidence.fetch("licenseExpression") == resolved_expression
   when "legacy-license-field"
     fail_with("Package legacy license resolution has no evidence: #{name}==#{version}") unless
-      evidence.fetch("licenseExpression").nil? && evidence.fetch("license")
+      evidence.fetch("licenseExpression").nil? && !evidence.fetch("license").to_s.strip.empty?
   when "classifier"
     fail_with("Package classifier resolution has conflicting evidence: #{name}==#{version}") unless
       evidence.fetch("licenseExpression").nil? && evidence.fetch("license").nil? &&
