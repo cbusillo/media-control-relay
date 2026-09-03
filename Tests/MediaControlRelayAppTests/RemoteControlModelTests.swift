@@ -53,21 +53,21 @@ struct RemoteControlModelTests {
 
         model.refreshAvailability()
         await eventually { await provider.requestCount == 2 }
-        await provider.completeNext(
+        #expect(await provider.completeNext(
             with: RemoteControlRuntimeResolution(
                 availability: .available,
                 actuator: FakeRemoteActuator()
             )
-        )
+        ))
         #expect(model.availability == .helperNotInstalled)
         #expect(model.isCheckingAvailability)
 
-        await provider.completeNext(
+        #expect(await provider.completeNext(
             with: RemoteControlRuntimeResolution(
                 availability: .helperDamaged,
                 actuator: nil
             )
-        )
+        ))
         await eventually { model.state == .helperDamaged }
         #expect(!model.isCheckingAvailability)
     }
@@ -331,8 +331,10 @@ private actor ControlledRemoteRuntimeProvider: RemoteControlRuntimeProviding {
         }
     }
 
-    func completeNext(with resolution: RemoteControlRuntimeResolution) {
+    func completeNext(with resolution: RemoteControlRuntimeResolution) -> Bool {
+        guard !continuations.isEmpty else { return false }
         continuations.removeFirst().resume(returning: resolution)
+        return true
     }
 }
 
