@@ -126,11 +126,15 @@ by the App Store app.
 
 15. `AppleCompanionHelper/runtime-contract.json` binds the standalone marker,
     manifest, launcher, interpreter, Python version, arm64 policy, exact content
-    digest, and future Developer ID bundle location across staging validation
+    digest, and Developer ID resource location across staging validation
     and the Swift locator. A present invalid bundled runtime fails closed; an
-    absent bundle still permits the owner-installed local runtime. This contract
-    does not approve copying or signing the payload, and current Release and App
-    Store artifacts must both prove the bundle location is absent.
+    absent bundle still permits the owner-installed local runtime. The
+    out-of-band Developer ID packager validates the unsigned candidate, signs
+    all 35 manifested Mach-O leaves before the outer app, and establishes the
+    application code signature as the shipped integrity boundary. Current
+    Release and App Store build products must still prove the bundle location is
+    absent, and distribution remains unapproved pending the recorded notice,
+    notarization, quarantine, rollback, and clean-Mac gates.
 
 ## Required Follow-Up
 

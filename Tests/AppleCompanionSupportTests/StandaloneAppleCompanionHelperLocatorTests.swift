@@ -24,9 +24,7 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         let fixture = try makeStandaloneFixture()
         defer { try? FileManager.default.removeItem(at: fixture.temporaryRoot) }
 
-        let availability = StandaloneAppleCompanionHelperLocator(
-            bundleURL: fixture.bundleURL
-        ).locate()
+        let availability = standaloneLocator(bundleURL: fixture.bundleURL).locate()
         guard case let .installed(installation) = availability,
               case let .bundledStandalone(manifest) = installation.kind else {
             Issue.record("Standalone runtime was not located")
@@ -48,7 +46,7 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
 
         #expect(
-            StandaloneAppleCompanionHelperLocator(bundleURL: bundleURL).locate()
+            standaloneLocator(bundleURL: bundleURL, signatureValid: false).locate()
                 == .notInstalled
         )
     }
@@ -64,7 +62,7 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         try setStandalonePermissions(0o644, at: marker)
 
         #expect(
-            StandaloneAppleCompanionHelperLocator(bundleURL: fixture.bundleURL).locate()
+            standaloneLocator(bundleURL: fixture.bundleURL).locate()
                 == .damaged
         )
     }
@@ -90,7 +88,7 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         try setStandalonePermissions(0o644, at: manifestURL)
 
         #expect(
-            StandaloneAppleCompanionHelperLocator(bundleURL: fixture.bundleURL).locate()
+            standaloneLocator(bundleURL: fixture.bundleURL).locate()
                 == .damaged
         )
     }
@@ -104,7 +102,7 @@ struct StandaloneAppleCompanionHelperLocatorTests {
         )
         try setStandalonePermissions(0o775, at: launcher)
         #expect(
-            StandaloneAppleCompanionHelperLocator(bundleURL: fixture.bundleURL).locate()
+            standaloneLocator(bundleURL: fixture.bundleURL).locate()
                 == .damaged
         )
 
@@ -118,7 +116,7 @@ struct StandaloneAppleCompanionHelperLocatorTests {
             withDestinationURL: URL(fileURLWithPath: "/usr/bin/true")
         )
         #expect(
-            StandaloneAppleCompanionHelperLocator(bundleURL: fixture.bundleURL).locate()
+            standaloneLocator(bundleURL: fixture.bundleURL).locate()
                 == .damaged
         )
     }
@@ -127,21 +125,42 @@ struct StandaloneAppleCompanionHelperLocatorTests {
     func intermediateSymlinkEscape() throws {
         let fixture = try makeStandaloneFixture()
         defer { try? FileManager.default.removeItem(at: fixture.temporaryRoot) }
-        let helpersDirectory = fixture.runtimeRoot.deletingLastPathComponent()
+        let resourcesDirectory = fixture.runtimeRoot.deletingLastPathComponent()
         let outsideRuntime = fixture.temporaryRoot.appendingPathComponent(
             "AppleCompanionRuntime",
             isDirectory: true
         )
         try FileManager.default.moveItem(at: fixture.runtimeRoot, to: outsideRuntime)
-        try FileManager.default.removeItem(at: helpersDirectory)
+        try FileManager.default.removeItem(at: resourcesDirectory)
         try FileManager.default.createSymbolicLink(
-            at: helpersDirectory,
+            at: resourcesDirectory,
             withDestinationURL: fixture.temporaryRoot
         )
 
         #expect(
-            StandaloneAppleCompanionHelperLocator(bundleURL: fixture.bundleURL).locate()
+            standaloneLocator(bundleURL: fixture.bundleURL).locate()
                 == .damaged
+        )
+    }
+
+    @Test("Invalid application signature fails closed")
+    func invalidApplicationSignature() throws {
+        let fixture = try makeStandaloneFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.temporaryRoot) }
+
+        #expect(
+            standaloneLocator(bundleURL: fixture.bundleURL, signatureValid: false).locate()
+                == .damaged
+        )
+    }
+
+    @Test("Live signature verifier rejects an unsigned bundle")
+    func unsignedBundleSignature() throws {
+        let fixture = try makeStandaloneFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.temporaryRoot) }
+
+        #expect(
+            !AppleCompanionRuntimeCodeSignatureVerifier().verify(bundleURL: fixture.bundleURL)
         )
     }
 
@@ -199,12 +218,12 @@ private func makeStandaloneFixture() throws -> StandaloneFixture {
         isDirectory: true
     )
     let contents = bundleURL.appendingPathComponent("Contents", isDirectory: true)
-    let helpers = contents.appendingPathComponent("Helpers", isDirectory: true)
+    let resources = contents.appendingPathComponent("Resources", isDirectory: true)
     let bin = runtimeRoot.appendingPathComponent("bin", isDirectory: true)
     let pythonBin = runtimeRoot
         .appendingPathComponent("python", isDirectory: true)
         .appendingPathComponent("bin", isDirectory: true)
-    for directory in [bundleURL, contents, helpers, runtimeRoot, bin, pythonBin] {
+    for directory in [bundleURL, contents, resources, runtimeRoot, bin, pythonBin] {
         try FileManager.default.createDirectory(
             at: directory,
             withIntermediateDirectories: true,
@@ -256,6 +275,26 @@ private func setStandalonePermissions(_ permissions: Int, at url: URL) throws {
         [.posixPermissions: permissions],
         ofItemAtPath: url.path
     )
+}
+
+private func standaloneLocator(
+    bundleURL: URL,
+    signatureValid: Bool = true
+) -> StandaloneAppleCompanionHelperLocator {
+    StandaloneAppleCompanionHelperLocator(
+        bundleURL: bundleURL,
+        codeSignatureVerifier: StandaloneFixedSignatureVerifier(result: signatureValid)
+    )
+}
+
+private struct StandaloneFixedSignatureVerifier:
+    AppleCompanionRuntimeCodeSignatureVerifying
+{
+    let result: Bool
+
+    func verify(bundleURL _: URL) -> Bool {
+        result
+    }
 }
 
 private struct StandaloneFixedLocator: AppleCompanionHelperLocating {

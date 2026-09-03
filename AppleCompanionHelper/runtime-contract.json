@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "bundleRelativePath": "Contents/Helpers/AppleCompanionRuntime",
+  "bundleRelativePath": "Contents/Resources/AppleCompanionRuntime",
   "marker": {
     "relativePath": ".media-control-relay-apple-companion-runtime-candidate",
     "contents": "media-control-relay-apple-companion-runtime-candidate-v1\n"

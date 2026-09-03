@@ -77,7 +77,9 @@ shellcheck \
 	scripts/check-secrets.sh \
 	scripts/check-apple-companion-helper.sh \
 	scripts/check-apple-companion-runtime.sh \
+	scripts/check-apple-companion-runtime-signing.sh \
 	scripts/apple-companion-helper.sh \
+	scripts/package-apple-companion-runtime.sh \
 	scripts/stage-apple-companion-runtime.sh \
 	scripts/generate-project.sh
 find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
@@ -194,3 +196,7 @@ if ! nm -gU \
 	printf 'Release executable does not contain the live Apple Companion adapter\n' >&2
 	exit 1
 fi
+scripts/check-apple-companion-runtime-signing.sh \
+	"$release_build_dir/$release_product_name" \
+	"$runtime_candidate" \
+	"$app_store_build_dir/$app_store_product_name"

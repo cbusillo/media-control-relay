@@ -43,7 +43,7 @@ ruby -rjson -rdigest -e '
 	)
 	exit 1 unless contract == {
 	  "schema" => 1,
-	  "bundleRelativePath" => "Contents/Helpers/AppleCompanionRuntime",
+	  "bundleRelativePath" => "Contents/Resources/AppleCompanionRuntime",
 	  "marker" => {
 	    "relativePath" => ".media-control-relay-apple-companion-runtime-candidate",
 	    "contents" => "media-control-relay-apple-companion-runtime-candidate-v1\n",
@@ -90,13 +90,23 @@ ruby -rjson -rdigest -e '
 	  "noticeSha256" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
 	  "contentSha256" => "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331",
 	}
+	exit 1 unless manifest.fetch("signing") == {
+	  "strategy" => "manifest-native-code-inside-out",
+	  "nativeCodeCount" => 35,
+	  "hardenedRuntime" => true,
+	  "shippedIntegrityBoundary" => "outer-application-code-signature",
+	  "forbiddenEntitlements" => [
+	    "com.apple.security.cs.disable-library-validation",
+	    "com.apple.security.cs.allow-dyld-environment-variables",
+	    "com.apple.security.cs.allow-unsigned-executable-memory",
+	    "com.apple.security.cs.disable-executable-page-protection",
+	  ],
+	}
 	distribution = manifest.fetch("distribution")
 	exit 1 unless distribution.fetch("approved") == false
 	exit 1 unless distribution.fetch("blockedBy") == [
 	  "Resolve the same-release runtime notice proxy and the recorded certifi, chacha20poly1305-reuseable, and zeroconf review items.",
-	  "Prove inside-out Developer ID signing without weakened entitlements.",
 	  "Pass notarization, quarantine, rollback, and clean-Mac qualification.",
-	  "Wire the runtime into Developer ID builds while preserving App Store exclusion.",
 	]
 	expected_inputs = {
 	  "AppleCompanionHelper/.python-version" => "3ce16e94590543a327d3e5ae412e663206e0ed1b46628ed3dd5ad29caa1ff5ac",
@@ -104,7 +114,7 @@ ruby -rjson -rdigest -e '
 	  "AppleCompanionHelper/license-policy.json" => "833f4fcef5b531dc0519dbee6a6e29ca92f9674522aa64fd29a281772fd81058",
 	  "AppleCompanionHelper/NOTICES.md" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
 	  "AppleCompanionHelper/pyproject.toml" => "2996be95515a1151cde0c811e24562f5da7cdbd4575fc560cfe85fa6a567410f",
-	  "AppleCompanionHelper/runtime-contract.json" => "ba0bd905a1959c534c782f50a12eabf7586e98594a1961aaeab957f434192a0c",
+	  "AppleCompanionHelper/runtime-contract.json" => "e6ab0c217b42cde718f12fb7d809dec1d511448b3755fea1e32fc9e77cdaeced",
 	  "AppleCompanionHelper/uv.lock" => "80725a973bfbb4d117f095da671583b554eb18f3d45d1424f1399748f1d6bd01",
 	}
 	inputs = manifest.fetch("inputs").to_h do |input|
