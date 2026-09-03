@@ -10,6 +10,12 @@ and Mute actions but does not connect to or control a TV or other media device.
 The app is intentionally not a universal remote, smart-home hub, media
 dashboard, streaming service, or cloud relay.
 
+The current product shape keeps one app target and one shared vendor-neutral
+model, then selects a build-specific factory at launch. Debug and Release use a
+live Apple companion factory for local development and signed developer use,
+while the App Store configuration uses an absent factory so the shipped app
+remains honest about the optional Apple boundary.
+
 ## Toolchain And Platform Floors
 
 The app builds with Xcode 26 or later while retaining macOS 15 as its deployment
@@ -65,6 +71,61 @@ The native macOS shell owns:
 Future control-surface and target adapters remain optional boundaries around
 the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
 integration must not make the core app depend on that device.
+
+### Optional Apple Companion Boundary
+
+`AppleCompanionSupport` owns the Swift-side Apple remote session, owner-only
+Unix-socket transport, bounded line-delimited JSON framing, request correlation,
+generation invalidation, reconnect backoff, helper lifecycle seam, and Keychain
+credential custody. Apple, Companion, Python, Network, and Keychain details do
+not enter `MediaControlCore`.
+
+That adapter boundary stays isolated from the shared model and from the app's
+other routing surfaces. The optional Apple code path is constructed only through
+the app shell, and the App Store build keeps that boundary absent rather than
+pretending a connected Apple session exists.
+
+`AppleCompanionHelper` is a separately tested source payload pinned by
+`uv.lock` to `pyatv==0.18.0`. It uses Companion discovery and pairing through
+`MemoryStorage` only. Discovery returns ephemeral target references; pairing is
+split into begin and finish requests so the user can enter the PIN shown by the
+Apple TV. The resulting host, stable identifier, and credentials cross only the
+owner-only socket and are stored together as an opaque login-Keychain value.
+The session does not publish `ready` until that write succeeds. Existing values
+from the earlier data-protection Keychain query remain readable and are copied
+forward best-effort without making a temporary migration failure block use. The
+login-Keychain item is not marked synchronizable, but it no longer carries the
+earlier `ThisDeviceOnly` accessibility class and follows login-Keychain
+portability behavior.
+
+The helper reports every action capability only when pyatv's live Companion
+feature state says the corresponding operation is available. Native mute,
+power, and playback-position state are not claimed.
+
+The helper lifecycle includes a parent-death watchdog. A dead parent, session
+invalidation, or helper failure tears the helper down instead of letting it
+persist as a stray background process, which keeps the local boundary honest
+and recoverable.
+
+For local owner testing, `scripts/apple-companion-helper.sh` installs an
+owner-only, content-addressed runtime under Application Support. The installer
+uses the checked-in Python version and uv lock, creates a relocatable virtual
+environment, and atomically selects the active version. The Swift locator
+validates ownership, permissions, symlink containment, manifest schema, source
+digest, launcher, and interpreter before constructing a session. Missing local
+state is normal; damaged state fails closed.
+
+The helper's Unix socket remains under a short owner-only temporary directory
+because Darwin limits Unix-domain socket paths. The process boundary rejects an
+overlong path before launch and passes only the socket location through the
+environment.
+
+The local runtime is not a product payload. Developer ID staging remains
+blocked on provenance review of the embedded runtime and complete dependency
+closure in issue #90. App Store builds contain no helper or Python payload, do
+not link `AppleCompanionSupport`, and remain useful without Apple controls.
+That App Store configuration is the proof boundary for #90: the shipped app is
+still functional while the Apple companion helper is absent.
 
 ### External Volume Actuator
 

@@ -97,6 +97,7 @@ scripts/generate-project.sh
 - [Target volume overlay](docs/target-overlay.md)
 - [Relay routing](docs/relay-routing.md)
 - [Loupedeck integration](docs/loupedeck-integration.md)
+- [Apple Companion local testing](docs/apple-companion-local-testing.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
 - [Samsung UPnP qualification](docs/samsung-upnp-qualification.md)
 - [Product identity](docs/product-identity.md)

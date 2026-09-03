@@ -25,15 +25,18 @@ Media Control Relay is designed to operate locally.
   cloud relay.
 
 The optional custom URL actuator is intentionally narrow and unauthenticated:
-it exposes exactly three local custom URLs for Volume Up, Volume Down, and Mute.
-Any local process that can invoke a registered custom URL may request those
-actions, so the feature is not an authorization boundary. The app rejects
-noncanonical URLs, records only coarse accepted/rejected/rate-limited counts,
-and never records raw URLs, caller identity, query values, or fragments.
+it exposes the documented local `media-control-relay://control/...` and
+`media-control-relay://remote/...` URLs to local processes only. Any local
+process that can invoke a registered custom URL may request those actions, so
+the feature is not an authorization boundary. The app rejects noncanonical
+URLs, records only coarse accepted/rejected/rate-limited counts, and never
+records raw URLs, caller identity, query values, or fragments.
 
 The actuator does not install software, discover a caller, change profiles, or
-persist device/private data. A Loupedeck mapping is optional and user-managed;
-the App Store app remains useful without Loupedeck or any bundled plugin.
+persist device/private data. Keychain remains the custody boundary for any
+stored credentials, while discovered names stay ephemeral and adapter-owned. A
+Loupedeck mapping is optional and user-managed; the App Store app remains
+useful without Loupedeck or any bundled plugin.
 
 ## Current Preview
 
@@ -43,6 +46,11 @@ pairing-free volume commands to an explicitly selected target. Discovery shows
 generic ordinal labels only. The app persists the selected stable identity and
 route rule, but never persists or displays the target address, control URL,
 model string, SSDP payload, or SOAP payload.
+
+The app never shows hosts, IDs, PINs, credentials, runtime paths, or other
+private identifiers in UI or diagnostics. Keychain is the sole persistent
+credential boundary; the local helper uses memory-only storage, and discovered
+device names remain ephemeral labels.
 
 Network recovery stores only a coarse path state and transition count. Interface
 types may be compared in memory to detect a path change, but interface names,

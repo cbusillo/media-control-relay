@@ -15,6 +15,7 @@ forbidden_files="$(find . \
 	-path './.build' -prune -o \
 	-path './MediaControlRelay.xcodeproj' -prune -o \
 	-path './scratch' -prune -o \
+	-path '*/.venv' -prune -o \
 	-type f \( \
 	-name '.env*' -o \
 	-name '*.env' -o \
@@ -38,6 +39,7 @@ if rg -n --hidden \
 	--glob '!.git/**' \
 	--glob '!.build/**' \
 	--glob '!MediaControlRelay.xcodeproj/**' \
+	--glob '!.venv/**' \
 	--glob '!scratch/**' \
 	--glob '!scripts/check-secrets.sh' \
 	'\b(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|169\.254\.[0-9]{1,3}\.[0-9]{1,3})\b|(?i:\.local\b)' .; then

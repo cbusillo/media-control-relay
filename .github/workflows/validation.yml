@@ -51,6 +51,6 @@ jobs:
           printf 'DEVELOPER_DIR=%s\n' "$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
           printf 'Selected %s\n' "$xcode_app"
       - name: Install validation tools
-        run: brew install actionlint ripgrep shellcheck xcodegen
+        run: brew install actionlint ripgrep shellcheck uv xcodegen
       - name: Validate foundation
         run: scripts/check.sh
