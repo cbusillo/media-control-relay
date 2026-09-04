@@ -120,9 +120,11 @@ by the App Store app.
     `AppleCompanionHelper/license-policy.json` and generated into
     `AppleCompanionHelper/NOTICES.md`. It records 19 same-release runtime-proxy
     notice files and 38 retained license/notice files across all 31 locked
-    Python distributions. This completes the engineering inventory, not legal
-    clearance. The runtime proxy and the recorded certifi, chacha20poly1305-
-    reuseable, and zeroconf review items still block distribution.
+    Python distributions. Artifact comparison establishes that the stripped
+    runtime tree is a subset of the pinned full notice source. The certifi and
+    chacha20poly1305-reuseable reviews are recorded, and zeroconf's optional 18
+    Cython modules are removed so the shipped helper uses its retained
+    pure-Python LGPL source. No notice review item remains open.
 
 15. `AppleCompanionHelper/runtime-contract.json` binds the standalone marker,
     manifest, launcher, interpreter, Python version, arm64 policy, exact content
@@ -130,12 +132,12 @@ by the App Store app.
     and the Swift locator. A present invalid bundled runtime fails closed; an
     absent bundle still permits the owner-installed local runtime. The
     out-of-band Developer ID packager validates the unsigned candidate, signs
-    all 35 manifested Mach-O leaves before the outer app, and establishes the
+    all 17 manifested Mach-O leaves before the outer app, and establishes the
     application code signature as the shipped integrity boundary. Current
     Release and App Store build products must still prove the bundle location is
-    absent, and distribution remains unapproved pending same-Team locator and
-    Python-launch acceptance plus the recorded notice, notarization, quarantine,
-    rollback, and clean-Mac gates.
+    absent. Same-Team locator and Python launch, notarization, quarantine,
+    rollback, and notice review pass; distribution remains unapproved pending
+    clean physical-Mac qualification, including offline Gatekeeper behavior.
 
 ## Required Follow-Up
 

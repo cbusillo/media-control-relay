@@ -168,7 +168,7 @@ fi
 
 The packaging script operates only on an already archived application that
 contains the live Apple Companion adapter. It rejects the App Store partition,
-validates the pristine candidate before copying it, signs exactly the 35 Mach-O
+validates the pristine candidate before copying it, signs exactly the 17 Mach-O
 leaves recorded in `manifest.json` with hardened runtime and no entitlements,
 and leaves the outer application signing to the following command. Do not write
 anything into the application bundle after that outer signature is applied.
@@ -199,7 +199,11 @@ before submission:
 codesign --verify --deep --strict --verbose=2 "${APP}"
 
 RUNTIME="${APP}/Contents/Resources/AppleCompanionRuntime"
-test "$(jq -r '.nativeCode | length' "${RUNTIME}/manifest.json")" -eq 35
+EXPECTED_NATIVE_CODE_COUNT="$(
+  jq -er '.signing.nativeCodeCount' AppleCompanionHelper/runtime-source.json
+)"
+test "$(jq -r '.nativeCode | length' "${RUNTIME}/manifest.json")" \
+  -eq "${EXPECTED_NATIVE_CODE_COUNT}"
 jq -er '.nativeCode[].path' "${RUNTIME}/manifest.json" |
   while IFS= read -r relative_path; do
     codesign --verify --strict --all-architectures \
@@ -249,9 +253,10 @@ and quarantine state, it may accept the app as Developer ID or reject it as
 Unnotarized Developer ID. Only the post-stapling quarantine check is the
 notarization acceptance gate.
 
-This runtime-carrying procedure is qualification evidence only. Distribution
-remains unapproved until the recorded notice review, notarization, quarantine,
-rollback, and clean-Mac gates are complete.
+This runtime-carrying procedure is qualification evidence only. The recorded
+notice review, local notarization, quarantine, rollback, and same-Team launch
+gates pass. Distribution remains unapproved until clean physical-Mac
+qualification, including offline Gatekeeper behavior, is complete.
 
 Repository CI uses ad-hoc signatures to prove inventory, hardened-runtime
 flags, outer-bundle sealing, App Store refusal, and tamper detection. It cannot
@@ -259,12 +264,12 @@ prove Python library loading because independently ad-hoc-signed Mach-O files
 have no shared Team ID and hardened library validation rejects them. The
 same-Team Developer ID launch check above is therefore mandatory and must not be
 replaced with `disable-library-validation` or another weakened entitlement.
-After the app opens, use **Check Again** in Apple TV Controls and confirm the
-bundled runtime reaches the unconfigured, pairing, connecting, or ready flow
-rather than **Helper Damaged**. This is the explicit acceptance check for the
-Security.framework locator requirement. Record the result privately with the
-exact reviewed commit; until that evidence exists, same-Team locator acceptance
-remains a distribution blocker.
+After the app opens, confirm the bundled runtime reaches the unconfigured,
+pairing, connecting, or ready flow rather than **Helper Damaged**. **Check
+Again** is available only when the current state exposes that recovery action;
+the healthy installed path refreshes during initialization. Record the result
+privately with the exact reviewed commit. The local same-Team locator acceptance
+gate passes; repeat the check on the clean qualification Mac.
 
 ## Submit and Staple
 

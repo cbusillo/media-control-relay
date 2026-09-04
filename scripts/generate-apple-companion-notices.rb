@@ -199,12 +199,30 @@ packages = package_directories.map do |directory|
   when "legacy-license-field"
     fail_with("Package legacy license resolution has no evidence: #{name}==#{version}") unless
       evidence.fetch("licenseExpression").nil? && !evidence.fetch("license").to_s.strip.empty?
+  when "retained-license-file"
+    declared_choices = evidence.fetch("license", "").to_s.split(/\s+OR\s+/)
+    fail_with("Package retained license file resolution is not declared: #{name}==#{version}") unless
+      evidence.fetch("licenseExpression").nil? && declared_choices.include?(resolved_expression)
   when "classifier"
     fail_with("Package classifier resolution has conflicting evidence: #{name}==#{version}") unless
       evidence.fetch("licenseExpression").nil? && evidence.fetch("license").nil? &&
       !evidence.fetch("licenseClassifiers").empty?
   else
     fail_with("Package license resolution is unsupported: #{name}==#{version}")
+  end
+
+  reviewed_classifier_conflicts = package_policy.fetch("reviewedClassifierConflicts", [])
+  fail_with("Package reviewed classifier conflicts are invalid: #{name}==#{version}") unless
+    reviewed_classifier_conflicts == reviewed_classifier_conflicts.sort &&
+      reviewed_classifier_conflicts.uniq.length == reviewed_classifier_conflicts.length
+  proprietary_classifiers = evidence.fetch("licenseClassifiers").select do |classifier|
+    classifier.include?("Proprietary")
+  end.sort
+  if resolution == "retained-license-file"
+    fail_with("Package proprietary classifier review is incomplete: #{name}==#{version}") unless
+      reviewed_classifier_conflicts == proprietary_classifiers
+  elsif !reviewed_classifier_conflicts.empty?
+    fail_with("Package has unexpected reviewed classifier conflicts: #{name}==#{version}")
   end
 
   review_status = package_policy.fetch("reviewStatus")
@@ -215,6 +233,10 @@ packages = package_directories.map do |directory|
       package_policy.fetch("reviewReason", "").empty?
   elsif package_policy.key?("reviewReason")
     fail_with("Recorded package unexpectedly has a review reason: #{name}==#{version}")
+  end
+  if package_policy.key?("reviewNote")
+    fail_with("Package review note is empty: #{name}==#{version}") if
+      package_policy.fetch("reviewNote").strip.empty?
   end
 
   license_files = Find.find(directory).select do |path|
@@ -232,6 +254,23 @@ packages = package_directories.map do |directory|
     }
   end.sort_by { |item| item.fetch("path") }
   fail_with("Package has no retained license evidence: #{name}==#{version}") if license_files.empty?
+  if resolution == "retained-license-file"
+    resolution_file = package_policy.fetch("resolutionFile")
+    fail_with("Package retained license file is absent: #{name}==#{version}") unless
+      license_files.any? do |file|
+        file.fetch("path") == resolution_file.fetch("path") &&
+          file.fetch("sha256") == resolution_file.fetch("sha256")
+      end
+  elsif package_policy.key?("resolutionFile")
+    fail_with("Package has an unexpected resolution file: #{name}==#{version}")
+  end
+
+  pruned_files = package_policy.fetch("prunedFiles", [])
+  fail_with("Package pruned file inventory is invalid: #{name}==#{version}") unless
+    pruned_files == pruned_files.sort && pruned_files.uniq.length == pruned_files.length &&
+      pruned_files.all? do |path|
+        !path.empty? && !path.start_with?("/") && !path.split("/").include?("..")
+      end
 
   {
     "name" => name,
@@ -243,6 +282,10 @@ packages = package_directories.map do |directory|
     "resolution" => resolution,
     "reviewStatus" => review_status,
     "reviewReason" => package_policy["reviewReason"],
+    "reviewNote" => package_policy["reviewNote"],
+    "resolutionFile" => package_policy["resolutionFile"],
+    "reviewedClassifierConflicts" => reviewed_classifier_conflicts,
+    "prunedFiles" => pruned_files,
     "licenseFiles" => license_files,
   }
 end.sort_by { |item| [item.fetch("name").downcase, item.fetch("version")] }
@@ -256,7 +299,7 @@ runtime_file_inventory = expected_runtime_files.keys.sort.map do |path|
   { "path" => path, "sha256" => expected_runtime_files.fetch(path) }
 end
 inventory_packages = packages.map do |item|
-  item.reject { |key, _value| key == "reviewReason" && item[key].nil? }.merge(
+  item.reject { |key, value| ["reviewReason", "reviewNote", "resolutionFile"].include?(key) && value.nil? }.merge(
     "licenseFiles" => item.fetch("licenseFiles").map { |file| file.reject { |key, _value| key == "text" } }
   )
 end
@@ -276,7 +319,9 @@ notice << "Each recorded SHA-256 identifies the original source bytes.\n\n"
 notice << "The packaged runtime candidate is `#{source.fetch("source").fetch("asset")}` with SHA-256 "
 notice << "`#{source.fetch("source").fetch("sha256")}`.\n\n"
 notice << "## Unresolved Review Items\n\n"
-packages.select { |item| item.fetch("reviewStatus") == "requires-review" }.each do |item|
+review_items = packages.select { |item| item.fetch("reviewStatus") == "requires-review" }
+notice << "None. The recorded runtime and package notice reviews are complete.\n" if review_items.empty?
+review_items.each do |item|
   notice << "- `#{item.fetch("name")}==#{item.fetch("version")}` (`#{item.fetch("resolvedExpression")}`): "
   notice << "#{item.fetch("reviewReason")}\n"
 end
@@ -293,9 +338,10 @@ runtime_file_inventory.each do |item|
   text = normalize_notice_text(runtime_contents.fetch(path), path)
   notice << "### `#{path}`\n\n"
   notice << "SHA-256: `#{item.fetch("sha256")}`\n\n"
+  notice << "~~~~text\n"
   notice << text
   notice << "\n" unless notice.end_with?("\n")
-  notice << "\n"
+  notice << "~~~~\n\n"
 end
 
 notice << "## Python Distributions\n\n"
@@ -307,13 +353,27 @@ packages.each do |item|
   if item.fetch("reviewStatus") == "requires-review"
     notice << "- Review reason: #{item.fetch("reviewReason")}\n"
   end
+  notice << "- Review note: #{item.fetch("reviewNote")}\n" if item.fetch("reviewNote")
+  if item.fetch("resolutionFile")
+    notice << "- Resolution file: `#{item.fetch("resolutionFile").fetch("path")}` "
+    notice << "(`#{item.fetch("resolutionFile").fetch("sha256")}`)\n"
+  end
+  unless item.fetch("reviewedClassifierConflicts").empty?
+    notice << "- Reviewed classifier conflicts:\n"
+    item.fetch("reviewedClassifierConflicts").each { |classifier| notice << "  - `#{classifier}`\n" }
+  end
+  unless item.fetch("prunedFiles").empty?
+    notice << "- Pruned files:\n"
+    item.fetch("prunedFiles").each { |path| notice << "  - `#{path}`\n" }
+  end
   notice << "\n"
   item.fetch("licenseFiles").each do |license_file|
     notice << "#### `#{license_file.fetch("path")}`\n\n"
     notice << "SHA-256: `#{license_file.fetch("sha256")}`\n\n"
+    notice << "~~~~text\n"
     notice << license_file.fetch("text")
     notice << "\n" unless notice.end_with?("\n")
-    notice << "\n"
+    notice << "~~~~\n\n"
   end
 end
 

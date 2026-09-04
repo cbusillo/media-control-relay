@@ -80,8 +80,8 @@
       },
       "resolvedExpression": "MPL-2.0",
       "resolution": "legacy-license-field",
-      "reviewStatus": "requires-review",
-      "reviewReason": "Review MPL-2.0 file-level source obligations and the Mozilla CA bundle attribution and update terms before distribution."
+      "reviewStatus": "recorded",
+      "reviewNote": "The unmodified pure-Python package and Mozilla-derived CA bundle are shipped in source form with the retained MPL-2.0 notice. MPL-2.0 file-level terms do not extend to the surrounding application, and the CA bundle adds no separate update-cadence license obligation."
     },
     {
       "name": "cffi",
@@ -103,10 +103,17 @@
         "license": "Apache-2.0 OR BSD-3-Clause",
         "licenseClassifiers": ["License :: Other/Proprietary License"]
       },
-      "resolvedExpression": "Apache-2.0 OR BSD-3-Clause",
-      "resolution": "legacy-license-field",
-      "reviewStatus": "requires-review",
-      "reviewReason": "Resolve the conflict between the legacy dual-license field and the proprietary classifier before distribution."
+      "resolvedExpression": "BSD-3-Clause",
+      "resolution": "retained-license-file",
+      "resolutionFile": {
+        "path": "python/lib/python3.13/site-packages/chacha20poly1305_reuseable-0.13.2.dist-info/LICENSE",
+        "sha256": "33a0ae14da47c997adc4bc87025dfd292a6883aec31a22cc1986e3cb3486d286"
+      },
+      "reviewedClassifierConflicts": [
+        "License :: Other/Proprietary License"
+      ],
+      "reviewStatus": "recorded",
+      "reviewNote": "The exact sdist declares Apache-2.0 OR BSD-3-Clause and the retained wheel LICENSE contains both complete grants. Distribution elects BSD-3-Clause; the generic Other/Proprietary classifier is packaging metadata generated for the compound expression, not a conflicting proprietary restriction."
     },
     {
       "name": "charset-normalizer",
@@ -386,8 +393,28 @@
       },
       "resolvedExpression": "LGPL-2.1-or-later",
       "resolution": "license-expression",
-      "reviewStatus": "requires-review",
-      "reviewReason": "Review LGPL-2.1-or-later source and relinking obligations for the compiled extension modules before distribution."
+      "reviewStatus": "recorded",
+      "reviewNote": "The wheel's optional Cython extension modules are removed from the distributed runtime. The unmodified pure-Python implementation, corresponding preferred source files, metadata, and complete LGPL-2.1 notice remain in the helper runtime; no zeroconf object code is distributed.",
+      "prunedFiles": [
+        "zeroconf/_cache.cpython-313-darwin.so",
+        "zeroconf/_dns.cpython-313-darwin.so",
+        "zeroconf/_handlers/answers.cpython-313-darwin.so",
+        "zeroconf/_handlers/multicast_outgoing_queue.cpython-313-darwin.so",
+        "zeroconf/_handlers/query_handler.cpython-313-darwin.so",
+        "zeroconf/_handlers/record_manager.cpython-313-darwin.so",
+        "zeroconf/_history.cpython-313-darwin.so",
+        "zeroconf/_listener.cpython-313-darwin.so",
+        "zeroconf/_protocol/incoming.cpython-313-darwin.so",
+        "zeroconf/_protocol/outgoing.cpython-313-darwin.so",
+        "zeroconf/_record_update.cpython-313-darwin.so",
+        "zeroconf/_services/__init__.cpython-313-darwin.so",
+        "zeroconf/_services/browser.cpython-313-darwin.so",
+        "zeroconf/_services/info.cpython-313-darwin.so",
+        "zeroconf/_services/registry.cpython-313-darwin.so",
+        "zeroconf/_updates.cpython-313-darwin.so",
+        "zeroconf/_utils/ipaddress.cpython-313-darwin.so",
+        "zeroconf/_utils/time.cpython-313-darwin.so"
+      ]
     }
   ]
 }

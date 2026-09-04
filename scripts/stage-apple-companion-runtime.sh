@@ -196,6 +196,28 @@ ruby -rbase64 -rcsv -rdigest -e '
 	exit 1
 }
 
+ruby -rjson -e '
+	root = File.realpath(ARGV.fetch(0))
+	policy = JSON.parse(File.read(ARGV.fetch(1)))
+	site_packages = File.join(root, "python/lib/python3.13/site-packages")
+	pruned_files = policy.fetch("packages").flat_map { |package| package.fetch("prunedFiles", []) }
+	exit 1 unless pruned_files.uniq.length == pruned_files.length
+	pruned_files.each do |relative|
+	  path = File.expand_path(relative, site_packages)
+	  exit 1 unless path.start_with?(site_packages + File::SEPARATOR)
+	  unless File.exist?(path) || File.symlink?(path)
+	    warn "Approved pruned package file is missing: #{relative}"
+	    exit 1
+	  end
+	  info = File.lstat(path)
+	  exit 1 unless info.file? && !info.symlink?
+	  File.delete(path)
+	end
+' "$staging" "$license_policy" || {
+	printf 'Unable to apply the approved package pruning policy\n' >&2
+	exit 1
+}
+
 install -m 644 "$source_root/helper.py" "$staging/helper.py"
 printf 'media-control-relay-apple-companion-runtime-candidate-v1\n' \
 	>"$staging/$candidate_marker"
@@ -247,7 +269,11 @@ rm -f "$requirements"
 
 ruby -rcsv -rjson -e '
 	root = File.realpath(ARGV.fetch(0))
+	policy = JSON.parse(File.read(ARGV.fetch(1)))
 	site_packages = File.join(root, "python/lib/python3.13/site-packages")
+	approved_pruned_files = policy.fetch("packages").flat_map do |package|
+	  package.fetch("prunedFiles", [])
+	end.sort
 	pruned_entries = []
 	record_paths = Dir.children(site_packages)
 	  .select { |name| name.end_with?(".dist-info") }
@@ -264,7 +290,7 @@ ruby -rcsv -rjson -e '
 	    if File.file?(target)
 	      row
 	    else
-	      exit 1 unless relative.start_with?("bin/")
+	      exit 1 unless relative.start_with?("bin/") || approved_pruned_files.include?(relative)
 	      pruned_entries << { "record" => record_relative, "path" => relative }
 	      nil
 	    end
@@ -280,11 +306,15 @@ ruby -rcsv -rjson -e '
 	    end
 	  end
 	end
+	observed_policy_prunes = pruned_entries.map { |item| item.fetch("path") }
+	  .select { |path| approved_pruned_files.include?(path) }
+	  .sort
+	exit 1 unless observed_policy_prunes == approved_pruned_files
 	File.write(
 	  File.join(root, ".pruned-record-entries.json"),
 	  JSON.pretty_generate(pruned_entries.sort_by { |item| [item.fetch("record"), item.fetch("path")] }) + "\n"
 	)
-' "$staging" || {
+' "$staging" "$license_policy" || {
 	printf 'Pruned wheel contents do not match the approved reconciliation set\n' >&2
 	exit 1
 }
@@ -325,6 +355,17 @@ launcher_status="$?"
 set -e
 [ "$launcher_status" -eq 2 ] || {
 	printf 'Staged helper launcher did not reach its expected argument check\n' >&2
+	exit 1
+}
+
+"$python_executable" -I -B -c '
+import zeroconf._dns
+import zeroconf._services.browser
+
+assert zeroconf._dns.__file__.endswith(".py")
+assert zeroconf._services.browser.__file__.endswith(".py")
+' || {
+	printf 'Staged helper does not use the approved pure-Python zeroconf implementation\n' >&2
 	exit 1
 }
 

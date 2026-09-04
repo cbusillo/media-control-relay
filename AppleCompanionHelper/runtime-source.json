@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "status": "candidate",
-  "lastVerified": "2026-09-03",
+  "lastVerified": "2026-09-04",
   "pythonVersion": "3.13.7",
   "source": {
     "project": "astral-sh/python-build-standalone",
@@ -18,6 +18,15 @@
     "project": "astral-sh/python-build-standalone",
     "release": "20250818",
     "relationship": "same-release-full-variant-proxy",
+    "reviewStatus": "recorded",
+    "reviewNote": "The pinned stripped install tree is a path-for-path subset of the pinned full artifact's python/install tree. All 1,828 stripped paths are present in the full artifact; 1,812 are byte-identical and the remaining 16 are executable or library files changed by stripping. The full artifact can over-report components removed by later pruning, but it does not omit a path from the source runtime artifact.",
+    "relationshipEvidence": {
+      "fullInstallFileCount": 3456,
+      "strippedInstallFileCount": 1828,
+      "strippedPathsMissingFromFullInstall": 0,
+      "byteIdenticalFileCount": 1812,
+      "binaryTransformFileCount": 16
+    },
     "asset": "cpython-3.13.7+20250818-aarch64-apple-darwin-pgo+lto-full.tar.zst",
     "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20250818/cpython-3.13.7%2B20250818-aarch64-apple-darwin-pgo%2Blto-full.tar.zst",
     "sha256": "3f63f4370a1d59d3c6856ac5315473f8d265589d13d783e8f54816bafb8470fd",
@@ -119,11 +128,11 @@
     },
     {
       "path": "AppleCompanionHelper/license-policy.json",
-      "sha256": "833f4fcef5b531dc0519dbee6a6e29ca92f9674522aa64fd29a281772fd81058"
+      "sha256": "de6fe97e046c25cb15c86f53dcc876f0105a485eb28fbdb6d0a1ddf246a40a5f"
     },
     {
       "path": "AppleCompanionHelper/NOTICES.md",
-      "sha256": "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f"
+      "sha256": "9e875e9e4aeeb8170c8bf8d2d8e109658a9bc5f5918e0922f1401aca09ec237f"
     },
     {
       "path": "AppleCompanionHelper/pyproject.toml",
@@ -131,7 +140,7 @@
     },
     {
       "path": "AppleCompanionHelper/runtime-contract.json",
-      "sha256": "e6ab0c217b42cde718f12fb7d809dec1d511448b3755fea1e32fc9e77cdaeced"
+      "sha256": "35112cb3a48c5a7f78b12f92227c0e04189409e5b77298a6b598b2a1e4fa2194"
     },
     {
       "path": "AppleCompanionHelper/uv.lock",
@@ -147,27 +156,22 @@
         "package": "cryptography",
         "version": "50.0.1",
         "reason": "The exact PyPI release publishes macOS wheels for arm64 only."
-      },
-      {
-        "package": "zeroconf",
-        "version": "0.151.3",
-        "reason": "The exact PyPI release publishes macOS wheels for arm64 only."
       }
     ]
   },
   "staging": {
     "requirementsSha256": "a810c21cc554c114b0b6b98c4f4d08501ca301993f019b1712c84a548adbca27",
     "packageCount": 31,
-    "nativeCodeCount": 35,
-    "prunedRecordEntryCount": 10,
+    "nativeCodeCount": 17,
+    "prunedRecordEntryCount": 28,
     "runtimeNoticeFileCount": 19,
     "packageLicenseFileCount": 38,
-    "noticeSha256": "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
-    "contentSha256": "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331"
+    "noticeSha256": "9e875e9e4aeeb8170c8bf8d2d8e109658a9bc5f5918e0922f1401aca09ec237f",
+    "contentSha256": "10e741b0867c692e3ecf019d43f2c4bf0055246d0da66409a94cae9fcc219324"
   },
   "signing": {
     "strategy": "manifest-native-code-inside-out",
-    "nativeCodeCount": 35,
+    "nativeCodeCount": 17,
     "hardenedRuntime": true,
     "shippedIntegrityBoundary": "outer-application-code-signature",
     "forbiddenEntitlements": [
@@ -180,9 +184,7 @@
   "distribution": {
     "approved": false,
     "blockedBy": [
-      "Resolve the same-release runtime notice proxy and the recorded certifi, chacha20poly1305-reuseable, and zeroconf review items.",
-      "Prove the locator accepts a same-Team Developer ID runtime-carrying app and the signed Python runtime launches without weakened entitlements.",
-      "Pass notarization, quarantine, rollback, and clean-Mac qualification."
+      "Pass clean supported-Mac qualification, including launch without developer-installed Python tooling and offline Gatekeeper behavior."
     ]
   }
 }
