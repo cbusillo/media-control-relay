@@ -126,7 +126,7 @@ not affect the app's other media-control paths.
 
 The standalone locator pins the candidate digest declared by the runtime
 manifest but does not synchronously rehash the whole Python tree. Developer ID
-qualification validates that unsigned provenance first, signs the exact 35
+qualification validates that unsigned provenance first, signs the exact 17
 manifested Mach-O leaves inside-out, signs the outer app after every leaf is
 final, and uses the outer application code signature as the shipped integrity
 boundary. The locator verifies the containing app with Security.framework and
@@ -142,10 +142,11 @@ environment.
 The local runtime is not a product payload. The standalone bundle contract is
 implemented, but current Release and App Store builds both prove the payload is
 absent. A separate packaging path proves Developer ID staging and inside-out
-signing on a copied archive without weakening entitlements. Distribution
-remains blocked on notarization, quarantine, rollback, clean-Mac qualification,
-same-Team locator and Python-launch acceptance, and the recorded notice review
-items in issue #90. App Store builds contain no helper or Python payload, do not
+signing on a copied archive without weakening entitlements. Local qualification
+passes notarization, quarantine, rollback, same-Team locator and Python launch,
+and the recorded notice reviews. Distribution remains blocked only on clean
+physical-Mac qualification, including offline Gatekeeper behavior. App Store
+builds contain no helper or Python payload, do not
 link `AppleCompanionSupport`, and remain useful without Apple controls. That App
 Store configuration is the proof boundary for issue #90: the shipped app is
 still functional while the Apple companion helper is absent.

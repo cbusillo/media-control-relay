@@ -49,7 +49,7 @@ struct AppleCompanionStandaloneRuntimeContract: Codable, Equatable, Sendable {
         pythonVersion: "3.13.7",
         helperRuntimeArchitecture: "arm64",
         intelBehavior: "unsupported",
-        contentSha256: "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331"
+        contentSha256: "10e741b0867c692e3ecf019d43f2c4bf0055246d0da66409a94cae9fcc219324"
     )
 
     let schema: Int

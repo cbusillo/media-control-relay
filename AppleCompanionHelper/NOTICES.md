@@ -8,9 +8,7 @@ The packaged runtime candidate is `cpython-3.13.7+20250818-aarch64-apple-darwin-
 
 ## Unresolved Review Items
 
-- `certifi==2026.7.22` (`MPL-2.0`): Review MPL-2.0 file-level source obligations and the Mozilla CA bundle attribution and update terms before distribution.
-- `chacha20poly1305-reuseable==0.13.2` (`Apache-2.0 OR BSD-3-Clause`): Resolve the conflict between the legacy dual-license field and the proprietary classifier before distribution.
-- `zeroconf==0.151.3` (`LGPL-2.1-or-later`): Review LGPL-2.1-or-later source and relinking obligations for the compiled extension modules before distribution.
+None. The recorded runtime and package notice reviews are complete.
 
 ## Runtime Notice Proxy
 
@@ -24,6 +22,7 @@ The stripped runtime artifact does not contain the build project's bundled-libra
 
 SHA-256: `3bdff06e69991c94664f2ef5c5f8096f60b7dbec071756ea6cc26b445e06ec5b`
 
+~~~~text
 The following is the license that applies to this copy of the Berkeley DB
 software.  For a license to use the Berkeley DB software under conditions
 other than those described here, or to purchase support for this software,
@@ -150,11 +149,13 @@ please contact Oracle at berkeleydb-info_us@oracle.com.
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+~~~~
 
 ### `python/licenses/LICENSE.bzip2.txt`
 
 SHA-256: `1f38bbc7caacafd65169276d759c0d88c991b753b643ce35d0e45ea1971dd441`
 
+~~~~text
 This program, "bzip2", the associated library "libbzip2", and all
 documentation, are copyright (C) 1996-2010 Julian R Seward.  All
 rights reserved.
@@ -192,11 +193,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Julian Seward, jseward@bzip.org
 bzip2/libbzip2 version 1.0.6 of 6 September 2010
+~~~~
 
 ### `python/licenses/LICENSE.cpython.txt`
 
 SHA-256: `86e61415828a8b5b06ec8d024e6f086ce155a8b85fd0c419c0ba4dc004e74fdd`
 
+~~~~text
 A. HISTORY OF THE SOFTWARE
 ==========================
 
@@ -968,11 +971,13 @@ https://www.w3.org/TR/xml-c14n2-testcases/ and is distributed under the
    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
    OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+~~~~
 
 ### `python/licenses/LICENSE.expat.txt`
 
 SHA-256: `122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534`
 
+~~~~text
 Copyright (c) 1998-2000 Thai Open Source Software Center Ltd and Clark Cooper
 Copyright (c) 2001-2022 Expat maintainers
 
@@ -994,11 +999,13 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~~
 
 ### `python/licenses/LICENSE.libX11.txt`
 
 SHA-256: `2daec087a88e7c9b8082557cdeebad5bbb8155a4137472f0b22e269cd99d0c1e`
 
+~~~~text
 The following is the 'standard copyright' agreed upon by most contributors,
 and is currently the canonical license preferred by the X.Org Foundation.
 This is a slight variant of the common MIT license form published by the
@@ -1941,11 +1948,13 @@ WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+~~~~
 
 ### `python/licenses/LICENSE.libXau.txt`
 
 SHA-256: `56abe29bb1d9806a9e04fa9f80fed2c0f18027594df3f098148d814aef6bddfa`
 
+~~~~text
 Copyright 1988, 1993, 1994, 1998  The Open Group
 
 Permission to use, copy, modify, distribute, and sell this software and its
@@ -1967,11 +1976,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 Except as contained in this notice, the name of The Open Group shall not be
 used in advertising or otherwise to promote the sale, use or other dealings
 in this Software without prior written authorization from The Open Group.
+~~~~
 
 ### `python/licenses/LICENSE.libedit.txt`
 
 SHA-256: `29cea33c32bbc9785142386377915612a2fa786482c46843383384aded2e09b1`
 
+~~~~text
 Copyright (c) 1992, 1993
  The Regents of the University of California.  All rights reserved.
 
@@ -2001,11 +2012,13 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
+~~~~
 
 ### `python/licenses/LICENSE.libffi.txt`
 
 SHA-256: `deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0`
 
+~~~~text
 libffi - Copyright (c) 1996-2019  Anthony Green, Red Hat, Inc and others.
 See source files for details.
 
@@ -2027,17 +2040,21 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~~
 
 ### `python/licenses/LICENSE.liblzma.txt`
 
 SHA-256: `828d5b508798d6a95c1c08ce5eee517a84ed1bda14eac58c440b6bce2c5cf1ca`
 
+~~~~text
 liblzma is in the public domain.
+~~~~
 
 ### `python/licenses/LICENSE.libuuid.txt`
 
 SHA-256: `122ee1f7e258f2c3c0e538a75c037684f420454bf3850ddc74ce750bbf5fe86b`
 
+~~~~text
 Copyright (C) 1996, 1997 Theodore Ts'o.
 
 Redistribution and use in source and binary forms, with or without
@@ -2065,11 +2082,13 @@ LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
 USE OF THIS SOFTWARE, EVEN IF NOT ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
+~~~~
 
 ### `python/licenses/LICENSE.libxcb.txt`
 
 SHA-256: `c5ffbfeaa501071ceeb97b7de2c0d703fdaa35de01c0fb6cbac1c28453a3e9fd`
 
+~~~~text
 Copyright (C) 2001-2006 Bart Massey, Jamey Sharp, and Josh Triplett.
 All Rights Reserved.
 
@@ -2100,11 +2119,13 @@ or their institutions shall not be used in advertising or
 otherwise to promote the sale, use or other dealings in this
 Software without prior written authorization from the
 authors.
+~~~~
 
 ### `python/licenses/LICENSE.mpdecimal.txt`
 
 SHA-256: `669512af7219f58be03a398766d7c9da11a3b3df9d3f05cb74c5ceca25c8da3b`
 
+~~~~text
 Copyright (c) 2008-2020 Stefan Krah. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -2129,11 +2150,13 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
+~~~~
 
 ### `python/licenses/LICENSE.ncurses.txt`
 
 SHA-256: `87a4c4442337b8968ef956031c406b74f9cb7149b7ba87311bdaba534816201c`
 
+~~~~text
 Copyright 2018-2020,2021 Thomas E. Dickey
 Copyright 1998-2017,2018 Free Software Foundation, Inc.
 
@@ -2163,11 +2186,13 @@ authorization.
 
 -- vile:txtmode fc=72
 -- $Id: COPYING,v 1.10 2021/01/01 09:54:30 tom Exp $
+~~~~
 
 ### `python/licenses/LICENSE.openssl-1.1.txt`
 
 SHA-256: `9c04cce50c4989d5601dd8b07f6ab922c40388b66ac736c9007cb1ed9d9dd560`
 
+~~~~text
 
   LICENSE ISSUES
   ==============
@@ -2292,11 +2317,13 @@ SHA-256: `9c04cce50c4989d5601dd8b07f6ab922c40388b66ac736c9007cb1ed9d9dd560`
  * copied and put under another distribution licence
  * [including the GNU Public Licence.]
  */
+~~~~
 
 ### `python/licenses/LICENSE.openssl-3.txt`
 
 SHA-256: `7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a`
 
+~~~~text
 
                                  Apache License
                            Version 2.0, January 2004
@@ -2474,11 +2501,13 @@ SHA-256: `7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a`
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
+~~~~
 
 ### `python/licenses/LICENSE.sqlite.txt`
 
 SHA-256: `38bef3d28b24f145ea293bd3b6eb4b20396982abc8303128fb493986ea5bc719`
 
+~~~~text
 All of the code and documentation in SQLite has been dedicated to the public
 domain by the authors. All code authors, and representatives of the companies
 they work for, have signed affidavits dedicating their contributions to the
@@ -2502,11 +2531,13 @@ been taken from other projects or from the open internet. Every line of code can
 be traced back to its original author, and all of those authors have public
 domain dedications on file. So the SQLite code base is clean and is
 uncontaminated with licensed code from other projects.
+~~~~
 
 ### `python/licenses/LICENSE.tcl.txt`
 
 SHA-256: `c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16`
 
+~~~~text
 This software is copyrighted by the Regents of the University of
 California, Sun Microsystems, Inc., Scriptics Corporation, ActiveState
 Corporation and other parties.  The following terms apply to all files
@@ -2547,11 +2578,13 @@ Government shall have only "Restricted Rights" as defined in Clause
 authors grant the U.S. Government and others acting in its behalf
 permission to use and distribute the software in accordance with the
 terms specified in this license.
+~~~~
 
 ### `python/licenses/LICENSE.tix.txt`
 
 SHA-256: `3ac5cdd0bef6c43ce34c6a7ced452081d9e5a0bf94082b9f9147d23ec9e214f5`
 
+~~~~text
 Copyright (c) 1993-1999 Ioi Kim Lam.
 Copyright (c) 2000-2001 Tix Project Group.
 Copyright (c) 2004 ActiveState
@@ -2606,11 +2639,13 @@ Parts of this software are based on the HTML Library software
 copyrighted by Sun Microsystems, Inc. The original license terms of
 the HTML Library software distribution is included in the file
 docs/license.html_lib.
+~~~~
 
 ### `python/licenses/LICENSE.zlib.txt`
 
 SHA-256: `818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c`
 
+~~~~text
 
   Copyright (C) 1995-2017 Jean-loup Gailly and Mark Adler
 
@@ -2632,6 +2667,7 @@ SHA-256: `818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c`
 
   Jean-loup Gailly        Mark Adler
   jloup@gzip.org          madler@alumni.caltech.edu
+~~~~
 
 ## Python Distributions
 
@@ -2645,6 +2681,7 @@ SHA-256: `818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c`
 
 SHA-256: `3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf`
 
+~~~~text
 A. HISTORY OF THE SOFTWARE
 ==========================
 
@@ -2924,6 +2961,7 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
 LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
+~~~~
 
 ### `aiohttp==3.14.3`
 
@@ -2935,6 +2973,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 SHA-256: `2e4be5fc6c4c72a466fcb665d726e049a6891981fe536c4f04b6366749461d23`
 
+~~~~text
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -3136,11 +3175,13 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 #### `python/lib/python3.13/site-packages/aiohttp-3.14.3.dist-info/licenses/vendor/llhttp/LICENSE`
 
 SHA-256: `628168d68bb5a8a17e0bbefb3bd74e326e1edc20583d76f52f457c82c921867d`
 
+~~~~text
 MIT License
 
 Copyright © 2018 Fedor Indutny
@@ -3163,6 +3204,7 @@ NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~~
 
 ### `aiosignal==1.4.0`
 
@@ -3174,6 +3216,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 SHA-256: `6fd5243e92dd7f98ec69c7ac377728e74905709ff527a5bf98d6d0263c04f5b6`
 
+~~~~text
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -3375,6 +3418,7 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 ### `annotated-types==0.8.0`
 
@@ -3386,6 +3430,7 @@ Apache License
 
 SHA-256: `fe1049884b1a0d9342901e88e07f32925d24b3121d9972b6a6805fb9824b095d`
 
+~~~~text
 The MIT License (MIT)
 
 Copyright (c) 2022 the contributors
@@ -3407,6 +3452,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `attrs==26.1.0`
 
@@ -3418,6 +3464,7 @@ SOFTWARE.
 
 SHA-256: `882115c95dfc2af1eeb6714f8ec6d5cbcabf667caff8729f42420da63f714e9f`
 
+~~~~text
 The MIT License (MIT)
 
 Copyright (c) 2015 Hynek Schlawack and the attrs contributors
@@ -3439,18 +3486,20 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `certifi==2026.7.22`
 
 - Resolved expression: `MPL-2.0`
 - Resolution evidence: `legacy-license-field`
-- Review status: `requires-review`
-- Review reason: Review MPL-2.0 file-level source obligations and the Mozilla CA bundle attribution and update terms before distribution.
+- Review status: `recorded`
+- Review note: The unmodified pure-Python package and Mozilla-derived CA bundle are shipped in source form with the retained MPL-2.0 notice. MPL-2.0 file-level terms do not extend to the surrounding application, and the CA bundle adds no separate update-cadence license obligation.
 
 #### `python/lib/python3.13/site-packages/certifi-2026.7.22.dist-info/licenses/LICENSE`
 
 SHA-256: `e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7`
 
+~~~~text
 This package contains a modified version of ca-bundle.crt:
 
 ca-bundle.crt -- Bundle of CA Root Certificates
@@ -3471,6 +3520,7 @@ one at http://mozilla.org/MPL/2.0/.
 
 ***** END LICENSE BLOCK *****
 @(#) $RCSfile: certdata.txt,v $ $Revision: 1.80 $ $Date: 2011/11/03 15:11:58 $
+~~~~
 
 ### `cffi==2.1.1`
 
@@ -3482,6 +3532,7 @@ one at http://mozilla.org/MPL/2.0/.
 
 SHA-256: `5ba24ddc57067f9249add644c3afc41a5d6dc37e23433ef759d95df370b0af63`
 
+~~~~text
 
 Except when otherwise stated (look for LICENSE files in directories or
 information at the beginning of each file) all software and
@@ -3505,18 +3556,23 @@ documentation is licensed as follows:
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 
+~~~~
 
 ### `chacha20poly1305-reuseable==0.13.2`
 
-- Resolved expression: `Apache-2.0 OR BSD-3-Clause`
-- Resolution evidence: `legacy-license-field`
-- Review status: `requires-review`
-- Review reason: Resolve the conflict between the legacy dual-license field and the proprietary classifier before distribution.
+- Resolved expression: `BSD-3-Clause`
+- Resolution evidence: `retained-license-file`
+- Review status: `recorded`
+- Review note: The exact sdist declares Apache-2.0 OR BSD-3-Clause and the retained wheel LICENSE contains both complete grants. Distribution elects BSD-3-Clause; the generic Other/Proprietary classifier is packaging metadata generated for the compound expression, not a conflicting proprietary restriction.
+- Resolution file: `python/lib/python3.13/site-packages/chacha20poly1305_reuseable-0.13.2.dist-info/LICENSE` (`33a0ae14da47c997adc4bc87025dfd292a6883aec31a22cc1986e3cb3486d286`)
+- Reviewed classifier conflicts:
+  - `License :: Other/Proprietary License`
 
 #### `python/lib/python3.13/site-packages/chacha20poly1305_reuseable-0.13.2.dist-info/LICENSE`
 
 SHA-256: `33a0ae14da47c997adc4bc87025dfd292a6883aec31a22cc1986e3cb3486d286`
 
+~~~~text
 
 
 Copyright (c) Individual contributors.
@@ -3749,6 +3805,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 ### `charset-normalizer==3.5.1`
 
@@ -3760,6 +3817,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 SHA-256: `6d0d41bfe170ac6c7dc248c9a63e254d0fb45a60d50a8257d0af92c6e249b887`
 
+~~~~text
 MIT License
 
 Copyright (c) 2025 TAHRI Ahmed R.
@@ -3781,6 +3839,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `cryptography==50.0.1`
 
@@ -3792,14 +3851,17 @@ SOFTWARE.
 
 SHA-256: `3e0c7c091a948b82533ba98fd7cbb40432d6f1a9acbf85f5922d2f99a93ae6bb`
 
+~~~~text
 This software is made available under the terms of *either* of the licenses
 found in LICENSE.APACHE or LICENSE.BSD. Contributions to cryptography are made
 under the terms of *both* these licenses.
+~~~~
 
 #### `python/lib/python3.13/site-packages/cryptography-50.0.1.dist-info/licenses/LICENSE.APACHE`
 
 SHA-256: `aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe`
 
+~~~~text
 
                                  Apache License
                            Version 2.0, January 2004
@@ -4002,11 +4064,13 @@ SHA-256: `aac73b3148f6d1d7111dbca32099f68d26c644c6813ae1e4f05f6579aa2663fe`
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 #### `python/lib/python3.13/site-packages/cryptography-50.0.1.dist-info/licenses/LICENSE.BSD`
 
 SHA-256: `602c4c7482de6479dd2e9793cda275e5e63d773dacd1eca689232ab7008fb4fb`
 
+~~~~text
 Copyright (c) Individual contributors.
 All rights reserved.
 
@@ -4034,6 +4098,7 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+~~~~
 
 ### `frozenlist==1.8.0`
 
@@ -4045,6 +4110,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 SHA-256: `6fd5243e92dd7f98ec69c7ac377728e74905709ff527a5bf98d6d0263c04f5b6`
 
+~~~~text
 Apache License
                            Version 2.0, January 2004
                         http://www.apache.org/licenses/
@@ -4246,6 +4312,7 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 ### `idna==3.19`
 
@@ -4257,6 +4324,7 @@ Apache License
 
 SHA-256: `1a9a4f0e3d479a27240ddd59a9137a66ab4a0f9dfdc8ca6188cc0bfd85187f04`
 
+~~~~text
 BSD 3-Clause License
 
 Copyright (c) 2013-2026, Kim Davies and contributors.
@@ -4288,6 +4356,7 @@ PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
 LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+~~~~
 
 ### `ifaddr==0.2.0`
 
@@ -4299,6 +4368,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 SHA-256: `8700856576ae2bc80c63bc970250510d9213fb02fed006d5f22742c9ddde24d7`
 
+~~~~text
 The MIT License (MIT)
 
 Copyright (c) 2014 Stefan C. Mueller
@@ -4320,6 +4390,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+~~~~
 
 ### `miniaudio==1.71`
 
@@ -4331,6 +4402,7 @@ THE SOFTWARE.
 
 SHA-256: `3e793d703da08a12a501ff6e7d5767d0af9adaa423154755300af2fcdbab7677`
 
+~~~~text
 MIT License
 
 Python bindings Copyright (c) 2019 Irmen de Jong
@@ -4355,6 +4427,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `multidict==6.7.1`
 
@@ -4366,6 +4439,7 @@ SOFTWARE.
 
 SHA-256: `93d11a968e2f0f36373c40811ff6d20e173f58c3cab5884cd6617bbfd795492a`
 
+~~~~text
    Copyright 2016 Andrew Svetlov and aio-libs contributors
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -4379,6 +4453,7 @@ SHA-256: `93d11a968e2f0f36373c40811ff6d20e173f58c3cab5884cd6617bbfd795492a`
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 ### `propcache==0.5.2`
 
@@ -4390,6 +4465,7 @@ SHA-256: `93d11a968e2f0f36373c40811ff6d20e173f58c3cab5884cd6617bbfd795492a`
 
 SHA-256: `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`
 
+~~~~text
 
                                  Apache License
                            Version 2.0, January 2004
@@ -4592,11 +4668,13 @@ SHA-256: `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 #### `python/lib/python3.13/site-packages/propcache-0.5.2.dist-info/licenses/NOTICE`
 
 SHA-256: `56d6ac6c8105c0a51304c21db060e361af9a8ea0af9a75c239c28b5d13693838`
 
+~~~~text
    Copyright 2016-2021, Andrew Svetlov and aio-libs team
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -4610,6 +4688,7 @@ SHA-256: `56d6ac6c8105c0a51304c21db060e361af9a8ea0af9a75c239c28b5d13693838`
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 ### `protobuf==7.36.1`
 
@@ -4621,6 +4700,7 @@ SHA-256: `56d6ac6c8105c0a51304c21db060e361af9a8ea0af9a75c239c28b5d13693838`
 
 SHA-256: `6e5e117324afd944dcf67f36cf329843bc1a92229a8cd9bb573d7a83130fea7d`
 
+~~~~text
 Copyright 2008 Google Inc.  All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -4653,6 +4733,7 @@ Code generated by the Protocol Buffer compiler is owned by the owner
 of the input file used when generating it.  This code is not
 standalone and requires a support library to be linked with it.  This
 support library is itself covered by the above license.
+~~~~
 
 ### `pyatv==0.18.0`
 
@@ -4664,6 +4745,7 @@ support library is itself covered by the above license.
 
 SHA-256: `d0c63aa9cb294775307a24a74002eec55be1b206b3da84034c960a319fb063e3`
 
+~~~~text
 # The MIT License (MIT)
 
 Copyright (c) 2020 Pierre Ståhl
@@ -4673,6 +4755,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~~
 
 ### `pycparser==3.0`
 
@@ -4684,6 +4767,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 SHA-256: `0c846399369ea76ddd7b5c44fe6d16497415fcf015f5cbb508c24bf98b81c5b1`
 
+~~~~text
 pycparser -- A C parser in Python
 
 Copyright (c) 2008-2022, Eli Bendersky
@@ -4711,6 +4795,7 @@ GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
 HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
 OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+~~~~
 
 ### `pydantic==2.13.5`
 
@@ -4722,6 +4807,7 @@ OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 SHA-256: `a9e186f3ca16b5eef84318e7a701721351a00cb7b8ae3a4394b67b49e3529ef3`
 
+~~~~text
 The MIT License (MIT)
 
 Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
@@ -4743,6 +4829,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `pydantic_core==2.46.5`
 
@@ -4754,6 +4841,7 @@ SOFTWARE.
 
 SHA-256: `2afdd30d54b4d62b6f488a6bcc1546e84ec5061f13f4209c03d012348783795a`
 
+~~~~text
 The MIT License (MIT)
 
 Copyright (c) 2022 Samuel Colvin
@@ -4775,6 +4863,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `requests==2.34.2`
 
@@ -4786,6 +4875,7 @@ SOFTWARE.
 
 SHA-256: `09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b`
 
+~~~~text
 
                                  Apache License
                            Version 2.0, January 2004
@@ -4961,13 +5051,16 @@ SHA-256: `09e8a9bcec8067104652c168685ab0931e7868f9c8284b66f5ae6edae5f1130b`
       defend, and hold each Contributor harmless for any liability
       incurred by, or claims asserted against, such Contributor by reason
       of your accepting any such warranty or additional liability.
+~~~~
 
 #### `python/lib/python3.13/site-packages/requests-2.34.2.dist-info/licenses/NOTICE`
 
 SHA-256: `f5110972dedad2b4e9d314518daf3b7d72d6e02e499acd802181de6f74571dcc`
 
+~~~~text
 Requests
 Copyright 2019 Kenneth Reitz
+~~~~
 
 ### `six==1.17.0`
 
@@ -4979,6 +5072,7 @@ Copyright 2019 Kenneth Reitz
 
 SHA-256: `4375ba20e2b9c6c4e7cad2940a628fd90e95cc3d50ee92aae755715d8ba1fbd0`
 
+~~~~text
 Copyright (c) 2010-2024 Benjamin Peterson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -4997,6 +5091,7 @@ FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
 COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
 IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~~
 
 ### `srptools==1.0.1`
 
@@ -5008,6 +5103,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 SHA-256: `91933541fc0179980c25b05c2e32ed59b8a84fc463825cd9ebfed428d965fd51`
 
+~~~~text
 srptools authors
 ================
 
@@ -5019,11 +5115,13 @@ Contributors
 
 Bouke Haarsma <https://github.com/Bouke>
 Michael Zimmermann <https://github.com/M1cha>
+~~~~
 
 #### `python/lib/python3.13/site-packages/srptools-1.0.1.dist-info/LICENSE`
 
 SHA-256: `c10694fadcb3c0b0d1c80f9a18121df03368ebe310058cc53c3eccf96ef5cdea`
 
+~~~~text
 Copyright (c) 2017-2019, Igor `idle sign` Starikov
 All rights reserved.
 
@@ -5051,6 +5149,7 @@ SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
 CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+~~~~
 
 ### `tabulate==0.10.0`
 
@@ -5062,6 +5161,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 SHA-256: `cdfab50d37d8ead06468fb76a3abafcd05c16749ec8a18eebfa50fd48c7cb2d2`
 
+~~~~text
 Copyright (c) 2011-2020 Sergey Astanin and contributors
 
 Permission is hereby granted, free of charge, to any person obtaining
@@ -5082,6 +5182,7 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+~~~~
 
 ### `tinytag==2.3.1`
 
@@ -5093,6 +5194,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 SHA-256: `497f61aac3d877f48539dfc38d3c35215ba53648d0f9c4ac7fec467a0dc0cb4d`
 
+~~~~text
 MIT License
 
 Copyright (c) 2014-2026 Tom Wallroth, Mat (mathiascode), et al.
@@ -5115,6 +5217,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+~~~~
 
 ### `typing-inspection==0.4.4`
 
@@ -5126,6 +5229,7 @@ SOFTWARE.
 
 SHA-256: `804b59b25f2c31bd278f9202a19ae49a3945aa2664387e2d0a128c7cacc61ec3`
 
+~~~~text
 MIT License
 
 Copyright (c) Pydantic Services Inc. 2025 to present
@@ -5147,6 +5251,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `typing_extensions==4.16.0`
 
@@ -5158,6 +5263,7 @@ SOFTWARE.
 
 SHA-256: `3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf`
 
+~~~~text
 A. HISTORY OF THE SOFTWARE
 ==========================
 
@@ -5437,6 +5543,7 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
 LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
 OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
+~~~~
 
 ### `urllib3==2.7.0`
 
@@ -5448,6 +5555,7 @@ PERFORMANCE OF THIS SOFTWARE.
 
 SHA-256: `130e3a64d5fdd5d096a752694634a7d9df284469de86e5732100268041e3d686`
 
+~~~~text
 MIT License
 
 Copyright (c) 2008-2020 Andrey Petrov and contributors.
@@ -5469,6 +5577,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+~~~~
 
 ### `yarl==1.24.5`
 
@@ -5480,6 +5589,7 @@ SOFTWARE.
 
 SHA-256: `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`
 
+~~~~text
 
                                  Apache License
                            Version 2.0, January 2004
@@ -5682,11 +5792,13 @@ SHA-256: `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 #### `python/lib/python3.13/site-packages/yarl-1.24.5.dist-info/licenses/NOTICE`
 
 SHA-256: `56d6ac6c8105c0a51304c21db060e361af9a8ea0af9a75c239c28b5d13693838`
 
+~~~~text
    Copyright 2016-2021, Andrew Svetlov and aio-libs team
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -5700,18 +5812,39 @@ SHA-256: `56d6ac6c8105c0a51304c21db060e361af9a8ea0af9a75c239c28b5d13693838`
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+~~~~
 
 ### `zeroconf==0.151.3`
 
 - Resolved expression: `LGPL-2.1-or-later`
 - Resolution evidence: `license-expression`
-- Review status: `requires-review`
-- Review reason: Review LGPL-2.1-or-later source and relinking obligations for the compiled extension modules before distribution.
+- Review status: `recorded`
+- Review note: The wheel's optional Cython extension modules are removed from the distributed runtime. The unmodified pure-Python implementation, corresponding preferred source files, metadata, and complete LGPL-2.1 notice remain in the helper runtime; no zeroconf object code is distributed.
+- Pruned files:
+  - `zeroconf/_cache.cpython-313-darwin.so`
+  - `zeroconf/_dns.cpython-313-darwin.so`
+  - `zeroconf/_handlers/answers.cpython-313-darwin.so`
+  - `zeroconf/_handlers/multicast_outgoing_queue.cpython-313-darwin.so`
+  - `zeroconf/_handlers/query_handler.cpython-313-darwin.so`
+  - `zeroconf/_handlers/record_manager.cpython-313-darwin.so`
+  - `zeroconf/_history.cpython-313-darwin.so`
+  - `zeroconf/_listener.cpython-313-darwin.so`
+  - `zeroconf/_protocol/incoming.cpython-313-darwin.so`
+  - `zeroconf/_protocol/outgoing.cpython-313-darwin.so`
+  - `zeroconf/_record_update.cpython-313-darwin.so`
+  - `zeroconf/_services/__init__.cpython-313-darwin.so`
+  - `zeroconf/_services/browser.cpython-313-darwin.so`
+  - `zeroconf/_services/info.cpython-313-darwin.so`
+  - `zeroconf/_services/registry.cpython-313-darwin.so`
+  - `zeroconf/_updates.cpython-313-darwin.so`
+  - `zeroconf/_utils/ipaddress.cpython-313-darwin.so`
+  - `zeroconf/_utils/time.cpython-313-darwin.so`
 
 #### `python/lib/python3.13/site-packages/zeroconf-0.151.3.dist-info/licenses/COPYING`
 
 SHA-256: `73b9e1d4dc992630bbc22b4519f437020446bc8e913d0ad81a3292a79275a251`
 
+~~~~text
 python-zeroconf is distributed under the GNU Lesser General Public
 License, version 2.1 or later. The full license text follows below the
 separator.
@@ -6187,3 +6320,4 @@ SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGES.
 
 		     END OF TERMS AND CONDITIONS
+~~~~

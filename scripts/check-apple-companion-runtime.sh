@@ -35,7 +35,7 @@ ruby -rjson -rdigest -e '
 	}
 	exit 1 unless manifest.fetch("schema") == 1
 	exit 1 unless manifest.fetch("status") == "candidate"
-	exit 1 unless manifest.fetch("lastVerified") == "2026-09-03"
+	exit 1 unless manifest.fetch("lastVerified") == "2026-09-04"
 	exit 1 unless manifest.fetch("pythonVersion") == "3.13.7"
 	exit 1 unless manifest.fetch("source") == expected_source
 	contract = JSON.parse(
@@ -54,15 +54,23 @@ ruby -rjson -rdigest -e '
 	  "pythonVersion" => "3.13.7",
 	  "helperRuntimeArchitecture" => "arm64",
 	  "intelBehavior" => "unsupported",
-	  "contentSha256" => "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331",
+	  "contentSha256" => "10e741b0867c692e3ecf019d43f2c4bf0055246d0da66409a94cae9fcc219324",
 	}
 	notice_source = manifest.fetch("noticeSource")
 	exit 1 unless notice_source.fetch("project") == "astral-sh/python-build-standalone"
 	exit 1 unless notice_source.fetch("release") == "20250818"
 	exit 1 unless notice_source.fetch("relationship") == "same-release-full-variant-proxy"
+	exit 1 unless notice_source.fetch("reviewStatus") == "recorded"
+	exit 1 unless notice_source.fetch("relationshipEvidence") == {
+	  "fullInstallFileCount" => 3456,
+	  "strippedInstallFileCount" => 1828,
+	  "strippedPathsMissingFromFullInstall" => 0,
+	  "byteIdenticalFileCount" => 1812,
+	  "binaryTransformFileCount" => 16,
+	}
 	exit 1 unless notice_source.fetch("licenseFiles").length == 19
 	exit 1 unless Digest::SHA256.hexdigest(JSON.generate(notice_source)) ==
-	  "82857f45626cbd10a8e2b8026da3a7942353df993e25e4bcd31bef11c592010c"
+	  "dc1e9b6886762cbb6bd0c93a1a5d322575e963c52fddacca3f20ff5516646f42"
 	policy = manifest.fetch("architecturePolicy")
 	exit 1 unless policy.fetch("application") == "universal2"
 	exit 1 unless policy.fetch("helperRuntime") == "arm64"
@@ -73,26 +81,21 @@ ruby -rjson -rdigest -e '
 	    "version" => "50.0.1",
 	    "reason" => "The exact PyPI release publishes macOS wheels for arm64 only.",
 	  },
-	  {
-	    "package" => "zeroconf",
-	    "version" => "0.151.3",
-	    "reason" => "The exact PyPI release publishes macOS wheels for arm64 only.",
-	  },
 	]
 	staging = manifest.fetch("staging")
 	exit 1 unless staging == {
 	  "requirementsSha256" => "a810c21cc554c114b0b6b98c4f4d08501ca301993f019b1712c84a548adbca27",
 	  "packageCount" => 31,
-	  "nativeCodeCount" => 35,
-	  "prunedRecordEntryCount" => 10,
+	  "nativeCodeCount" => 17,
+	  "prunedRecordEntryCount" => 28,
 	  "runtimeNoticeFileCount" => 19,
 	  "packageLicenseFileCount" => 38,
-	  "noticeSha256" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
-	  "contentSha256" => "c67cc7c2b969581ead88e85a6d4427f83fafbe7da8ae262f7424b2088f441331",
+	  "noticeSha256" => "9e875e9e4aeeb8170c8bf8d2d8e109658a9bc5f5918e0922f1401aca09ec237f",
+	  "contentSha256" => "10e741b0867c692e3ecf019d43f2c4bf0055246d0da66409a94cae9fcc219324",
 	}
 	exit 1 unless manifest.fetch("signing") == {
 	  "strategy" => "manifest-native-code-inside-out",
-	  "nativeCodeCount" => 35,
+	  "nativeCodeCount" => 17,
 	  "hardenedRuntime" => true,
 	  "shippedIntegrityBoundary" => "outer-application-code-signature",
 	  "forbiddenEntitlements" => [
@@ -105,17 +108,15 @@ ruby -rjson -rdigest -e '
 	distribution = manifest.fetch("distribution")
 	exit 1 unless distribution.fetch("approved") == false
 	exit 1 unless distribution.fetch("blockedBy") == [
-	  "Resolve the same-release runtime notice proxy and the recorded certifi, chacha20poly1305-reuseable, and zeroconf review items.",
-	  "Prove the locator accepts a same-Team Developer ID runtime-carrying app and the signed Python runtime launches without weakened entitlements.",
-	  "Pass notarization, quarantine, rollback, and clean-Mac qualification.",
+	  "Pass clean supported-Mac qualification, including launch without developer-installed Python tooling and offline Gatekeeper behavior.",
 	]
 	expected_inputs = {
 	  "AppleCompanionHelper/.python-version" => "3ce16e94590543a327d3e5ae412e663206e0ed1b46628ed3dd5ad29caa1ff5ac",
 	  "AppleCompanionHelper/helper.py" => "fa456b34df18a5e61553c21be9b348dc45c4241824a2f57d95dd18be5d5f8721",
-	  "AppleCompanionHelper/license-policy.json" => "833f4fcef5b531dc0519dbee6a6e29ca92f9674522aa64fd29a281772fd81058",
-	  "AppleCompanionHelper/NOTICES.md" => "10556c01dd5849a10af777bd4d03d2fd5cfe35349ccd86e7cc04d3962d79766f",
+	  "AppleCompanionHelper/license-policy.json" => "de6fe97e046c25cb15c86f53dcc876f0105a485eb28fbdb6d0a1ddf246a40a5f",
+	  "AppleCompanionHelper/NOTICES.md" => "9e875e9e4aeeb8170c8bf8d2d8e109658a9bc5f5918e0922f1401aca09ec237f",
 	  "AppleCompanionHelper/pyproject.toml" => "2996be95515a1151cde0c811e24562f5da7cdbd4575fc560cfe85fa6a567410f",
-	  "AppleCompanionHelper/runtime-contract.json" => "e6ab0c217b42cde718f12fb7d809dec1d511448b3755fea1e32fc9e77cdaeced",
+	  "AppleCompanionHelper/runtime-contract.json" => "35112cb3a48c5a7f78b12f92227c0e04189409e5b77298a6b598b2a1e4fa2194",
 	  "AppleCompanionHelper/uv.lock" => "80725a973bfbb4d117f095da671583b554eb18f3d45d1424f1399748f1d6bd01",
 	}
 	inputs = manifest.fetch("inputs").to_h do |input|
@@ -208,9 +209,15 @@ if [ -n "$runtime_path" ]; then
 	      "resolvedExpression" => package_policy.fetch("resolvedExpression"),
 	      "resolution" => package_policy.fetch("resolution"),
 	      "reviewStatus" => package_policy.fetch("reviewStatus"),
+	      "reviewedClassifierConflicts" => package_policy.fetch("reviewedClassifierConflicts", []),
+	      "prunedFiles" => package_policy.fetch("prunedFiles", []),
 	    }
 	    expected_item["reviewReason"] = package_policy.fetch("reviewReason") if
 	      package_policy.key?("reviewReason")
+	    expected_item["reviewNote"] = package_policy.fetch("reviewNote") if
+	      package_policy.key?("reviewNote")
+	    expected_item["resolutionFile"] = package_policy.fetch("resolutionFile") if
+	      package_policy.key?("resolutionFile")
 	    exit 1 unless item.reject { |key, _value| key == "licenseFiles" } == expected_item
 	    license_files = item.fetch("licenseFiles")
 	    exit 1 if license_files.empty?
@@ -224,15 +231,23 @@ if [ -n "$runtime_path" ]; then
 	  end
 	  exit 1 unless package_license_file_count == expected_staging.fetch("packageLicenseFileCount")
 	  review_items = packages.select { |item| item.fetch("reviewStatus") == "requires-review" }
-	  exit 1 unless review_items.map { |item| item.fetch("name") }.sort ==
-	    ["certifi", "chacha20poly1305-reuseable", "zeroconf"]
+	  exit 1 unless review_items.empty?
 	  exit 1 unless source.fetch("distribution").fetch("approved") == false
+	  approved_pruned_files = policy_packages.values.flat_map do |item|
+	    item.fetch("prunedFiles", [])
+	  end.sort
 	  pruned_record_entries = manifest.fetch("prunedRecordEntries")
 	  exit 1 unless pruned_record_entries.length == expected_staging.fetch("prunedRecordEntryCount")
 	  exit 1 unless pruned_record_entries.uniq.length == pruned_record_entries.length
 	  exit 1 unless pruned_record_entries.all? do |item|
-	    item.fetch("record").end_with?(".dist-info/RECORD") && item.fetch("path").start_with?("bin/")
+	    path = item.fetch("path")
+	    item.fetch("record").end_with?(".dist-info/RECORD") &&
+	      (path.start_with?("bin/") || approved_pruned_files.include?(path))
 	  end
+	  observed_policy_prunes = pruned_record_entries.map { |item| item.fetch("path") }
+	    .select { |path| approved_pruned_files.include?(path) }
+	    .sort
+	  exit 1 unless observed_policy_prunes == approved_pruned_files
 	  site_packages = File.join(root, "python/lib/python3.13/site-packages")
 	  record_paths = Dir.children(site_packages)
 	    .select { |name| name.end_with?(".dist-info") }
@@ -315,6 +330,21 @@ if [ -n "$runtime_path" ]; then
 	done
 	[ ! -e "$runtime_path/python/lib/python3.13/site-packages/bin" ] || {
 		printf 'Staged runtime contains generated console entry points\n' >&2
+		exit 1
+	}
+	if find "$runtime_path/python/lib/python3.13/site-packages/zeroconf" \
+		-type f -name '*.so' -print -quit | grep -q .; then
+		printf 'Staged runtime contains forbidden zeroconf native extensions\n' >&2
+		exit 1
+	fi
+	"$runtime_path/python/bin/python3.13" -I -B -c '
+import zeroconf._dns
+import zeroconf._services.browser
+
+assert zeroconf._dns.__file__.endswith(".py")
+assert zeroconf._services.browser.__file__.endswith(".py")
+	' || {
+		printf 'Staged runtime does not use pure-Python zeroconf\n' >&2
 		exit 1
 	}
 	if find "$runtime_path" \( -type d -name __pycache__ -o -type f -name '*.pyc' \) \
