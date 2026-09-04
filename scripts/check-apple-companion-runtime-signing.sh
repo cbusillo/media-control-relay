@@ -25,15 +25,21 @@ candidate="$2"
 app_store_app="$3"
 app_store_entitlements="$repo_root/Config/MediaControlRelayAppStore.entitlements"
 
-for command_name in codesign ditto jq rg ruby; do
+for command_name in codesign ditto jq nm rg ruby strip; do
 	command -v "$command_name" >/dev/null 2>&1 || {
 		printf '%s is required to check Apple Companion runtime signing\n' "$command_name" >&2
 		exit 69
 	}
 done
 
+runtime_relative_path="$(jq -er '.bundleRelativePath' "$runtime_contract")"
+release_executable_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
+	"$release_app/Contents/Info.plist")"
+
 temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-signing-check.XXXXXX")"
 signed_app="$temporary_directory/Media Control Relay.app"
+stripped_app="$temporary_directory/Stripped Media Control Relay.app"
+stripped_refusal="$temporary_directory/stripped-refusal"
 rejected_app="$temporary_directory/App Store.app"
 sandbox_refusal="$temporary_directory/sandbox-refusal"
 invalid_candidate="$temporary_directory/invalid-candidate"
@@ -42,13 +48,41 @@ escaping_app="$temporary_directory/Escaping Resources.app"
 partial_failure_app="$temporary_directory/Partial Failure.app"
 ditto --norsrc --noextattr --noqtn "$release_app" "$signed_app"
 
+ditto --norsrc --noextattr --noqtn "$release_app" "$stripped_app"
+stripped_executable="$stripped_app/Contents/MacOS/$release_executable_name"
+strip "$stripped_executable"
+if nm -arch arm64 -gU "$stripped_executable" | rg -q 'AppleCompanion'; then
+	printf 'Stripped Release executable unexpectedly retained the adapter symbol\n' >&2
+	exit 1
+fi
+if "$packager" "$stripped_app" "$candidate" - \
+	>/dev/null 2>"$stripped_refusal"; then
+	printf 'Stripped Release executable unexpectedly accepted runtime packaging\n' >&2
+	exit 1
+fi
+rg -Fxq 'Application does not contain the live arm64 Apple Companion adapter' \
+	"$stripped_refusal" || {
+	printf 'Stripped Release packaging did not exercise the adapter refusal boundary\n' >&2
+	exit 1
+}
+[ ! -e "$stripped_app/$runtime_relative_path" ] &&
+	[ ! -L "$stripped_app/$runtime_relative_path" ] || {
+	printf 'Rejected stripped Release packaging left runtime material behind\n' >&2
+	exit 1
+}
+
 "$packager" "$signed_app" "$candidate" -
+signed_executable="$signed_app/Contents/MacOS/$release_executable_name"
+strip "$signed_executable"
+if nm -arch arm64 -gU "$signed_executable" | rg -q 'AppleCompanion'; then
+	printf 'Packaged Release executable unexpectedly retained the adapter symbol after stripping\n' >&2
+	exit 1
+fi
 codesign --force --options runtime --timestamp=none \
 	--entitlements "$entitlements" --sign - "$signed_app" >/dev/null 2>&1
 codesign --verify --deep --strict --all-architectures "$signed_app" \
 	>/dev/null 2>&1
 
-runtime_relative_path="$(jq -er '.bundleRelativePath' "$runtime_contract")"
 runtime_root="$signed_app/$runtime_relative_path"
 native_code_count="$(jq -er '.nativeCode | length' "$runtime_root/manifest.json")"
 expected_native_code_count="$(jq -er '.signing.nativeCodeCount' \

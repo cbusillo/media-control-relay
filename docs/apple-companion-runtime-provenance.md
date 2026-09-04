@@ -46,6 +46,7 @@ of the first candidate.
 - downloads the pinned standalone-runtime asset and the pinned same-release
   full-variant notice proxy, and verifies both sha256 digests;
 - rejects absolute, parent-traversing, or non-`python/` archive paths;
+- fixes generated runtime permissions independently of the caller's umask;
 - installs the complete production lock directly into the standalone runtime's
   own `site-packages`, without a virtualenv or absolute interpreter link;
 - verifies every installed wheel file against its original `RECORD` before
@@ -146,7 +147,12 @@ validates the pristine candidate, copies it only into an application containing
 the live adapter, signs the exact 35 native-code leaves from the manifest
 inside-out with hardened runtime and no entitlements, and then requires the
 outer app to be signed after every leaf is final. It rejects the App Store
-partition before creating the runtime destination.
+partition before creating the runtime destination. Developer ID archives retain
+their global Swift symbol table through runtime admission so the live-adapter
+gate stays tied to linked arm64 code. The outer executable is stripped only
+after the runtime is admitted and before final application signing; validation
+exercises that exact archive-to-sign sequence and proves a symbol-stripped input
+is rejected without leaving runtime material behind.
 
 The unsigned candidate digest, native-code hashes, and package `RECORD` entries
 remain the pre-sign provenance boundary. Because `codesign` changes Mach-O

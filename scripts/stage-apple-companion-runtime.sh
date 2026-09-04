@@ -1,6 +1,7 @@
 #!/bin/sh
 
 set -eu
+umask 022
 
 repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 source_root="$repo_root/AppleCompanionHelper"

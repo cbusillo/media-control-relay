@@ -82,8 +82,9 @@ if app_entitlements="$(codesign -d --entitlements - "$app" 2>/dev/null || true)"
 	printf 'Refusing to package the runtime into a sandboxed application\n' >&2
 	exit 2
 fi
-if ! nm -gU "$app_executable" | rg -q 'AppleCompanion'; then
-	printf 'Application does not contain the live Apple Companion adapter\n' >&2
+if ! lipo "$app_executable" -verify_arch arm64 >/dev/null 2>&1 ||
+	! nm -arch arm64 -gU "$app_executable" | rg -q 'AppleCompanion'; then
+	printf 'Application does not contain the live arm64 Apple Companion adapter\n' >&2
 	exit 2
 fi
 [ ! -e "$runtime_destination" ] && [ ! -L "$runtime_destination" ] || {
