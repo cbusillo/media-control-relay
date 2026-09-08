@@ -1,10 +1,11 @@
 # Apple Companion Runtime Provenance
 
-Last verified: September 4, 2026.
+Last verified: September 7, 2026.
 
-This record covers the first candidate for a self-contained Apple Companion
-runtime in Developer ID distribution. It is an engineering provenance record,
-not legal advice and not distribution approval.
+This record covers the qualified self-contained Apple Companion runtime for
+Developer ID distribution. Approval is limited to the exact runtime and artifact
+recorded below. This is an engineering provenance record, not legal advice or
+authorization to publish a release.
 
 ## Decision
 
@@ -21,9 +22,9 @@ bootloader and another binary provenance surface.
 
 The runtime proxy and package notice reviews are complete. Local Developer ID
 signing, same-Team runtime launch, notarization, quarantine assessment, rollback,
-and App Store exclusion evidence also pass. The candidate remains blocked from
-distribution only until it passes the selected clean physical-Mac qualification,
-including offline Gatekeeper behavior.
+and App Store exclusion evidence also pass. The exact arm64 runtime and recorded artifact are now qualified using the
+combined physical development-Mac and pristine virtualized acceptance below.
+New release artifacts still require the notarization runbook and release approval.
 
 ## Architecture
 
@@ -115,8 +116,9 @@ The three package reviews are resolved:
 
 The generated notice set is an engineering integrity record, not a claim that
 the notices are legally sufficient or that every obligation has been
-discharged. The candidate remains `candidate` until clean-Mac qualification is
-complete.
+discharged. The source manifest now records `qualified` status. Existing candidate staging
+markers and generated notice terminology remain stable; they identify the
+validated payload format and do not override distribution approval metadata.
 
 ## Signing and Distribution Gates
 
@@ -182,9 +184,58 @@ Store exclusion. CI proves the packaging and integrity boundary on copied build
 products with ad-hoc signatures, including native, Python-resource, and marker
 tamper failures. Local Developer ID qualification established same-Team locator
 acceptance, Python launch without weakened entitlements, notarization,
-quarantine assessment, rollback, and Keychain preservation. Distribution
-remains unapproved until the clean physical Apple-silicon Mac passes launch
-without developer-installed Python tooling and online/offline Gatekeeper checks.
+quarantine assessment, rollback, and Keychain preservation. The combined qualification below completes the outstanding tooling-free
+launch and online/offline Gatekeeper evidence for this exact artifact.
+
+## Recorded Qualification
+
+On September 7, 2026, the owner-approved combined qualification completed for:
+
+- Source commit: `952fea3049913bd71014a0ca20b1f80d2c348157`.
+- Notarized ZIP SHA-256: `b4a2a15c26be1964ecb75ed17c8b1a4f6d17c5798bcd113bcb879e2710b56644`.
+- Application executable SHA-256: `2fc5e5e5d4c9279b691483b70b240e93464b0d156cdfbdd96dfacb04db57dc36`.
+- Unsigned runtime content SHA-256: `10e741b0867c692e3ecf019d43f2c4bf0055246d0da66409a94cae9fcc219324`.
+
+The physical development Mac supplied the prior 17-leaf signing, same-Team
+locator/helper launch, Accepted notarization, staple validation, quarantined
+installation, rollback/restoration, frontmost preservation, and Keychain
+preservation evidence. A pristine arm64 macOS 26.6.2 (25G83) VM supplied the
+absence of Homebrew, uv, Xcode/Command Line Tools, standalone Python, prior app,
+and owner-installed fallback helper. This was not a second clean physical Mac.
+
+A never-launched, never-assessed seed acquired the exact app through Safari and
+Archive Utility, preserving propagated quarantine. Separate clones supplied:
+
+- Offline strict signature and Gatekeeper acceptance with
+  `source=Notarized Developer ID`. The guest Ethernet service was disabled,
+  its interface inactive without an IP, and unscoped IPv4/IPv6 default routes
+  absent. Two outbound controls failed during isolation; restoration and a
+  positive outbound control passed. Scoped tunnel entries remained. This does
+  not establish absence of undocumented trust caches or offline GUI launch.
+- Fresh Finder installation and Internet-download confirmation, captured before
+  clicking Open. The exact app executable and its parented helper ran directly
+  from `/Applications/Media Control Relay.app`. Strict signatures passed,
+  helper and outer app Teams matched, and the fallback helper was absent.
+  Captured UI showed unconfigured and then offline states, with no Helper
+  Damaged state. No real-device pairing or connectivity claim follows.
+- Online Gatekeeper acceptance as `Notarized Developer ID` after GUI first open
+  and the installed helper check, with a passing outbound connectivity control.
+
+The first online attempt used a copy that launched under App Translocation;
+its results remain preserved, but the fresh Finder installation supersedes it
+for installed-path and first-open acceptance. The offline harness first stopped
+before assessment on an incorrect route exit-status assumption; a reviewed
+correction passed. A later guest-agent transport failure occurred after success
+and network restoration were recorded and was independently reconciled. These
+incidents do not imply a clean harness exit or an additional app assessment.
+
+Opus and Gemini reviewed the combined qualification evidence and returned GO
+for the recorded scope. The operator directly inspected the CUA screenshot captures;
+reviewers assessed textual evidence summaries. Raw logs and captures stay in
+private evidence. CI continues to enforce the exact approval record, runtime
+content pin, normal Release payload absence, and complete App Store exclusion.
+The out-of-band packager remains the only runtime admission path; this approval
+does not copy payloads into ordinary builds or waive future signing checks.
 
 ## Verification
 

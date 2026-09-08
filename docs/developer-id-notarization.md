@@ -253,10 +253,13 @@ and quarantine state, it may accept the app as Developer ID or reject it as
 Unnotarized Developer ID. Only the post-stapling quarantine check is the
 notarization acceptance gate.
 
-This runtime-carrying procedure is qualification evidence only. The recorded
-notice review, local notarization, quarantine, rollback, and same-Team launch
-gates pass. Distribution remains unapproved until clean physical-Mac
-qualification, including offline Gatekeeper behavior, is complete.
+The exact runtime and artifact from commit `952fea3` completed qualification on
+September 7, 2026. The [runtime provenance record](apple-companion-runtime-provenance.md#recorded-qualification)
+pins the full commit and hashes and separates physical development-Mac signing,
+notarization, installation, and rollback evidence from pristine arm64 VM
+acceptance, including offline Gatekeeper and fresh Finder first open. This
+scoped approval does not qualify a new build automatically or authorize release
+publication; repeat this runbook for each release artifact.
 
 Repository CI uses ad-hoc signatures to prove inventory, hardened-runtime
 flags, outer-bundle sealing, App Store refusal, and tamper detection. It cannot
@@ -269,7 +272,8 @@ pairing, connecting, or ready flow rather than **Helper Damaged**. **Check
 Again** is available only when the current state exposes that recovery action;
 the healthy installed path refreshes during initialization. Record the result
 privately with the exact reviewed commit. The local same-Team locator acceptance
-gate passes; repeat the check on the clean qualification Mac.
+gate and pristine VM installed-helper check pass for the recorded artifact;
+repeat the check for each newly signed artifact.
 
 ## Submit and Staple
 

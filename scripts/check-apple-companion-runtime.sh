@@ -33,9 +33,9 @@ ruby -rjson -rdigest -e '
 	  "sha256" => "024a3a1c95f171e97a4eaa6d2d289baf6802b72e4767023e3d9e4fa246be11bb",
 	  "architecture" => "arm64",
 	}
-	exit 1 unless manifest.fetch("schema") == 1
-	exit 1 unless manifest.fetch("status") == "candidate"
-	exit 1 unless manifest.fetch("lastVerified") == "2026-09-04"
+	exit 1 unless manifest.fetch("schema") == 2
+	exit 1 unless manifest.fetch("status") == "qualified"
+	exit 1 unless manifest.fetch("lastVerified") == "2026-09-07"
 	exit 1 unless manifest.fetch("pythonVersion") == "3.13.7"
 	exit 1 unless manifest.fetch("source") == expected_source
 	contract = JSON.parse(
@@ -106,10 +106,51 @@ ruby -rjson -rdigest -e '
 	  ],
 	}
 	distribution = manifest.fetch("distribution")
-	exit 1 unless distribution.fetch("approved") == false
-	exit 1 unless distribution.fetch("blockedBy") == [
-	  "Pass clean supported-Mac qualification, including launch without developer-installed Python tooling and offline Gatekeeper behavior.",
-	]
+	exit 1 unless distribution == {
+	  "approved" => true,
+	  "blockedBy" => [],
+	  "qualification" => {
+	    "date" => "2026-09-07",
+	    "scope" => "exact-arm64-runtime-and-recorded-Developer-ID-artifact",
+	    "commit" => "952fea3049913bd71014a0ca20b1f80d2c348157",
+	    "zipSha256" => "b4a2a15c26be1964ecb75ed17c8b1a4f6d17c5798bcd113bcb879e2710b56644",
+	    "executableSha256" => "2fc5e5e5d4c9279b691483b70b240e93464b0d156cdfbdd96dfacb04db57dc36",
+	    "runtimeContentSha256" => "10e741b0867c692e3ecf019d43f2c4bf0055246d0da66409a94cae9fcc219324",
+	    "physicalEvidence" => [
+	      "nested-signing",
+	      "same-team-helper-launch",
+	      "notarization",
+	      "stapling",
+	      "quarantined-install",
+	      "rollback",
+	      "keychain-preservation",
+	      "frontmost-preservation",
+	    ],
+	    "virtualizedEvidence" => {
+	      "architecture" => "arm64",
+	      "macOS" => "26.6.2",
+	      "build" => "25G83",
+	      "baseline" => "no-developer-tooling-or-prior-app-or-fallback-helper",
+	      "acquisition" => "Safari-propagated-quarantine",
+	      "offlineGatekeeper" => "Notarized Developer ID",
+	      "onlineGatekeeper" => "Notarized Developer ID",
+	      "firstOpen" => "Finder-confirmation-captured-and-approved",
+	      "appAndHelperLocation" => "/Applications/Media Control Relay.app",
+	      "sameTeamHelperLaunch" => "passed",
+	    },
+	    "evidenceDocument" => "docs/apple-companion-runtime-provenance.md",
+	    "limitations" => [
+	      "offline-assessment-only-no-offline-GUI-launch",
+	      "no-undocumented-trust-cache-exclusion",
+	      "first-online-attempt-translocated-superseded",
+	      "no-real-TV-connectivity-claim",
+	    ],
+	  },
+	}
+	exit 1 unless distribution.fetch("qualification").fetch("runtimeContentSha256") ==
+	  contract.fetch("contentSha256")
+	exit 1 unless distribution.fetch("qualification").fetch("runtimeContentSha256") ==
+	  manifest.fetch("staging").fetch("contentSha256")
 	expected_inputs = {
 	  "AppleCompanionHelper/.python-version" => "3ce16e94590543a327d3e5ae412e663206e0ed1b46628ed3dd5ad29caa1ff5ac",
 	  "AppleCompanionHelper/helper.py" => "fa456b34df18a5e61553c21be9b348dc45c4241824a2f57d95dd18be5d5f8721",
@@ -232,7 +273,7 @@ if [ -n "$runtime_path" ]; then
 	  exit 1 unless package_license_file_count == expected_staging.fetch("packageLicenseFileCount")
 	  review_items = packages.select { |item| item.fetch("reviewStatus") == "requires-review" }
 	  exit 1 unless review_items.empty?
-	  exit 1 unless source.fetch("distribution").fetch("approved") == false
+	  exit 1 unless source.fetch("distribution").fetch("approved") == true
 	  approved_pruned_files = policy_packages.values.flat_map do |item|
 	    item.fetch("prunedFiles", [])
 	  end.sort
