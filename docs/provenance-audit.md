@@ -105,16 +105,17 @@ by the App Store app.
     `scripts/apple-companion-helper.sh`. That runtime is content-addressed,
     owner-only Application Support state built from the checked-in Python
     version and uv lock. It is not staged into an app, release, archive, or
-    public evidence. Distribution remains blocked on issue #90's audit of the
-    exact embedded runtime, transitive artifacts, licenses, hashes, signing,
-    notarization, and notices.
+    public evidence. That fallback runtime is outside issue #90's distribution
+    qualification, which covers the exact embedded runtime, transitive artifacts,
+    licenses, hashes, signing, notarization, and notices.
 
 13. Issue #90's first distribution candidate is the exact arm64 standalone
     CPython artifact pinned in `AppleCompanionHelper/runtime-source.json` and
     assessed in `docs/apple-companion-runtime-provenance.md`. The pin and staging
-    proof do not approve distribution. Shipping remains blocked until the
-    candidate's complete licenses and notices, nested signing, notarization,
-    rollback, clean-Mac behavior, and App Store exclusion are qualified.
+    proof alone do not approve distribution. The exact runtime and recorded
+    Developer ID artifact now have complete notice, nested signing, notarization,
+    rollback, tooling-free VM acceptance, and App Store exclusion evidence.
+    New release artifacts still require signing qualification and release approval.
 
 14. The candidate's deterministic notice inventory is pinned in
     `AppleCompanionHelper/license-policy.json` and generated into
@@ -136,8 +137,11 @@ by the App Store app.
     application code signature as the shipped integrity boundary. Current
     Release and App Store build products must still prove the bundle location is
     absent. Same-Team locator and Python launch, notarization, quarantine,
-    rollback, and notice review pass; distribution remains unapproved pending
-    clean physical-Mac qualification, including offline Gatekeeper behavior.
+    rollback, and notice review pass. Owner-approved combined physical
+    development-Mac and pristine arm64 VM qualification also passes, including
+    offline Gatekeeper and fresh Finder installation with direct installed app
+    and helper paths. The runtime provenance record pins the exact scope and
+    artifact; no clean second physical Mac or real-TV connectivity is claimed.
 
 ## Required Follow-Up
 
