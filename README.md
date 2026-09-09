@@ -1,9 +1,8 @@
 # Media Control Relay
 
-Media Control Relay is a native macOS utility that routes actions from local
-control surfaces to supported media devices. The first target family is
-compatible Samsung TVs, with optional integrations tracked for Apple TV,
-HomePod, and Loupedeck and room for future control surfaces and targets.
+Media Control Relay is a native macOS utility for keyboard volume and mute
+control on compatible Samsung TVs. It matches the active Mac audio route and
+talks directly to the TV, preserving normal Mac behavior on unmatched routes.
 
 > [!IMPORTANT]
 > This repository is an early development preview. The signed app can create an
@@ -22,10 +21,17 @@ setup flow:
 3. Match the target to its display and audio output when required.
 4. Test the actions supported by that target.
 
-The initial release remains focused on reliable volume and mute control for
-compatible Samsung TVs. Media Control Relay is not a universal remote or a
-general-purpose smart-home hub. It will ship through Developer ID distribution
-first; a sandboxed Mac App Store build remains a product goal.
+MCR remains focused on reliable keyboard volume and mute control, independent
+of Home Assistant and Bitfocus Companion. Companion owns control-surface pages,
+explicit Apple TV controls and macros; Home Assistant owns devices and
+automation. MCR is not a universal remote or a general-purpose smart-home hub.
+It will ship through Developer ID distribution first; a sandboxed Mac App Store
+build remains a product goal.
+
+The current Apple TV helper and custom URL interfaces remain implemented during
+caller migration. The narrower direction does not remove those interfaces or
+authorize uninstalling MCR. See [Product scope](docs/product-scope.md) for the
+retained responsibilities and compatibility boundary.
 
 ## Current Foundation
 
@@ -93,6 +99,7 @@ scripts/generate-project.sh
 
 ## Documentation
 
+- [Product scope](docs/product-scope.md)
 - [Architecture](docs/architecture.md)
 - [Target volume overlay](docs/target-overlay.md)
 - [Relay routing](docs/relay-routing.md)

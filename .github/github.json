@@ -4,6 +4,7 @@
   "docs": {
     "agentNotes": "AGENTS.md",
     "overview": "README.md",
+    "productScope": "docs/product-scope.md",
     "architecture": "docs/architecture.md",
     "developerIDNotarization": "docs/developer-id-notarization.md",
     "targetOverlay": "docs/target-overlay.md",

@@ -68,9 +68,12 @@ The native macOS shell owns:
 - launch-at-login registration;
 - future coordination between input monitoring and protocol adapters.
 
-Future control-surface and target adapters remain optional boundaries around
-the local coordinator. Adding a Loupedeck, Apple TV, HomePod, or other supported
-integration must not make the core app depend on that device.
+The retained product boundary is native keyboard volume/mute routing and direct
+Samsung transport. Bitfocus Companion owns control-surface pages, Apple TV
+controls and macros; Home Assistant owns device automation. See
+[Product scope](product-scope.md). The existing external URL and Apple Companion
+boundaries below describe transitional implementation that remains supported
+until its callers migrate; they are not a roadmap for expanding MCR.
 
 ### Optional Apple Companion Boundary
 

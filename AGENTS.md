@@ -22,10 +22,11 @@
 
 ## Product Shape
 
-Media Control Relay is a focused native macOS menu-bar app that routes actions
-from local control surfaces to supported media devices. Compatible Samsung TVs
-are the first target family; the product is not a universal remote or a
-general-purpose smart-home hub.
+Media Control Relay is a focused native macOS keyboard volume/mute router with
+direct Samsung transport. Keep this path independent of Home Assistant and
+Bitfocus Companion. Read `docs/product-scope.md` before changing ownership or
+removing transitional Apple TV/custom URL code. The product is not a universal
+remote or a general-purpose smart-home hub.
 
 ## Engineering Defaults
 
