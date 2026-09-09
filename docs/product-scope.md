@@ -46,8 +46,9 @@ family's migration.
 `RemoteControlModel` resolves the Apple runtime and resumes saved pairing during
 startup. Making it lazy or removing it changes cold-start behavior even if the
 keyboard route is untouched. Retain that behavior until its consumers migrate.
-The MCR helper, separate Companion module and host shutdown helpers are distinct
-clients; do not assume one client's successful pairing qualifies another.
+The MCR helper and separate Companion module are distinct clients. Host shutdown
+helpers that call pyatv directly are not MCR callers and retain their own
+qualification. Do not assume one client's successful pairing qualifies another.
 
 Before removing a path, combine static call-site inventory with representative
 owner usage evidence. Include control-surface buttons, triggers, presets,
@@ -55,6 +56,10 @@ keybindings, custom URLs, startup registration and shutdown callers. Preserve
 the current layout export, source revision and installed artifact for rollback.
 Do not delete credentials or settings merely because their implementation is
 scheduled for removal.
+
+Startup registration needs runtime verification; filesystem searches alone do
+not establish the state of SMAppService or all login mechanisms. The linked
+inventory records the checked surfaces and remaining gaps.
 
 Remove Apple-specific source, UI, packaging and tests coherently after caller
 migration. Check shared entitlements, Bonjour declarations, termination and

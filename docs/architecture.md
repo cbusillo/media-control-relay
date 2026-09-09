@@ -74,6 +74,8 @@ controls and macros; Home Assistant owns device automation. See
 [Product scope](product-scope.md). The existing external URL and Apple Companion
 boundaries below describe transitional implementation that remains supported
 until its callers migrate; they are not a roadmap for expanding MCR.
+Optional integrations must not add runtime dependencies to the retained
+keyboard path or the pure core.
 
 ### Optional Apple Companion Boundary
 
