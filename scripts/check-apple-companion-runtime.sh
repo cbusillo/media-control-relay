@@ -338,6 +338,8 @@ if [ -n "$runtime_path" ]; then
 	  digest_lines = paths.map do |path|
 	    relative = path.delete_prefix(root + File::SEPARATOR)
 	    next if relative.empty? || relative == "manifest.json" || File.directory?(path)
+	    # Finder metadata is not runtime payload; links retain normal validation.
+	    next if File.basename(path) == ".DS_Store" && File.lstat(path).file?
 	    mode = format("%03o", File.lstat(path).mode & 0o777)
 	    if File.symlink?(path)
 	      target = File.realpath(path)

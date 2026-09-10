@@ -22,7 +22,8 @@ bootloader and another binary provenance surface.
 
 The runtime proxy and package notice reviews are complete. Local Developer ID
 signing, same-Team runtime launch, notarization, quarantine assessment, rollback,
-and App Store exclusion evidence also pass. The exact arm64 runtime and recorded artifact are now qualified using the
+and App Store exclusion evidence also pass. The exact arm64 runtime and recorded
+artifact are now qualified using the
 combined physical development-Mac and pristine virtualized acceptance below.
 New release artifacts still require the notarization runbook and release approval.
 
@@ -67,6 +68,10 @@ pure-Python implementation is retained. The arm64 standalone interpreter and
   proxy and retained wheel files, requiring byte-for-byte equality; and
 - emits a deterministic manifest of packages, license evidence, runtime notice
   sources, native code, input hashes, and the complete staged-content digest.
+
+Regular `.DS_Store` files created by Finder are excluded from the content
+digest during both staging and verification. Symlinks and native-code inventory
+remain subject to the existing checks; pinned payload hashes do not change.
 
 Two independent clean stages produced the same pinned requirements digest,
 31-package inventory, 19-file runtime notice proxy, 38-file package license
@@ -116,7 +121,8 @@ The three package reviews are resolved:
 
 The generated notice set is an engineering integrity record, not a claim that
 the notices are legally sufficient or that every obligation has been
-discharged. The source manifest now records `qualified` status. Existing candidate staging
+discharged. The source manifest now records `qualified` status. Existing
+candidate staging
 markers and generated notice terminology remain stable; they identify the
 validated payload format and do not override distribution approval metadata.
 
@@ -184,7 +190,8 @@ Store exclusion. CI proves the packaging and integrity boundary on copied build
 products with ad-hoc signatures, including native, Python-resource, and marker
 tamper failures. Local Developer ID qualification established same-Team locator
 acceptance, Python launch without weakened entitlements, notarization,
-quarantine assessment, rollback, and Keychain preservation. The combined qualification below completes the outstanding tooling-free
+quarantine assessment, rollback, and Keychain preservation. The combined
+qualification below completes the outstanding tooling-free
 launch and online/offline Gatekeeper evidence for this exact artifact.
 
 ## Recorded Qualification

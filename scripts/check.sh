@@ -65,6 +65,7 @@ scripts/check-apple-companion-runtime.sh
 	scripts/stage-apple-companion-runtime.sh "$runtime_candidate"
 )
 scripts/check-apple-companion-runtime.sh "$runtime_candidate"
+scripts/test-apple-companion-runtime-metadata.sh "$runtime_candidate"
 ruby -c scripts/generate-apple-companion-notices.rb
 swiftc -typecheck scripts/generate-app-icon.swift
 scripts/check-secrets.sh
@@ -81,6 +82,7 @@ shellcheck \
 	scripts/check-secrets.sh \
 	scripts/check-apple-companion-helper.sh \
 	scripts/check-apple-companion-runtime.sh \
+	scripts/test-apple-companion-runtime-metadata.sh \
 	scripts/check-apple-companion-runtime-signing.sh \
 	scripts/apple-companion-helper.sh \
 	scripts/package-apple-companion-runtime.sh \
