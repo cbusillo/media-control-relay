@@ -3,7 +3,15 @@
 set -eu
 repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 candidate="$(mktemp -d "${TMPDIR:-/tmp}/mcr-metadata.XXXXXX")"
-trap 'rm -rf "$candidate"' EXIT HUP INT TERM
+cleanup() {
+	# Finder may recreate metadata while removal is in progress. Keep this
+	# disposable-copy cleanup failure separate from the verifier test verdict.
+	rm -rf "$candidate" || printf 'Temporary runtime copy retained at %s (may be partially removed)\n' "$candidate" >&2
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 cp -R "${1:?Pass a staged runtime}/." "$candidate/"
 check="$repo_root/scripts/check-apple-companion-runtime.sh"
 "$check" "$candidate" >/dev/null
