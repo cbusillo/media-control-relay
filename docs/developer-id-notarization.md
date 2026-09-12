@@ -61,7 +61,6 @@ APP="${ARCHIVE}/Products/Applications/Media Control Relay.app"
 ROLLBACK_APP="${ARTIFACT_ROOT}/rollback/Media Control Relay.app"
 SUBMISSION_ZIP="${ARTIFACT_ROOT}/Media-Control-Relay-submission.zip"
 FINAL_ZIP="${ARTIFACT_ROOT}/Media-Control-Relay-notarized.zip"
-RUNTIME_CANDIDATE="${PWD}/scratch/apple-companion-runtime-candidate"
 
 test "$(git rev-parse HEAD)" = "${EXPECTED_COMMIT}"
 test -z "$(git status --porcelain)"
@@ -118,12 +117,7 @@ xcodebuild \
   STRIP_INSTALLED_PRODUCT=NO \
   archive
 
-scripts/stage-apple-companion-runtime.sh "${RUNTIME_CANDIDATE}"
-scripts/check-apple-companion-runtime.sh "${RUNTIME_CANDIDATE}"
-scripts/package-apple-companion-runtime.sh \
-  "${APP}" \
-  "${RUNTIME_CANDIDATE}" \
-  "${IDENTITY}"
+scripts/check-no-apple-runtime.sh "${APP}"
 
 strip "${APP}/Contents/MacOS/Media Control Relay"
 
@@ -166,26 +160,8 @@ if [ "${HAS_ROLLBACK}" = true ]; then
 fi
 ```
 
-The packaging script operates only on an already archived application that
-contains the live Apple Companion adapter. It rejects the App Store partition,
-validates the pristine candidate before copying it, signs exactly the 17 Mach-O
-leaves recorded in `manifest.json` with hardened runtime and no entitlements,
-and leaves the outer application signing to the following command. Do not write
-anything into the application bundle after that outer signature is applied.
-The archive intentionally keeps its global Swift symbol table until the
-packaging gate proves that the live adapter is present in the arm64 slice that
-runs the packaged helper. Strip the outer
-executable only after runtime admission and before applying the final outer
-signature. A symbol-stripped input is rejected, and the sandbox refusal remains
-authoritative for preventing the App Store partition from receiving the
-runtime.
-
-Signing changes Mach-O bytes, so the candidate manifest and package `RECORD`
-hashes are intentionally a pre-sign provenance boundary. They remain unchanged
-inside the application as evidence of the exact candidate that was admitted.
-The outer application code signature becomes the shipped integrity boundary for
-the signed native leaves, launcher, Python resources, notices, marker, and
-manifest.
+Current archives contain no Apple TV helper or Python runtime. Validate runtime
+absence before signing, and do not modify the bundle after signing.
 
 Preserving the prior designated requirement avoids turning a local-alpha update
 into a new macOS privacy identity. A clean installation without an accepted
@@ -198,29 +174,7 @@ before submission:
 ```bash
 codesign --verify --deep --strict --verbose=2 "${APP}"
 
-RUNTIME="${APP}/Contents/Resources/AppleCompanionRuntime"
-EXPECTED_NATIVE_CODE_COUNT="$(
-  jq -er '.signing.nativeCodeCount' AppleCompanionHelper/runtime-source.json
-)"
-test "$(jq -r '.nativeCode | length' "${RUNTIME}/manifest.json")" \
-  -eq "${EXPECTED_NATIVE_CODE_COUNT}"
-jq -er '.nativeCode[].path' "${RUNTIME}/manifest.json" |
-  while IFS= read -r relative_path; do
-    codesign --verify --strict --all-architectures \
-      "${RUNTIME}/${relative_path}"
-    LEAF_SIGNATURE="$(
-      codesign -dv --verbose=4 "${RUNTIME}/${relative_path}" 2>&1
-    )"
-    grep -Eq 'flags=.*runtime' <<< "${LEAF_SIGNATURE}"
-    grep -Fq "Authority=${IDENTITY}" <<< "${LEAF_SIGNATURE}"
-  done
-
-set +e
-MEDIA_CONTROL_RELAY_SOCKET='' \
-  "${RUNTIME}/bin/apple-companion-helper" >/dev/null 2>&1
-RUNTIME_LAUNCH_STATUS=$?
-set -e
-test "${RUNTIME_LAUNCH_STATUS}" -eq 2
+scripts/check-no-apple-runtime.sh "${APP}"
 
 open "${APP}"
 
@@ -253,13 +207,14 @@ and quarantine state, it may accept the app as Developer ID or reject it as
 Unnotarized Developer ID. Only the post-stapling quarantine check is the
 notarization acceptance gate.
 
-The exact runtime and artifact from commit `952fea3` completed qualification on
-September 7, 2026. The [runtime provenance record](apple-companion-runtime-provenance.md#recorded-qualification)
+The historical Apple TV runtime and artifact from commit `952fea3` completed
+qualification on
+September 7, 2026. The [runtime provenance record](apple-companion-runtime-provenance.md)
 pins the full commit and hashes and separates physical development-Mac signing,
 notarization, installation, and rollback evidence from pristine arm64 VM
 acceptance, including offline Gatekeeper and fresh Finder first open. This
 scoped approval does not qualify a new build automatically or authorize release
-publication; repeat this runbook for each release artifact.
+publication; repeat the current runbook for each release artifact.
 
 Repository CI uses ad-hoc signatures to prove inventory, hardened-runtime
 flags, outer-bundle sealing, App Store refusal, and tamper detection. It cannot

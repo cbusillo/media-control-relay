@@ -31,18 +31,6 @@ targets:
         PRODUCT_NAME: MediaControlCore
         SKIP_INSTALL: true
 
-  AppleCompanionSupport:
-    type: library.static
-    platform: macOS
-    sources:
-      - path: Sources/AppleCompanionSupport
-    dependencies:
-      - target: MediaControlCore
-    settings:
-      base:
-        PRODUCT_NAME: AppleCompanionSupport
-        SKIP_INSTALL: true
-
   UPnPMediaTarget:
     type: library.static
     platform: macOS
@@ -60,8 +48,6 @@ targets:
     platform: macOS
     sources:
       - path: Sources/MediaControlRelayApp
-      - path: Sources/MediaControlRelayAppleCompanion
-      - path: Sources/MediaControlRelayAppleAbsent
       - path: Config/PrivacyInfo.xcprivacy
         buildPhase: resources
       - path: Resources/AppIcon.icns
@@ -69,8 +55,6 @@ targets:
     dependencies:
       - target: MediaControlCore
       - target: UPnPMediaTarget
-      - target: AppleCompanionSupport
-        link: false
     settings:
       base:
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: >-
@@ -84,21 +68,9 @@ targets:
         PRODUCT_NAME: Media Control Relay
         SWIFT_EMIT_LOC_STRINGS: YES
       configs:
-        Debug:
-          EXCLUDED_SOURCE_FILE_NAMES: >-
-            RemoteControlRuntimeAbsent.swift
-          LIBRARY_SEARCH_PATHS: "$(inherited) $(BUILT_PRODUCTS_DIR)"
-          OTHER_LDFLAGS: "$(inherited) -lAppleCompanionSupport"
-        Release:
-          EXCLUDED_SOURCE_FILE_NAMES: >-
-            RemoteControlRuntimeAbsent.swift
-          LIBRARY_SEARCH_PATHS: "$(inherited) $(BUILT_PRODUCTS_DIR)"
-          OTHER_LDFLAGS: "$(inherited) -lAppleCompanionSupport"
         AppStore:
           CODE_SIGN_ENTITLEMENTS: >-
             Config/MediaControlRelayAppStore.entitlements
-          EXCLUDED_SOURCE_FILE_NAMES: >-
-            RemoteControlRuntimeLive.swift
 
   MediaControlCoreTests:
     type: bundle.unit-test
@@ -112,20 +84,6 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: >-
           com.shinycomputers.media-control-relay.core-tests
-
-  AppleCompanionSupportTests:
-    type: bundle.unit-test
-    platform: macOS
-    sources:
-      - path: Tests/AppleCompanionSupportTests
-    dependencies:
-      - target: AppleCompanionSupport
-      - target: MediaControlCore
-    settings:
-      base:
-        GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: >-
-          com.shinycomputers.media-control-relay.apple-companion-tests
 
   UPnPMediaTargetTests:
     type: bundle.unit-test
@@ -173,7 +131,6 @@ schemes:
     test:
       targets:
         - MediaControlCoreTests
-        - AppleCompanionSupportTests
         - UPnPMediaTargetTests
         - MediaControlRelayAppTests
     archive:

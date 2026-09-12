@@ -21,51 +21,13 @@ command -v ruby >/dev/null 2>&1 || {
 	printf 'Ruby is required for JSON and YAML validation\n' >&2
 	exit 69
 }
-command -v uv >/dev/null 2>&1 || {
-	printf 'uv is required for Apple Companion helper validation\n' >&2
-	exit 69
-}
-
 swift test
-helper_temporary_directory="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-uv.XXXXXX")"
-helper_environment="$helper_temporary_directory/environment"
-runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-runtime.XXXXXX")"
-runtime_candidate="$repo_root/scratch/.validation-apple-companion-runtime.$$"
+runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-build.XXXXXX")"
 release_archive="$runtime_check_root/MediaControlRelay.xcarchive"
-runtime_bundle_relative_path="$(ruby -rjson -e '
-  contract = JSON.parse(File.read("AppleCompanionHelper/runtime-contract.json"))
-  puts contract.fetch("bundleRelativePath")
-')"
-trap 'rm -rf "$helper_temporary_directory" "$runtime_check_root" "$runtime_candidate"' EXIT HUP INT TERM
-(
-	cd AppleCompanionHelper
-	UV_PROJECT_ENVIRONMENT="$helper_environment" \
-		uv run --locked python -m unittest discover -s tests
-)
-helper_digest_one="$(scripts/apple-companion-helper.sh digest)"
-helper_digest_two="$(scripts/apple-companion-helper.sh digest)"
-[ "$helper_digest_one" = "$helper_digest_two" ] || {
-	printf 'Apple Companion helper digest is not deterministic\n' >&2
-	exit 1
-}
-if helper_status="$(scripts/apple-companion-helper.sh status --root "$runtime_check_root/missing")"; then
-	printf 'Missing Apple Companion helper unexpectedly reported installed\n' >&2
-	exit 1
-else
-	status_code="$?"
-	[ "$status_code" -eq 1 ] && [ "$helper_status" = not-installed ] || {
-		printf 'Missing Apple Companion helper status is invalid\n' >&2
-		exit 1
-	}
-fi
-scripts/check-apple-companion-helper.sh
-scripts/check-apple-companion-runtime.sh
-(
-	umask 077
-	scripts/stage-apple-companion-runtime.sh "$runtime_candidate"
-)
-scripts/check-apple-companion-runtime.sh "$runtime_candidate"
-ruby -c scripts/generate-apple-companion-notices.rb
+trap 'rm -rf "$runtime_check_root"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 swiftc -typecheck scripts/generate-app-icon.swift
 scripts/check-secrets.sh
 scripts/check-action-pins.sh
@@ -74,17 +36,13 @@ scripts/check-app-store-export.sh
 scripts/check-app-icon.sh
 shellcheck \
 	scripts/check.sh \
+	scripts/check-no-apple-runtime.sh \
+	scripts/test-no-apple-runtime.sh \
 	scripts/check-action-pins.sh \
 	scripts/check-app-icon.sh \
 	scripts/check-app-store-export.sh \
 	scripts/check-privacy-manifest.sh \
 	scripts/check-secrets.sh \
-	scripts/check-apple-companion-helper.sh \
-	scripts/check-apple-companion-runtime.sh \
-	scripts/check-apple-companion-runtime-signing.sh \
-	scripts/apple-companion-helper.sh \
-	scripts/package-apple-companion-runtime.sh \
-	scripts/stage-apple-companion-runtime.sh \
 	scripts/generate-project.sh
 find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
 	-print0 | xargs -0 actionlint
@@ -143,40 +101,7 @@ app_store_product_name="$(printf '%s\n' "$app_store_build_settings" | awk -F' = 
 	exit 1
 }
 scripts/check-app-icon.sh "$app_store_build_dir/$app_store_product_name"
-[ ! -e "$app_store_build_dir/$app_store_product_name/$runtime_bundle_relative_path" ] &&
-	[ ! -L "$app_store_build_dir/$app_store_product_name/$runtime_bundle_relative_path" ] || {
-	printf 'App Store build unexpectedly contains the standalone Apple Companion runtime\n' >&2
-	exit 1
-}
-app_store_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
-	"$app_store_build_dir/$app_store_product_name/Contents/Info.plist")"
-if nm -gU \
-	"$app_store_build_dir/$app_store_product_name/Contents/MacOS/$app_store_executable" |
-	rg -q 'AppleCompanion'; then
-	printf 'App Store executable unexpectedly links Apple Companion support\n' >&2
-	exit 1
-fi
-if nm -u \
-	"$app_store_build_dir/$app_store_product_name/Contents/MacOS/$app_store_executable" |
-	rg -q 'AppleCompanion'; then
-	printf 'App Store executable unexpectedly references Apple Companion support\n' >&2
-	exit 1
-fi
-if strings \
-	"$app_store_build_dir/$app_store_product_name/Contents/MacOS/$app_store_executable" |
-	rg -q 'AppleCompanion'; then
-	printf 'App Store executable unexpectedly contains Apple Companion metadata\n' >&2
-	exit 1
-fi
-if find "$app_store_build_dir/$app_store_product_name" \
-	\( -name '*.py' -o -name '*.pyc' -o -name 'pyatv*' \
-	-o -name 'AppleCompanionHelper*' -o -name 'apple-companion-helper*' \
-	-o -name '*.pyi' -o -name '*.pth' -o -name '*.whl' \
-	-o -name '*.dist-info' -o -name 'pyvenv.cfg' -o -name 'site-packages' \
-	-o -name 'libpython*' \) -print -quit | rg -q .; then
-	printf 'App Store build unexpectedly contains Apple Companion helper material\n' >&2
-	exit 1
-fi
+scripts/check-no-apple-runtime.sh "$app_store_build_dir/$app_store_product_name"
 release_build_settings="$(xcodebuild \
 	-project MediaControlRelay.xcodeproj \
 	-scheme MediaControlRelay \
@@ -195,28 +120,11 @@ release_product_name="$(printf '%s\n' "$release_build_settings" | awk -F' = ' '
 	printf 'Unable to resolve the Release application build path\n' >&2
 	exit 1
 }
-[ ! -e "$release_build_dir/$release_product_name/$runtime_bundle_relative_path" ] &&
-	[ ! -L "$release_build_dir/$release_product_name/$runtime_bundle_relative_path" ] || {
-	printf 'Release build unexpectedly contains an unqualified Apple Companion runtime\n' >&2
-	exit 1
-}
-release_executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
-	"$release_build_dir/$release_product_name/Contents/Info.plist")"
-if ! lipo \
-	"$release_build_dir/$release_product_name/Contents/MacOS/$release_executable" \
-	-verify_arch arm64 ||
-	! nm -arch arm64 -gU \
-		"$release_build_dir/$release_product_name/Contents/MacOS/$release_executable" |
-	rg -q 'AppleCompanion'; then
-	printf 'Release executable does not contain the live arm64 Apple Companion adapter\n' >&2
-	exit 1
-fi
+scripts/check-no-apple-runtime.sh "$release_build_dir/$release_product_name"
+scripts/test-no-apple-runtime.sh "$release_build_dir/$release_product_name"
 archived_release_app="$release_archive/Products/Applications/$release_product_name"
 [ -d "$archived_release_app" ] && [ ! -L "$archived_release_app" ] || {
-	printf 'Unable to resolve the unstripped Release archive product\n' >&2
+	printf 'Unable to resolve the Release archive product\n' >&2
 	exit 1
 }
-scripts/check-apple-companion-runtime-signing.sh \
-	"$archived_release_app" \
-	"$runtime_candidate" \
-	"$app_store_build_dir/$app_store_product_name"
+scripts/check-no-apple-runtime.sh "$archived_release_app"
