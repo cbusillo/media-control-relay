@@ -8,7 +8,8 @@ enum ExternalControlURLRouter {
     }
 
     static func route(for url: URL) -> Route {
-        guard let action = ExternalVolumeActionURLParser.action(for: url) else {
+        guard url.host == "control",
+              let action = ExternalVolumeActionURLParser.action(for: url) else {
             return .rejected
         }
         return .activeOutputVolume(action)
