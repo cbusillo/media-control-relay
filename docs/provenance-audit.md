@@ -76,77 +76,13 @@ by the App Store app.
 4. A future legacy command adapter may use the documented wire behavior and
    MIT-licensed `McKael/samtv` as a reference only if the required copyright and
    license notice land with that source.
-5. A pinned optional helper may depend on the approved `postlund/pyatv`
-   Companion release in Developer ID distribution. The App Store build must
-   remain useful without that helper and report Apple controls as unsupported.
-6. Apple pairing credentials must remain in Keychain or in-memory helper
-   storage. Default pyatv file storage is prohibited.
-7. Apple-control claims are limited to navigation, volume up/down,
-   play/pause, previous/next, and relative skip until a later audit approves a
-   broader protocol path. Native mute and playback-position state are excluded.
+5. The former Apple TV helper is retired from current MCR builds. Its protocol,
+   dependency and distribution decisions are historical evidence, not approval
+   to add that runtime back. The [pre-removal audit](https://github.com/cbusillo/media-control-relay/blob/91656bc1ecc34bf658feac9e69e844343ff81e28/docs/provenance-audit.md)
+   preserves the complete numbered decisions and qualification record.
+6. Current MCR has no Apple TV pairing or Keychain credential access.
+7. Apple TV controls belong to the separate Companion module.
 8. Modern Tizen support must receive its own provenance review before code is
    added.
 9. The project-wide MIT license applies only to original project code and
    compatible contributions. It does not override third-party obligations.
-
-10. The checked-in Apple Companion helper source and lockfile may exercise the
-    approved `pyatv==0.18.0` dependency in local tests with `MemoryStorage` only.
-    They do not approve distribution of a Python runtime or pyatv's transitive
-    dependency closure. No helper executable or Python payload may be staged
-    into a release until those exact shipped artifacts, licenses, hashes,
-    signing behavior, and notices are recorded here.
-
-11. Public validation resolves the lockfile's test-only Python dependency
-    closure from its recorded package indexes. `uv run --locked` verifies the
-    lockfile hashes, but this adds a network and package-index trust surface to
-    CI; it does not convert those dependencies into distributable product code.
-
-12. The owner may install a local test runtime with
-    `scripts/apple-companion-helper.sh`. That runtime is content-addressed,
-    owner-only Application Support state built from the checked-in Python
-    version and uv lock. It is not staged into an app, release, archive, or
-    public evidence. That fallback runtime is outside issue #90's distribution
-    qualification, which covers the exact embedded runtime, transitive artifacts,
-    licenses, hashes, signing, notarization, and notices.
-
-13. Issue #90's first distribution candidate is the exact arm64 standalone
-    CPython artifact pinned in `AppleCompanionHelper/runtime-source.json` and
-    assessed in `docs/apple-companion-runtime-provenance.md`. The pin and staging
-    proof alone do not approve distribution. The exact runtime and recorded
-    Developer ID artifact now have complete notice, nested signing, notarization,
-    rollback, tooling-free VM acceptance, and App Store exclusion evidence.
-    New release artifacts still require signing qualification and release approval.
-
-14. The candidate's deterministic notice inventory is pinned in
-    `AppleCompanionHelper/license-policy.json` and generated into
-    `AppleCompanionHelper/NOTICES.md`. It records 19 same-release runtime-proxy
-    notice files and 38 retained license/notice files across all 31 locked
-    Python distributions. Artifact comparison establishes that the stripped
-    runtime tree is a subset of the pinned full notice source. The certifi and
-    chacha20poly1305-reuseable reviews are recorded, and zeroconf's optional 18
-    Cython modules are removed so the shipped helper uses its retained
-    pure-Python LGPL source. No notice review item remains open.
-
-15. `AppleCompanionHelper/runtime-contract.json` binds the standalone marker,
-    manifest, launcher, interpreter, Python version, arm64 policy, exact content
-    digest, and Developer ID resource location across staging validation
-    and the Swift locator. A present invalid bundled runtime fails closed; an
-    absent bundle still permits the owner-installed local runtime. The
-    out-of-band Developer ID packager validates the unsigned candidate, signs
-    all 17 manifested Mach-O leaves before the outer app, and establishes the
-    application code signature as the shipped integrity boundary. Current
-    Release and App Store build products must still prove the bundle location is
-    absent. Same-Team locator and Python launch, notarization, quarantine,
-    rollback, and notice review pass. Owner-approved combined physical
-    development-Mac and pristine arm64 VM qualification also passes, including
-    offline Gatekeeper and fresh Finder installation with direct installed app
-    and helper paths. The runtime provenance record pins the exact scope and
-    artifact; no clean second physical Mac or real-TV connectivity is claimed.
-
-## Required Follow-Up
-
-- Record exact source revisions and test-vector origins in protocol PRs.
-- Keep all real hosts, tokens, session values, UUIDs, and pairing responses out
-  of fixtures, screenshots, logs, and public issue comments.
-- Obtain legal review before reconsidering any pairing implementation that uses
-  firmware-derived or application-derived key material.

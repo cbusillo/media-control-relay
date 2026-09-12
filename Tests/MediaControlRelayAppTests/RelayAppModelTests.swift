@@ -909,6 +909,23 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Retired remote volume URLs cannot enter the cold-launch volume queue")
+    func retiredRemoteURLsDoNotQueueVolume() async {
+        let delegate = RelayAppDelegate()
+        delegate.receive(urls: [
+            URL(string: "media-control-relay://remote/volume/up")!,
+            URL(string: "media-control-relay://remote/seek/forward/30")!,
+        ])
+        #expect(delegate.pendingActionCount == 0)
+        let harness = makeHarness(configuration: makePreviewConfiguration(), session: nil)
+        await waitUntil { harness.model.relayState == .active }
+        delegate.attach(model: harness.model)
+        #expect(harness.model.commandsRecorded == 0)
+        #expect(harness.model.externalVolumeActionsAccepted == 0)
+        #expect(harness.model.externalVolumeActionsRejected == 2)
+        harness.cleanup()
+    }
+
     @Test("External URL delivery queues cold-launch actions and records rejection safely")
     func externalURLDeliveryQueuesColdLaunchActions() async {
         let delegate = RelayAppDelegate()

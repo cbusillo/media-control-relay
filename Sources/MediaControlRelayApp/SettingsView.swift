@@ -67,12 +67,6 @@ struct SettingsView: View {
                 Label("Media Target", systemImage: "record.circle")
             }
 
-            if let remoteControl = model.remoteControl {
-                RemoteControlSettingsView(model: remoteControl)
-                    .tabItem {
-                        Label("Apple TV", systemImage: "appletv")
-                    }
-            }
 
             Form {
                 Section {

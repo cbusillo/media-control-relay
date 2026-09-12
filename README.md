@@ -1,9 +1,9 @@
 # Media Control Relay
 
-Media Control Relay is a native macOS utility that routes actions from local
-control surfaces to supported media devices. The first target family is
-compatible Samsung TVs, with optional integrations tracked for Apple TV,
-HomePod, and Loupedeck and room for future control surfaces and targets.
+Media Control Relay is a native macOS utility for keyboard volume and mute
+routing to compatible Samsung TVs, with normal Mac behavior on unmatched routes.
+Companion owns explicit control-surface actions and Home Assistant owns device
+automation. Neither is required for MCR keyboard routing.
 
 > [!IMPORTANT]
 > This repository is an early development preview. The signed app can create an
@@ -97,7 +97,7 @@ scripts/generate-project.sh
 - [Target volume overlay](docs/target-overlay.md)
 - [Relay routing](docs/relay-routing.md)
 - [Loupedeck integration](docs/loupedeck-integration.md)
-- [Apple Companion local testing](docs/apple-companion-local-testing.md)
+- [Product scope and Apple TV migration](docs/product-scope.md)
 - [Input Monitoring probe](docs/input-monitoring.md)
 - [Samsung UPnP qualification](docs/samsung-upnp-qualification.md)
 - [Product identity](docs/product-identity.md)

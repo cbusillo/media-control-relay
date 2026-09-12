@@ -1,20 +1,11 @@
 # Third-Party Notices
 
-## Apple Companion runtime candidate
+## Historical Apple TV dependency
 
-The deterministic candidate inventory for the optional Developer ID Apple
-Companion runtime is generated at `AppleCompanionHelper/NOTICES.md`. It covers
-the pinned same-release runtime notice proxy and the exact locked Python
-dependency closure. The inventory is an engineering integrity record, not legal
-advice or distribution approval; its explicit review items remain unresolved.
-
-## postlund/pyatv v0.18.0
-
-Media Control Relay may use `postlund/pyatv` `v0.18.0` as a pinned optional
-Developer ID helper dependency. Tag `v0.18.0` resolves to commit
-`d88abc960e188d3cd2498d19117e75d7711d8600`. The published wheel
-`pyatv-0.18.0-py3-none-any.whl` has sha256
-`3df6af5679eea809ff17954cf9f5d33c7e5ed5a8d1c90fa14090a0425ce5cd8a`.
+Current MCR builds do not include pyatv or the former Python helper runtime.
+The previous dependency inventory and qualification evidence are preserved in
+[the historical source](https://github.com/cbusillo/media-control-relay/tree/91656bc1ecc34bf658feac9e69e844343ff81e28/AppleCompanionHelper).
+The following pyatv notice is retained for provenance of the former integration.
 
 The MIT License (MIT)
 

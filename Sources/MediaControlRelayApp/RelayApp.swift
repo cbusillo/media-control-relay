@@ -54,8 +54,7 @@ struct RelayApp: App {
 #if DEBUG
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil else {
             return RelayAppModel(
-                targetOverlayPresenter: TargetOverlayController(),
-                remoteControl: RemoteControlRuntimeFactory.make()
+                targetOverlayPresenter: TargetOverlayController()
             )
         }
 
@@ -78,8 +77,7 @@ struct RelayApp: App {
         )
 #else
         RelayAppModel(
-            targetOverlayPresenter: TargetOverlayController(),
-            remoteControl: RemoteControlRuntimeFactory.make()
+            targetOverlayPresenter: TargetOverlayController()
         )
 #endif
     }

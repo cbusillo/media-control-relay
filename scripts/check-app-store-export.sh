@@ -70,43 +70,16 @@ ruby -rjson -ryaml -e '
     config_entitlement_overrides == expected_config_entitlement_overrides
 
   app_target = project.dig("targets", "MediaControlRelay")
-  expected_source_paths = [
-    "Sources/MediaControlRelayApp",
-    "Sources/MediaControlRelayAppleCompanion",
-    "Sources/MediaControlRelayAppleAbsent",
-  ]
-  source_paths = app_target.fetch("sources").each_with_object([]) do |source, paths|
-    path = source.is_a?(Hash) ? source["path"] : source
-    paths << path if path
-  end
-  abort "App target must include the shared, live, and absent remote source partitions" unless
-    expected_source_paths.all? { |path| source_paths.include?(path) }
-
-  apple_dependency = app_target.fetch("dependencies").find do |dependency|
-    dependency.is_a?(Hash) && dependency["target"] == "AppleCompanionSupport"
-  end
-  abort "AppleCompanionSupport must be a non-linking app dependency" unless
-    apple_dependency == { "target" => "AppleCompanionSupport", "link" => false }
-
-  configs = app_target.dig("settings", "configs")
-  expected_remote_configs = {
-    "Debug" => {
-      "EXCLUDED_SOURCE_FILE_NAMES" => "RemoteControlRuntimeAbsent.swift",
-      "LIBRARY_SEARCH_PATHS" => "$(inherited) $(BUILT_PRODUCTS_DIR)",
-      "OTHER_LDFLAGS" => "$(inherited) -lAppleCompanionSupport",
-    },
-    "Release" => {
-      "EXCLUDED_SOURCE_FILE_NAMES" => "RemoteControlRuntimeAbsent.swift",
-      "LIBRARY_SEARCH_PATHS" => "$(inherited) $(BUILT_PRODUCTS_DIR)",
-      "OTHER_LDFLAGS" => "$(inherited) -lAppleCompanionSupport",
-    },
-    "AppStore" => {
-      "CODE_SIGN_ENTITLEMENTS" => "Config/MediaControlRelayAppStore.entitlements",
-      "EXCLUDED_SOURCE_FILE_NAMES" => "RemoteControlRuntimeLive.swift",
-    },
-  }
-  abort "Remote runtime configuration partition does not match policy" unless
-    configs == expected_remote_configs
+  source_paths = app_target.fetch("sources").map { |item| item.is_a?(Hash) ? item["path"] : item }
+  abort "App target must use only the retained application source" unless
+    source_paths.grep(/^Sources\//) == ["Sources/MediaControlRelayApp"]
+  dependencies = app_target.fetch("dependencies").map { |item| item.fetch("target") }
+  abort "App dependencies must contain only retained routing libraries" unless
+    dependencies.sort == ["MediaControlCore", "UPnPMediaTarget"]
+  abort "Unexpected per-configuration runtime settings" unless
+    app_target.dig("settings", "configs") == {
+      "AppStore" => { "CODE_SIGN_ENTITLEMENTS" => "Config/MediaControlRelayAppStore.entitlements" },
+    }
 
   app_store_entitlements = JSON.parse(File.read(ARGV.fetch(3)))
   expected_app_store_entitlements = {

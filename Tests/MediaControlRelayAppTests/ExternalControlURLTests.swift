@@ -33,30 +33,28 @@ struct ExternalControlURLTests {
         }
     }
 
-    @Test("Accepts the canonical remote URLs through the router")
-    func acceptsCanonicalRemoteURLs() {
-        let cases: [(String, MediaRemoteAction)] = [
-            ("media-control-relay://remote/navigate/up", .navigate(.up)),
-            ("media-control-relay://remote/navigate/down", .navigate(.down)),
-            ("media-control-relay://remote/navigate/left", .navigate(.left)),
-            ("media-control-relay://remote/navigate/right", .navigate(.right)),
-            ("media-control-relay://remote/select", .select),
-            ("media-control-relay://remote/back", .back),
-            ("media-control-relay://remote/home", .home),
-            ("media-control-relay://remote/play-pause", .playPause),
-            ("media-control-relay://remote/previous", .previous),
-            ("media-control-relay://remote/next", .next),
-            ("media-control-relay://remote/seek/forward/10", .seek(10)),
-            ("media-control-relay://remote/seek/forward/30", .seek(30)),
-            ("media-control-relay://remote/seek/backward/10", .seek(-10)),
-            ("media-control-relay://remote/seek/backward/30", .seek(-30)),
-            ("media-control-relay://remote/volume/up", .volume(1)),
-            ("media-control-relay://remote/volume/down", .volume(-1)),
+    @Test("Retired Apple TV URLs cannot route to active-output volume")
+    func rejectsRetiredRemoteURLs() {
+        let urls = [
+            "media-control-relay://remote/navigate/up",
+            "media-control-relay://remote/navigate/down",
+            "media-control-relay://remote/navigate/left",
+            "media-control-relay://remote/navigate/right",
+            "media-control-relay://remote/select",
+            "media-control-relay://remote/back",
+            "media-control-relay://remote/home",
+            "media-control-relay://remote/play-pause",
+            "media-control-relay://remote/previous",
+            "media-control-relay://remote/next",
+            "media-control-relay://remote/seek/forward/10",
+            "media-control-relay://remote/seek/forward/30",
+            "media-control-relay://remote/seek/backward/10",
+            "media-control-relay://remote/seek/backward/30",
+            "media-control-relay://remote/volume/up",
+            "media-control-relay://remote/volume/down",
         ]
-
-        for (rawURL, expectedAction) in cases {
-            let url = URL(string: rawURL)
-            #expect(url.map(ExternalControlURLRouter.route(for:)) == .remote(expectedAction))
+        for rawURL in urls {
+            #expect(ExternalControlURLRouter.route(for: URL(string: rawURL)!) == .rejected)
         }
     }
 
