@@ -14,10 +14,10 @@ printf '#!/bin/sh\nexit 2\n' >"$root/tools/rg"
 chmod +x "$root/tools/rg"
 status=0
 PATH="$root/tools:$PATH" "$repo_root/scripts/check-no-apple-runtime.sh" "$app" >"$root/tool-error" 2>&1 || status=$?
-[ "$status" -eq 2 ] && grep -q 'Runtime symbol inspection failed' "$root/tool-error" || {
+if [ "$status" -ne 2 ] || ! grep -q 'Runtime symbol inspection failed' "$root/tool-error"; then
 	printf 'Runtime absence guard did not fail closed on a search-tool error\n' >&2
 	exit 1
-}
+fi
 mkdir -p "$app/Contents/Resources"
 printf '# retired helper fixture\n' >"$app/Contents/Resources/helper.py"
 if "$repo_root/scripts/check-no-apple-runtime.sh" "$app" >/dev/null 2>&1; then
