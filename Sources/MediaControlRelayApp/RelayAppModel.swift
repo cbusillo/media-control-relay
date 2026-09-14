@@ -87,6 +87,7 @@ final class RelayAppModel {
     private let volumeKeySuppressionTiming: VolumeKeySuppressionTiming
     private let monotonicTimeProvider: MonotonicTimeProvider
     private let externalVolumeActionDuplicateIntervalNanoseconds: UInt64
+    private let targetReconnectWait: @Sendable (TimeInterval) async throws -> Void
     private let targetOverlayPresenter: any TargetOverlayPresenting
     private let mediaTargetSessionFactory: (RelayConfiguration?) -> MediaTargetSession?
     private let coordinator: RelayCoordinator
@@ -101,6 +102,10 @@ final class RelayAppModel {
     private var targetProbeGeneration: UInt64 = 0
     private var targetKeepaliveTask: Task<Void, Never>?
     private var targetKeepaliveGeneration: UInt64 = 0
+    private var targetReconnectTask: Task<Void, Never>?
+    private var targetReconnectGeneration: UInt64 = 0
+    private var nextTargetReconnectDelay: TimeInterval = 1
+    private var isShuttingDown = false
     private var commandContinuation: AsyncStream<TargetCommandRequest>.Continuation?
     private var commandPumpTask: Task<Void, Never>?
     private var commandGeneration: UInt64 = 0
@@ -143,6 +148,9 @@ final class RelayAppModel {
         volumeKeySuppressionTiming: VolumeKeySuppressionTiming = .default,
         monotonicTimeProvider: MonotonicTimeProvider = .live,
         externalVolumeActionDuplicateIntervalNanoseconds: UInt64 = 100_000_000,
+        targetReconnectWait: @escaping @Sendable (TimeInterval) async throws -> Void = {
+            try await Task.sleep(for: .seconds($0))
+        },
         targetOverlayPresenter: any TargetOverlayPresenting = InactiveTargetOverlayPresenter(),
         mediaTargetSessionFactory: @escaping (RelayConfiguration?) -> MediaTargetSession? = {
             MediaTargetSessionFactory.make(configuration: $0)
@@ -162,6 +170,7 @@ final class RelayAppModel {
         self.monotonicTimeProvider = monotonicTimeProvider
         self.externalVolumeActionDuplicateIntervalNanoseconds =
             externalVolumeActionDuplicateIntervalNanoseconds
+        self.targetReconnectWait = targetReconnectWait
         volumeKeyMonitor.setSuppressionTiming(volumeKeySuppressionTiming)
         self.targetOverlayPresenter = targetOverlayPresenter
         self.discovery = discovery
@@ -495,6 +504,7 @@ final class RelayAppModel {
     }
 
     func shutdown() {
+        isShuttingDown = true
         volumeKeyMonitor.revokeSuppressionAuthority()
         volumeKeyMonitor.stop()
         volumeKeySuppressionMode = .listenOnly
@@ -838,6 +848,7 @@ final class RelayAppModel {
         }
         syncTargetOverlay()
         syncVolumeKeySuppressionAuthority()
+        updateTargetReconnect()
     }
 
     private func syncVolumeKeySuppressionAuthority() {
@@ -962,6 +973,7 @@ final class RelayAppModel {
             defer {
                 if let self, self.targetProbeGeneration == generation {
                     self.targetProbeTask = nil
+                    self.updateTargetReconnect()
                 }
             }
 
@@ -1030,10 +1042,77 @@ final class RelayAppModel {
     }
 
     private func cancelTargetProbe() {
+        cancelTargetReconnect(resetBackoff: true)
         targetProbeGeneration &+= 1
         targetProbeTask?.cancel()
         targetProbeTask = nil
         cancelCommandDispatch()
+    }
+
+    private var canAutomaticallyReconnect: Bool {
+        !isShuttingDown &&
+            !awaitingWakeCompletion &&
+            routeObservationState == .observing &&
+            activationMatches &&
+            inputMonitoringAuthorization == .granted &&
+            targetConfiguration?.target.kind == .upnpMediaRenderer &&
+            (networkPathSnapshot.status == .unknown || networkPathSnapshot.status == .available) &&
+            relayState == .offline
+    }
+
+    private func updateTargetReconnect() {
+        guard canAutomaticallyReconnect else {
+            // Keep the backoff across the probe started by the retry itself.
+            cancelTargetReconnect(resetBackoff: relayState != .checkingTarget)
+            return
+        }
+        guard targetReconnectTask == nil,
+              targetProbeTask == nil,
+              let mediaTargetSession else {
+            return
+        }
+
+        let delay = nextTargetReconnectDelay
+        nextTargetReconnectDelay = min(delay * 2, 30)
+        let wait = targetReconnectWait
+        targetReconnectGeneration &+= 1
+        let generation = targetReconnectGeneration
+        targetReconnectTask = Task { @MainActor [weak self, mediaTargetSession] in
+            defer {
+                if let self, self.targetReconnectGeneration == generation {
+                    self.targetReconnectTask = nil
+                }
+            }
+            do {
+                try await wait(delay)
+            } catch {
+                return
+            }
+            guard let self,
+                  !Task.isCancelled,
+                  targetReconnectGeneration == generation,
+                  self.mediaTargetSession === mediaTargetSession,
+                  canAutomaticallyReconnect,
+                  targetProbeTask == nil else {
+                return
+            }
+
+            targetReconnectTask = nil
+            targetRecoveryAttempts += 1
+            apply(.transportReachability(.unknown))
+            // Rediscover the saved identity so a changed TV address is not
+            // retried indefinitely. Probe only; never replay volume commands.
+            startTargetProbe(mediaTargetSession, invalidation: .networkContextChanged)
+        }
+    }
+
+    private func cancelTargetReconnect(resetBackoff: Bool) {
+        targetReconnectGeneration &+= 1
+        targetReconnectTask?.cancel()
+        targetReconnectTask = nil
+        if resetBackoff {
+            nextTargetReconnectDelay = 1
+        }
     }
 
     private func scheduleTargetKeepalive(
