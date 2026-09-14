@@ -791,7 +791,8 @@ struct RelayAppModelTests {
         let harness = makeHarness(
             configuration: makeConfiguration(stableIdentifier: "fixture-target"),
             session: session,
-            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 1)
+            targetPresentationTiming: MediaTargetPresentationTiming(announcementInterval: 1),
+            reconnectClock: ManualReconnectClock()
         )
 
         await waitUntil { harness.model.relayState == .active }
@@ -1580,6 +1581,159 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("An offline target reconnects without a route change or replaying commands")
+    func automaticallyReconnectsOfflineTarget() async {
+        let clock = ManualReconnectClock()
+        let target = AppModelTargetStub()
+        await target.setFailure(.timeout)
+        let recorder = AppModelInvalidationRecorder()
+        let session = MediaTargetSession(target: target, invalidateResolution: {
+            await recorder.record($0)
+        })
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: session,
+            reconnectClock: clock
+        )
+        defer { harness.cleanup() }
+        await waitUntil { clock.pendingCount == 1 }
+        #expect(harness.model.relayState == .offline)
+        let initialInvalidations = await recorder.reasons
+
+        harness.model.handleExternalVolumeAction(.up)
+        #expect(harness.model.commandsRecorded == 0)
+        await target.setFailure(nil)
+        clock.advance()
+        await waitUntil { harness.model.relayState == .active }
+
+        #expect(await target.appliedOperations.isEmpty)
+        #expect(await target.readCount == 2)
+        #expect(harness.model.targetRecoveryAttempts == 1)
+        #expect(clock.pendingCount == 0)
+        #expect(await recorder.reasons == initialInvalidations + [.networkContextChanged])
+        harness.model.handleExternalVolumeAction(.mute)
+        await waitUntilAsync { await target.appliedOperations.count == 1 }
+        #expect(harness.model.targetCommandsDispatched == 1)
+    }
+
+    @Test("Reconnect retries back off, remain single-flight and reset after recovery")
+    func reconnectBackoffAndReset() async {
+        let clock = ManualReconnectClock()
+        let target = AppModelTargetStub()
+        await target.setFailure(.timeout)
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: MediaTargetSession(target: target, invalidateResolution: { _ in }),
+            reconnectClock: clock
+        )
+        defer { harness.cleanup() }
+
+        for expectedDelay in [1.0, 2, 4, 8, 16, 30, 30] {
+            await waitUntil { clock.pendingCount == 1 }
+            #expect(clock.delays.last == expectedDelay)
+            harness.model.handleVolumeAction(.down)
+            harness.model.handleVolumeAction(.up)
+            #expect(clock.pendingCount == 1)
+            let oldReadCount = await target.readCount
+            clock.advance()
+            await waitUntilAsync { await target.readCount > oldReadCount }
+        }
+        await waitUntil { clock.pendingCount == 1 }
+        await target.setFailure(nil)
+        clock.advance()
+        await waitUntil { harness.model.relayState == .active }
+        #expect(clock.pendingCount == 0)
+        #expect(await target.appliedOperations.isEmpty)
+
+        await target.setFailure(.timeout)
+        harness.model.handleVolumeAction(.mute)
+        await waitUntil { clock.pendingCount == 1 }
+        #expect(clock.delays.last == 1)
+        #expect(harness.model.relayState == .offline)
+    }
+
+    @Test("Ineligible lifecycle and routing states cancel a pending reconnect", arguments: [
+        "sleep", "route", "network", "permission", "shutdown", "remove",
+    ])
+    func reconnectCancellation(reason: String) async {
+        let clock = ManualReconnectClock()
+        let target = AppModelTargetStub()
+        let authorization = MutableAuthorizationStub(isGranted: true)
+        await target.setFailure(.timeout)
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: MediaTargetSession(target: target, invalidateResolution: { _ in }),
+            inputMonitoringAccess: InputMonitoringAccessClient(
+                preflight: { authorization.isGranted }, request: {}
+            ),
+            reconnectClock: clock
+        )
+        defer { harness.cleanup() }
+        await waitUntil { clock.pendingCount == 1 }
+        let reads = await target.readCount
+        switch reason {
+        case "sleep": harness.routeObserver.sleep()
+        case "route": harness.routeObserver.publish(RouteSnapshot(audioOutput: nil, displays: []))
+        case "network": harness.networkPathObserver.publish(NetworkPathSnapshot(status: .unavailable))
+        case "permission":
+            authorization.isGranted = false
+            harness.model.refreshInputMonitoring()
+        case "shutdown": harness.model.shutdown()
+        default: harness.model.removeConfiguredTarget()
+        }
+        await waitUntil { clock.pendingCount == 0 }
+        clock.advance()
+        #expect(await target.readCount == reads)
+        #expect(harness.model.targetRecoveryAttempts == 0)
+    }
+
+    @Test("Manual reconnect cancels the pending automatic retry")
+    func manualReconnectSupersedesTimer() async {
+        let clock = ManualReconnectClock()
+        let target = AppModelTargetStub()
+        await target.setFailure(.timeout)
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: MediaTargetSession(target: target, invalidateResolution: { _ in }),
+            reconnectClock: clock
+        )
+        defer { harness.cleanup() }
+        await waitUntil { clock.pendingCount == 1 }
+        await target.setFailure(nil)
+        harness.model.retryTargetConnection()
+        await waitUntil { harness.model.relayState == .active && clock.pendingCount == 0 }
+        #expect(await target.readCount == 2)
+        #expect(harness.model.targetRecoveryAttempts == 1)
+    }
+
+    @Test("A failed keepalive automatically recovers and rearms only after a fresh probe")
+    func failedKeepaliveAutomaticallyRecovers() async {
+        let clock = ManualReconnectClock()
+        let target = AppModelTargetStub()
+        let monitor = SuppressionTrackingVolumeKeyMonitor()
+        let harness = makeHarness(
+            configuration: makeConfiguration(stableIdentifier: "fixture-target"),
+            session: MediaTargetSession(target: target, invalidateResolution: { _ in }),
+            volumeKeyMonitor: monitor,
+            volumeKeySuppressionTiming: VolumeKeySuppressionTiming(
+                targetFreshness: 0.2, keepaliveInterval: 0.05, maximumLatchIdle: 0.1
+            ),
+            accessibilityAccess: AccessibilityAccessClient(preflight: { true }, request: {}),
+            reconnectClock: clock
+        )
+        defer { harness.cleanup() }
+        await waitUntil { harness.model.relayState == .active }
+        await target.setFailure(.offline)
+        await waitUntil { clock.pendingCount == 1 }
+        #expect(harness.model.relayState == .offline)
+        #expect(monitor.authority == nil)
+        await target.setFailure(nil)
+        clock.advance()
+        await waitUntil { harness.model.relayState == .active }
+        #expect(monitor.authority != nil)
+        #expect(await target.appliedOperations.isEmpty)
+    }
+
     @Test("Preview target recovers after event tap failure")
     func previewRecoversAfterEventTapFailure() async {
         let monitor = FlakyVolumeKeyMonitor()
@@ -1680,6 +1834,7 @@ private struct AppModelHarness {
     let suiteName: String
 
     func cleanup() {
+        model.shutdown()
         defaults.removePersistentDomain(forName: suiteName)
     }
 }
@@ -1701,6 +1856,7 @@ private func makeHarness(
     ),
     accessibilityAccess: AccessibilityAccessClient = .denied,
     launchAtLoginClient: LaunchAtLoginClient? = nil,
+    reconnectClock: ManualReconnectClock? = nil,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
     let suiteName = "com.media-control-relay.app-model-tests.\(UUID().uuidString)"
@@ -1733,6 +1889,13 @@ private func makeHarness(
         targetPresentationTiming: targetPresentationTiming,
         volumeKeySuppressionTiming: volumeKeySuppressionTiming,
         monotonicTimeProvider: monotonicTimeProvider,
+        targetReconnectWait: { delay in
+            if let reconnectClock {
+                try await reconnectClock.wait(delay)
+            } else {
+                try await Task.sleep(for: .seconds(delay))
+            }
+        },
         targetOverlayPresenter: targetOverlayPresenter,
         mediaTargetSessionFactory: { configuration in
             sessionFactory?(configuration) ?? session
@@ -1746,6 +1909,33 @@ private func makeHarness(
         defaults: defaults,
         suiteName: suiteName
     )
+}
+
+@MainActor
+private final class ManualReconnectClock {
+    private(set) var delays: [TimeInterval] = []
+    private var waiters: [UUID: CheckedContinuation<Void, any Error>] = [:]
+    var pendingCount: Int { waiters.count }
+
+    func wait(_ delay: TimeInterval) async throws {
+        let id = UUID()
+        try await withTaskCancellationHandler {
+            try Task.checkCancellation()
+            delays.append(delay)
+            try await withCheckedThrowingContinuation { continuation in
+                waiters[id] = continuation
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.waiters.removeValue(forKey: id)?.resume(throwing: CancellationError())
+            }
+        }
+    }
+
+    func advance() {
+        guard let id = waiters.keys.first else { return }
+        waiters.removeValue(forKey: id)?.resume()
+    }
 }
 
 private final class TestMonotonicClock: @unchecked Sendable {
@@ -1995,6 +2185,7 @@ private actor AppModelTargetStub: MediaVolumeTarget {
     nonisolated let identity = MediaTargetIdentity(stableIdentifier: "fixture-target")
 
     private var currentState: MediaTargetVolumeState
+    private var failure: MediaTargetFailure?
     private(set) var readCount = 0
     private(set) var appliedOperations: [MediaTargetVolumeOperation] = []
 
@@ -2004,12 +2195,14 @@ private actor AppModelTargetStub: MediaVolumeTarget {
 
     func readState() async throws(MediaTargetFailure) -> MediaTargetVolumeState {
         readCount += 1
+        if let failure { throw failure }
         return currentState
     }
 
     func apply(
         _ operation: MediaTargetVolumeOperation
     ) async throws(MediaTargetFailure) -> MediaTargetVolumeState {
+        if let failure { throw failure }
         appliedOperations.append(operation)
         currentState = applying(operation, to: currentState)
         return currentState
@@ -2017,6 +2210,10 @@ private actor AppModelTargetStub: MediaVolumeTarget {
 
     func setState(_ state: MediaTargetVolumeState) {
         currentState = state
+    }
+
+    func setFailure(_ failure: MediaTargetFailure?) {
+        self.failure = failure
     }
 }
 

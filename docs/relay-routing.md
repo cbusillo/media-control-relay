@@ -45,7 +45,7 @@ outcome correlated to that exact in-flight action may move the confirmed level.
 Its local invalidation epoch is
 separate from session generations, and configuration, permission, session,
 sleep, and route changes clear all cached presentation values before recovery.
-Failed, cancelled, timed-out, mismatched, and superseded results never advance
+Failed, canceled, timed-out, mismatched, and superseded results never advance
 it. The app dismisses terminal presentation after the configured duration while
 keeping a throttled, target-agnostic accessible status on the menu-bar item and
 menu window. A failed command replaces that value with `Volume control
@@ -61,7 +61,7 @@ dependency.
 
 ## Lifecycle
 
-Commands require all of the following:
+Commands require all the following:
 
 1. a configured and supported preview target;
 2. granted Input Monitoring permission;
@@ -87,8 +87,23 @@ matching, then target reachability. Target reachability distinguishes
 `checkingTarget`, never `offline`. An explicit system-path denial is
 authoritative. The denial-compatible error observed on the initial SSDP
 multicast send remains Local Network denial while the system path is unknown or
-available, is demoted to offline when the path is unavailable, and is never
-inferred from an empty discovery result.
+available. It is demoted to offline when the path is unavailable. An empty
+discovery result never implies permission denial.
+
+## Automatic Reconnection
+
+An offline UPnP target is rediscovered automatically while its saved audio/display
+route is active and macOS permits input monitoring and local-network access.
+Retries wait 1, 2, 4, 8, 16, then 30 seconds, remaining at 30-second intervals
+until recovery. Each attempt invalidates the cached endpoint and probes the same
+saved device identity, allowing a changed address to recover without setup.
+
+Only one reconnect attempt is pending at a time. Success resets the delay; sleep,
+route loss, network loss, permission loss, target removal, and shutdown cancel
+pending retries. Manual recovery supersedes the timer. Reconnection reads target
+state and never replays volume or mute commands received while offline. Recovery
+attempt diagnostics include both automatic and manual attempts. Native key
+suppression remains disarmed until a fresh successful probe restores active state.
 
 ## Status And Diagnostics
 
