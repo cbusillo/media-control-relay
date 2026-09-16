@@ -1,4 +1,5 @@
 import AppKit
+import MediaControlCore
 import SwiftUI
 
 struct MenuBarStatusView: View {
@@ -6,18 +7,24 @@ struct MenuBarStatusView: View {
     let model: RelayAppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Media Control Relay")
+                .font(.headline)
+                .accessibilityAddTraits(.isHeader)
+
             VStack(alignment: .leading, spacing: 3) {
                 Label {
                     Text(model.statusCopy.title)
                 } icon: {
                     Image(systemName: model.statusCopy.systemImage)
                 }
-                    .font(.headline)
-                Text(model.statusCopy.detail)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .font(.subheadline.weight(.medium))
+                if model.relayState != .active || model.targetConfiguration?.target.kind == .preview {
+                    Text(model.statusCopy.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .accessibilityElement(children: .combine)
 
@@ -29,48 +36,89 @@ struct MenuBarStatusView: View {
                     .accessibilityValue(accessibleTargetStatus)
             }
 
-            HStack {
-                Button("Volume Down", systemImage: "speaker.minus") {
-                    model.handleMenuVolumeAction(.down)
-                }
-                .accessibilityLabel("Volume Down")
-                .accessibilityHint(targetControlAccessibilityHint)
-                Button("Mute", systemImage: "speaker.slash") {
-                    model.handleMenuVolumeAction(.mute)
-                }
-                .accessibilityLabel("Mute")
-                .accessibilityHint(targetControlAccessibilityHint)
-                Button("Volume Up", systemImage: "speaker.plus") {
-                    model.handleMenuVolumeAction(.up)
-                }
-                .accessibilityLabel("Volume Up")
-                .accessibilityHint(targetControlAccessibilityHint)
+            HStack(spacing: 8) {
+                volumeButton(
+                    systemImage: "speaker.minus",
+                    accessibilityLabel: "Volume Down",
+                    action: .down
+                )
+                volumeButton(
+                    systemImage: "speaker.slash",
+                    accessibilityLabel: "Mute",
+                    action: .mute
+                )
+                volumeButton(
+                    systemImage: "speaker.plus",
+                    accessibilityLabel: "Volume Up",
+                    action: .up
+                )
             }
-            .labelStyle(.iconOnly)
             .disabled(!model.targetControlsEnabled)
 
-            Divider()
-
-            Button("See Setup Preview…") {
-                openWindow(id: "setup")
-                NSApp.activate()
+            if shouldShowSetup {
+                Button("Set Up…") {
+                    openSetup()
+                }
+                .buttonStyle(.borderedProminent)
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel("Set Up")
+                .accessibilityHint("Opens the Media Control Relay setup window")
             }
-            .accessibilityLabel("See Setup Preview")
-            .accessibilityHint("Opens the Media Control Relay setup window")
-
-            SettingsLink {
-                Text("Open Settings…")
-            }
-            .accessibilityLabel("Open Settings")
 
             Divider()
 
-            Button("Quit Media Control Relay") {
-                NSApplication.shared.terminate(nil)
+            HStack {
+                SettingsLink {
+                    Text("Settings…")
+                }
+                .accessibilityLabel("Settings")
+
+                Spacer()
+
+                Button("Quit") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .accessibilityLabel("Quit Media Control Relay")
             }
-            .accessibilityLabel("Quit Media Control Relay")
         }
-        .frame(width: 280)
+        .padding(16)
+        .frame(width: 312)
+    }
+
+    private var shouldShowSetup: Bool {
+        guard model.targetConfiguration != nil else {
+            return true
+        }
+        switch model.relayState {
+        case .needsPermission, .needsLocalNetworkPermission:
+            return true
+        case .unconfigured, .unsupported, .targetAuthenticationRejected,
+             .dormant, .checkingTarget, .offline, .active:
+            return false
+        }
+    }
+
+    private func openSetup() {
+        openWindow(id: "setup")
+        NSApp.activate()
+    }
+
+    private func volumeButton(
+        systemImage: String,
+        accessibilityLabel: LocalizedStringKey,
+        action: VolumeAction
+    ) -> some View {
+        Button {
+            model.handleMenuVolumeAction(action)
+        } label: {
+            Image(systemName: systemImage)
+                .frame(maxWidth: .infinity, minHeight: 32)
+        }
+        .buttonStyle(.bordered)
+        .controlSize(.large)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint(targetControlAccessibilityHint)
+        .help(accessibilityLabel)
     }
 
     private var targetControlAccessibilityHint: LocalizedStringKey {

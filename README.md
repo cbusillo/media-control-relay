@@ -44,7 +44,8 @@ This initial slice includes:
 - privacy-safe diagnostics redaction;
 - a strict optional `media-control-relay://` actuator for Volume Up, Volume
   Down, and Mute without bundled control-surface software;
-- a native SwiftUI menu-bar and setup/settings shell;
+- a native SwiftUI menu-bar and setup/settings shell with a stable monochrome
+  relay glyph, glanceable status/readout, and permission-aware setup access;
 - separate Developer ID and App Store entitlement files;
 - provenance, architecture, privacy, and validation documentation;
 - hermetic Swift tests and public secret checks.

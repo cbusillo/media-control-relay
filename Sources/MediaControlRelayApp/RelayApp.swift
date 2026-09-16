@@ -31,7 +31,7 @@ struct RelayApp: App {
                     appDelegate.attach(model: model)
                 }
         } label: {
-            Image(systemName: model.statusCopy.systemImage)
+            Image(nsImage: RelayMenuBarIcon.image)
                 .accessibilityLabel(
                     model.menuBarAccessibilityLabel
                 )

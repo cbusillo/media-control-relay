@@ -2,12 +2,20 @@ import AppKit
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.openWindow) private var openWindow
     @Bindable var model: RelayAppModel
 
     var body: some View {
         TabView {
             Form {
                 Section {
+                    Button("Open Setup…") {
+                        openWindow(id: "setup")
+                        NSApp.activate()
+                    }
+                    .accessibilityLabel("Open Setup")
+                    .accessibilityHint("Opens the Media Control Relay setup window")
+
                     LabeledContent("Configured Target") {
                         Text(model.configuredDeviceName)
                     }

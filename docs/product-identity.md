@@ -1,16 +1,23 @@
 # Product Identity
 
 Decision date: August 25, 2026.
+Menu-bar identity updated: September 16, 2026.
 
 ## Product Name
 
 The durable product name is **Media Control Relay**.
 
-Media Control Relay routes actions from local control surfaces to supported
-media targets. Compatible Samsung TVs are the first target family. Optional
-integrations may add Apple TV, HomePod, Loupedeck, and other control surfaces or
-media targets without turning the product into a universal remote, smart-home
-hub, streaming service, or cloud relay.
+Media Control Relay is a quiet native macOS menu-bar utility for routing local
+keyboard volume and mute actions to a selected supported media target. The
+current product surface is intentionally focused on target selection, permission
+recovery, route-aware status, and reliable volume control.
+
+The menu bar uses a stable monochrome relay glyph so its identity remains clear
+as status changes. The popover keeps the current status and confirmed target
+readout glanceable, shows setup access only when configuration or permission
+recovery needs it, and leaves detailed setup and recovery controls in Settings.
+This product remains a focused volume relay rather than a universal remote,
+smart-home hub, streaming service, or cloud relay.
 
 ## Repository And Code
 
