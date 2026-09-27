@@ -18,10 +18,30 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 30
     steps:
+      - name: Start pull-request time budget
+        run: printf 'JOB_STARTED_AT=%s\n' "$(date +%s)" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      - name: Classify changed files
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -eu
+          product=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            changed="$(git diff --name-only HEAD^1 HEAD)"
+            if [ -n "$changed" ] &&
+              ! printf '%s\n' "$changed" | grep -Ev '(\.md$|^docs/)' >/dev/null; then
+              product=false
+              printf '%s\n' 'Only Markdown or docs/ files changed; skipping build and test steps.'
+            fi
+          fi
+          printf 'product=%s\n' "$product" >> "$GITHUB_OUTPUT"
       - name: Select Xcode 26 or later
+        if: steps.scope.outputs.product == 'true'
         run: |
           set -euo pipefail
           xcode_app=''
@@ -51,6 +71,22 @@ jobs:
           printf 'DEVELOPER_DIR=%s\n' "$xcode_app/Contents/Developer" >> "$GITHUB_ENV"
           printf 'Selected %s\n' "$xcode_app"
       - name: Install validation tools
+        if: steps.scope.outputs.product == 'true'
         run: brew install actionlint ripgrep shellcheck xcodegen
       - name: Validate foundation
+        if: steps.scope.outputs.product == 'true'
         run: scripts/check.sh
+      - name: Report pull-request time budget
+        if: always()
+        env:
+          BUDGET_MINUTES: "10"
+        run: |
+          elapsed=$(( $(date +%s) - JOB_STARTED_AT ))
+          minutes=$(( elapsed / 60 ))
+          seconds=$(( elapsed % 60 ))
+          printf 'Job time: %dm %02ds (budget %s minutes)\n' "$minutes" "$seconds" "$BUDGET_MINUTES" |
+            tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$elapsed" -gt $(( BUDGET_MINUTES * 60 )) ]; then
+            printf '::warning::Job took %dm %02ds, over the %s-minute pull-request budget\n' \
+              "$minutes" "$seconds" "$BUDGET_MINUTES"
+          fi

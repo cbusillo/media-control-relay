@@ -24,12 +24,32 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
+      - name: Start pull-request time budget
+        run: printf 'JOB_STARTED_AT=%s\n' "$(date +%s)" >> "$GITHUB_ENV"
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 2
+      - name: Classify changed files
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -eu
+          product=true
+          if [ "$EVENT_NAME" = pull_request ]; then
+            changed="$(git diff --name-only HEAD^1 HEAD)"
+            if [ -n "$changed" ] &&
+              ! printf '%s\n' "$changed" | grep -Ev '(\.md$|^docs/)' >/dev/null; then
+              product=false
+              printf '%s\n' 'Only Markdown or docs/ files changed; skipping build and test steps.'
+            fi
+          fi
+          printf 'product=%s\n' "$product" >> "$GITHUB_OUTPUT"
 
       - name: Select Xcode 26 or later
+        if: steps.scope.outputs.product == 'true'
         run: |
           set -euo pipefail
           xcode_app=''
@@ -60,9 +80,11 @@ jobs:
           printf 'Selected %s\n' "$xcode_app"
 
       - name: Install XcodeGen
+        if: steps.scope.outputs.product == 'true'
         run: brew install xcodegen
 
       - name: Initialize CodeQL
+        if: steps.scope.outputs.product == 'true'
         uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           languages: swift
@@ -70,6 +92,7 @@ jobs:
           queries: security-extended
 
       - name: Build application
+        if: steps.scope.outputs.product == 'true'
         run: |
           scripts/generate-project.sh
           xcodebuild \
@@ -81,6 +104,21 @@ jobs:
             build
 
       - name: Perform CodeQL analysis
+        if: steps.scope.outputs.product == 'true'
         uses: github/codeql-action/analyze@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
         with:
           category: /language:swift
+      - name: Report pull-request time budget
+        if: always()
+        env:
+          BUDGET_MINUTES: "25"
+        run: |
+          elapsed=$(( $(date +%s) - JOB_STARTED_AT ))
+          minutes=$(( elapsed / 60 ))
+          seconds=$(( elapsed % 60 ))
+          printf 'Job time: %dm %02ds (budget %s minutes)\n' "$minutes" "$seconds" "$BUDGET_MINUTES" |
+            tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$elapsed" -gt $(( BUDGET_MINUTES * 60 )) ]; then
+            printf '::warning::Job took %dm %02ds, over the %s-minute pull-request budget\n' \
+              "$minutes" "$seconds" "$BUDGET_MINUTES"
+          fi

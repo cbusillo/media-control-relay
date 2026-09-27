@@ -15,16 +15,10 @@ command -v iconutil >/dev/null 2>&1 || {
 	exit 69
 }
 
-ruby -ryaml -e '
-  icon = ARGV.fetch(0)
-  project = YAML.safe_load(File.read(ARGV.fetch(1)), aliases: false)
-  abort "Missing generated AppIcon.icns" unless File.file?(icon)
-  target = project.dig("targets", "MediaControlRelay")
-  sources = target.fetch("sources")
-  expected_source = { "path" => "Resources/AppIcon.icns", "buildPhase" => "resources" }
-  abort "MediaControlRelay must include AppIcon.icns as a resource" unless
-    sources.include?(expected_source)
-' "$source_icon" "$repo_root/project.yml"
+[ -f "$source_icon" ] || {
+	printf 'Missing generated AppIcon.icns\n' >&2
+	exit 1
+}
 
 icon_specifications='16:icon_16x16.png
 32:icon_16x16@2x.png

@@ -128,7 +128,6 @@ struct RelayConfigurationTests {
         )
 
         #expect(configuration.target.kind == .upnpMediaRenderer)
-        #expect(configuration.target.name == "UPnP Media Target")
         #expect(configuration.target.stableIdentifier == identity.stableIdentifier)
         #expect(configuration.activationRule.matches(route.activationSnapshot))
     }

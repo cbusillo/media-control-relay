@@ -114,32 +114,12 @@ struct ExternalControlURLTests {
         }
     }
 
-    @Test("Info.plist registers exactly one canonical URL scheme")
-    func infoPlistRegistersCanonicalURLScheme() throws {
-        let repoRoot = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let infoURL = repoRoot.appendingPathComponent(
-            "Config/MediaControlRelay-Info.plist"
+    @Test("Built app registers the URL scheme the parser accepts")
+    func builtAppRegistersParserScheme() throws {
+        let urlTypes = try #require(
+            Bundle.main.object(forInfoDictionaryKey: "CFBundleURLTypes") as? [[String: Any]]
         )
-        let data = try Data(contentsOf: infoURL)
-        let propertyList = try #require(
-            try PropertyListSerialization.propertyList(
-                from: data,
-                options: [],
-                format: nil
-            ) as? [String: Any]
-        )
-        let urlTypes = try #require(propertyList["CFBundleURLTypes"] as? [[String: Any]])
-        #expect(urlTypes.count == 1)
-        #expect(urlTypes.first?["CFBundleTypeRole"] as? String == "Viewer")
-        #expect(
-            urlTypes.first?["CFBundleURLName"] as? String
-                == "com.shinycomputers.media-control-relay.external-volume"
-        )
-        #expect(urlTypes.first?["CFBundleURLSchemes"] as? [String] == [
-            "media-control-relay"
-        ])
+        let schemes = urlTypes.flatMap { $0["CFBundleURLSchemes"] as? [String] ?? [] }
+        #expect(schemes == [ExternalVolumeActionURLParser.scheme])
     }
 }

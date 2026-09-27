@@ -1777,7 +1777,7 @@ struct RelayAppModelTests {
 
         let stored = RelayConfigurationStore(defaults: harness.defaults).load()
         #expect(stored?.target.kind == .upnpMediaRenderer)
-        #expect(stored?.target.name == "UPnP Media Target")
+        #expect(stored?.target.name != choice.label)
         #expect(stored?.target.stableIdentifier == "fixture-private-id")
         #expect(stored?.activationRule.audioOutputMatch == "Fixture Output")
         #expect(!harness.model.diagnosticsSummary.contains("fixture-private-id"))

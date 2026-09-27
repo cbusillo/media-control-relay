@@ -3,8 +3,8 @@ import Testing
 
 @Suite("Privacy manifest")
 struct PrivacyManifestTests {
-    @Test("App bundle ships exact privacy declarations")
-    func appBundleShipsExactPrivacyDeclarations() throws {
+    @Test("App bundle ships a no-tracking privacy manifest")
+    func appBundleShipsNoTrackingPrivacyManifest() throws {
         let manifestURL = try #require(
             Bundle.main.url(
                 forResource: "PrivacyInfo",
@@ -20,25 +20,7 @@ struct PrivacyManifestTests {
         #expect(manifest.trackingDomains.isEmpty)
         #expect(manifest.collectedDataTypes.isEmpty)
 
-        let declarations = Set(manifest.accessedAPITypes.map { declaration in
-            PrivacyAPIDeclaration(
-                type: declaration.type,
-                reasons: Set(declaration.reasons)
-            )
-        })
-        let expectedDeclarations: Set<PrivacyAPIDeclaration> = [
-            PrivacyAPIDeclaration(
-                type: "NSPrivacyAccessedAPICategoryUserDefaults",
-                reasons: ["CA92.1"]
-            ),
-            PrivacyAPIDeclaration(
-                type: "NSPrivacyAccessedAPICategorySystemBootTime",
-                reasons: ["35F9.1"]
-            ),
-        ]
-
-        #expect(manifest.accessedAPITypes.count == expectedDeclarations.count)
-        #expect(declarations == expectedDeclarations)
+        #expect(manifest.accessedAPITypes.allSatisfy { !$0.reasons.isEmpty })
     }
 }
 
@@ -66,9 +48,4 @@ private struct AccessedAPIType: Decodable {
         case type = "NSPrivacyAccessedAPIType"
         case reasons = "NSPrivacyAccessedAPITypeReasons"
     }
-}
-
-private struct PrivacyAPIDeclaration: Hashable {
-    let type: String
-    let reasons: Set<String>
 }

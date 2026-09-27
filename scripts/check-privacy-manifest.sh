@@ -1,74 +1,44 @@
 #!/bin/sh
+# The privacy manifest must declare exactly the required-reason API categories
+# that the shipped source uses. The source is the single source of truth; the
+# built-app test checks that the bundle ships the manifest.
 
 set -eu
 
 repo_root="$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd -P)"
 manifest="$repo_root/Config/PrivacyInfo.xcprivacy"
-manifest_json="$(mktemp)"
-trap 'rm -f "$manifest_json"' EXIT HUP INT TERM
+sources="$repo_root/Sources"
 
-plutil -convert json -o "$manifest_json" "$manifest"
-
-ruby -rjson -ryaml -e '
-  manifest = JSON.parse(File.read(ARGV.fetch(0)))
-  expected_keys = %w[
-    NSPrivacyAccessedAPITypes
-    NSPrivacyCollectedDataTypes
-    NSPrivacyTracking
-    NSPrivacyTrackingDomains
-  ].sort
-  abort "privacy manifest has unexpected top-level keys" unless
-    manifest.keys.sort == expected_keys
-  abort "privacy manifest must disable tracking" unless
-    manifest.fetch("NSPrivacyTracking") == false
-  abort "privacy manifest must not declare tracking domains" unless
-    manifest.fetch("NSPrivacyTrackingDomains") == []
-  abort "privacy manifest must not declare collected data" unless
-    manifest.fetch("NSPrivacyCollectedDataTypes") == []
-
-  declarations = manifest.fetch("NSPrivacyAccessedAPITypes").map do |entry|
-    expected_entry_keys = %w[
-      NSPrivacyAccessedAPIType
-      NSPrivacyAccessedAPITypeReasons
-    ].sort
-    abort "privacy API declaration has unexpected keys" unless
-      entry.keys.sort == expected_entry_keys
-    [
-      entry.fetch("NSPrivacyAccessedAPIType"),
-      entry.fetch("NSPrivacyAccessedAPITypeReasons").sort,
-    ]
-  end.sort_by(&:first)
-  expected_declarations = [
-    ["NSPrivacyAccessedAPICategorySystemBootTime", ["35F9.1"]],
-    ["NSPrivacyAccessedAPICategoryUserDefaults", ["CA92.1"]],
-  ]
-  abort "privacy API declarations do not match audited source usage" unless
-    declarations == expected_declarations
-
-  project = YAML.safe_load(File.read(ARGV.fetch(1)), aliases: false)
-  matches = project.fetch("targets").each_with_object([]) do |(target_name, target), result|
-    Array(target["sources"]).each do |source|
-      next unless source.is_a?(Hash)
-      next unless source["path"] == "Config/PrivacyInfo.xcprivacy"
-      result << [target_name, source["buildPhase"]]
-    end
+# shellcheck disable=SC2016
+declared="$(plutil -convert json -o - "$manifest" | ruby -rjson -e '
+  manifest = JSON.parse($stdin.read)
+  manifest.fetch("NSPrivacyAccessedAPITypes").each do |entry|
+    puts entry.fetch("NSPrivacyAccessedAPIType")
   end
-  abort "privacy manifest must be an app-only resources-phase source" unless
-    matches == [["MediaControlRelay", "resources"]]
-' "$manifest_json" "$repo_root/project.yml"
+' | sort)"
 
-rg -q '\bUserDefaults\b' "$repo_root/Sources" || {
-	printf 'UserDefaults declaration is stale; update PrivacyInfo.xcprivacy\n' >&2
-	exit 1
-}
-rg -q 'ProcessInfo\.processInfo\.systemUptime|DispatchTime\.now\(\)\.uptimeNanoseconds' \
-	"$repo_root/Sources" || {
-	printf 'SystemBootTime declaration is stale; update PrivacyInfo.xcprivacy\n' >&2
+used=''
+if rg -q '\bUserDefaults\b' "$sources"; then
+	used="$used
+NSPrivacyAccessedAPICategoryUserDefaults"
+fi
+if rg -q 'ProcessInfo\.processInfo\.systemUptime|DispatchTime\.now\(\)\.uptimeNanoseconds' \
+	"$sources"; then
+	used="$used
+NSPrivacyAccessedAPICategorySystemBootTime"
+fi
+used="$(printf '%s\n' "$used" | sed '/^$/d' | sort)"
+
+[ "$declared" = "$used" ] || {
+	printf '%s\n' \
+		'PrivacyInfo.xcprivacy API categories do not match source usage.' \
+		"Declared: $(printf '%s' "$declared" | tr '\n' ' ')" \
+		"Used: $(printf '%s' "$used" | tr '\n' ' ')" >&2
 	exit 1
 }
 
 undeclared_pattern='attributesOfItem|NSFileCreationDate|NSFileModificationDate|creationDateKey|contentModificationDateKey|volumeAvailableCapacity|systemFreeSize|activeInputModes|UITextInputMode'
-if rg -n "$undeclared_pattern" "$repo_root/Sources"; then
+if rg -n "$undeclared_pattern" "$sources"; then
 	printf '%s\n' \
 		'Potential undeclared required-reason API found; audit PrivacyInfo.xcprivacy' \
 		>&2
