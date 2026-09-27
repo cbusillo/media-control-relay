@@ -43,11 +43,18 @@ or pull request and are not replaced by the branch rule.
 The stable required build check is the `validation` job in the `Validation`
 workflow. It runs `scripts/check.sh`, which includes Swift tests, secret checks,
 shell and workflow linting, immutable GitHub Action pin checks, repository
-metadata and Dependabot syntax checks, privacy-manifest schema and source-drift
-checks, local-only App Store export-policy checks, App Store validation-option
-checks, plist and entitlement validation, diff checks, Xcode project generation,
+metadata and Dependabot syntax checks, a check that the privacy manifest's API
+categories match source usage, a check that local App Store exports never
+upload, plist and entitlement validation, diff checks, Xcode project generation,
 Debug tests, and Release and App Store builds. Hosted app tests also prove that
-the privacy manifest is present in the built application bundle.
+the built application bundle ships the privacy manifest and registers the URL
+scheme the app parses.
+
+Pull requests that change only Markdown or `docs/` files skip the build and test
+steps; the required `validation` and `Analyze Swift` checks still report
+success. Each job reports its elapsed time and warns when it exceeds its
+pull-request budget (10 minutes for `validation`, 25 minutes for
+`Analyze Swift`).
 
 The repository's build floor is Xcode 26 or later, while its deployment and
 runtime floor remains macOS 15. Both `Validation` and `CodeQL` use a plain shell

@@ -45,8 +45,13 @@ struct RelayStatusCopyTests {
     @Test("Checking target has distinct copy and icon")
     func checkingTargetCopy() {
         let copy = RelayStatusCopyCatalog.copy(for: .checkingTarget, targetKind: .preview)
-        #expect(copy.title == "Checking preview target")
-        #expect(copy.systemImage == "questionmark.circle")
+        let otherStates: [RelayState] = [.active, .offline]
+
+        for state in otherStates {
+            let other = RelayStatusCopyCatalog.copy(for: state, targetKind: .preview)
+            #expect(copy.title != other.title)
+            #expect(copy.systemImage != other.systemImage)
+        }
     }
 
     @Test("Unavailable preview copy preserves normal Mac handling")
@@ -61,7 +66,6 @@ struct RelayStatusCopyTests {
     func unconfiguredSetupCopy() {
         let copy = RelayStatusCopyCatalog.copy(for: .unconfigured, targetKind: nil)
 
-        #expect(copy.title == "No media target selected")
         #expect(copy.detail.localizedCaseInsensitiveContains("create"))
         #expect(copy.detail.localizedCaseInsensitiveContains("Settings"))
         #expect(!copy.detail.localizedCaseInsensitiveContains("coming soon"))
@@ -76,7 +80,11 @@ struct RelayStatusCopyTests {
 
         #expect(copy.title.localizedCaseInsensitiveContains("local network"))
         #expect(!copy.title.localizedCaseInsensitiveContains("volume key"))
-        #expect(copy.systemImage == "network.badge.shield.half.filled")
+        let volumeKeyPermission = RelayStatusCopyCatalog.copy(
+            for: .needsPermission,
+            targetKind: .upnpMediaRenderer
+        )
+        #expect(copy.systemImage != volumeKeyPermission.systemImage)
     }
 
     @Test("Target authentication rejection does not claim macOS permission denial")

@@ -30,9 +30,10 @@ may override that setting, and it must use
 outbound network-client, and inbound network-server access. The server access
 permits the bound UDP socket that receives SSDP discovery replies.
 
-`scripts/check-app-store-export.sh` rejects drift in the archive configuration,
-entitlement-file wiring, exact entitlement contents, and local-only export and
-validation options.
+`scripts/check-app-store-export.sh` keeps the local export options from
+uploading. Entitlement contents and signing settings are enforced where they
+execute: Xcode builds each configuration in CI, and App Store Connect validation
+checks the sandbox entitlements of an uploaded build.
 
 All current distribution variants exclude Apple TV helper and Python payloads.
 `scripts/check-no-apple-runtime.sh` checks Release, its archive, and App Store

@@ -58,3 +58,15 @@ keyboard routing independent of those services. See docs/product-scope.md.
 
 Run `scripts/check.sh` before review. Real-device tests are opt-in and must never
 be required for public CI.
+
+A test or check stays only if it fails when the product is broken and passes
+when someone makes an intended change:
+
+- Do not assert a literal that is defined elsewhere, such as a version, build
+  number, toolchain, hash, UI copy, SF Symbol name, or config value. Check
+  agreement with the single source of truth instead, or check behavior.
+- Do not assert workflow or config text. Enforce the rule where it executes:
+  the workflow itself, the built product, or `actionlint`.
+- Verification code must not depend on working-tree state. Inspect the built
+  app bundle or product code, not repository files read through `#filePath`.
+- Keep byte-exact and hash gates on real artifacts, such as the built icon.

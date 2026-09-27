@@ -2,7 +2,7 @@ import Foundation
 import MediaControlCore
 
 enum ExternalVolumeActionURLParser {
-    private static let scheme = "media-control-relay"
+    static let scheme = "media-control-relay"
     private static let host = "control"
     private static let canonicalActions: [String: VolumeAction] = [
         "media-control-relay://control/volume/up": .up,
