@@ -75,6 +75,14 @@ struct RelayApp: App {
                 openSystemSettingsLoginItems: {}
             )
         )
+#elseif APP_STORE
+        // The Mac App Store build never requests Accessibility, so volume keys
+        // stay on the listen-only Input Monitoring tap. See
+        // docs/app-store-distribution.md.
+        RelayAppModel(
+            accessibilityAccess: .denied,
+            targetOverlayPresenter: TargetOverlayController()
+        )
 #else
         RelayAppModel(
             targetOverlayPresenter: TargetOverlayController()

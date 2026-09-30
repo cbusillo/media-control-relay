@@ -137,6 +137,7 @@ struct SettingsView: View {
                     SettingsSectionHeader("Volume Key Access")
                 }
 
+#if !APP_STORE
                 Section {
                     LabeledContent("Status") {
                         Label {
@@ -185,6 +186,7 @@ struct SettingsView: View {
                 } header: {
                     SettingsSectionHeader("Native Volume HUD")
                 }
+#endif
 
                 Section {
                     Toggle("Launch at login", isOn: Binding(

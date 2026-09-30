@@ -32,6 +32,8 @@ still reach the TV, and the Mac's own volume display also appears.
 - To hide the native display while the TV is in control, choose **Allow Native
   HUD Replacement**, turn on Media Control Relay in System Settings > Privacy &
   Security > Accessibility, then quit and reopen the app.
+- The Mac App Store version doesn't offer this option, so the native display
+  always appears there. The keys still reach the TV.
 - The native display always returns when the TV is not in control. The app
   keeps it whenever it cannot confirm the TV's current state.
 
