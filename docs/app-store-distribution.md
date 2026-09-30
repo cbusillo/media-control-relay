@@ -30,6 +30,27 @@ may override that setting, and it must use
 outbound network-client, and inbound network-server access. The server access
 permits the bound UDP socket that receives SSDP discovery replies.
 
+### Accessibility in the App Store build
+
+The `AppStore` configuration compiles with `APP_STORE`. That build never calls
+the Accessibility request, hides the **Native Volume HUD** settings section and
+always uses the listen-only Input Monitoring tap. Debug and Release, and so the
+Developer ID release, keep the optional Accessibility-gated active tap that
+hides the native volume display.
+
+Why: Apple's Developer Technical Support says sandboxed apps can use Input
+Monitoring through `CGEventTap`, but that the Accessibility privilege is not
+supported in sandboxed apps, and App Review has rejected Mac apps under
+guideline 2.4.5 for using Accessibility for non-accessibility purposes. Our
+signed sandbox probe shows the active tap works technically, which does not
+make it acceptable to App Review. Without Accessibility, the keys still reach
+the TV; the only difference is that the Mac's own volume display also appears.
+
+- [Accessibility permission in sandboxed app](https://developer.apple.com/forums/thread/707680)
+- [Accessibility and Input Monitoring APIs for App Store apps](https://developer.apple.com/forums/thread/780626)
+- [Rejection under guideline 2.4.5 for posting events](https://developer.apple.com/forums/thread/820594)
+- [App Review Guidelines 2.4.5](https://developer.apple.com/app-store/review/guidelines/#2.4.5)
+
 `scripts/check-app-store-export.sh` keeps the local export options from
 uploading. Entitlement contents and signing settings are enforced where they
 execute: Xcode builds each configuration in CI, and App Store Connect validation
@@ -121,8 +142,8 @@ distribution artifact.
 
 Issue #16 remains open for:
 
-- an App Review feasibility decision for the sandboxed listen-only event tap;
-  and
+- App Review's decision on the 1.0.0 submission, whose listing and reviewer
+  notes are drafted in [App Store listing](app-store-listing.md); and
 - post-storefront update behavior when a storefront build becomes available.
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.

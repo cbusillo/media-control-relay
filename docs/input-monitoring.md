@@ -135,7 +135,9 @@ issue-#38 worktree build.
   permission. The shipping app still requires its established Input Monitoring
   grant before starting either tap mode.
 - App Review acceptance of the active sandbox tap is not established by local
-  signed feasibility.
+  signed feasibility. The `AppStore` configuration therefore never requests
+  Accessibility and stays listen-only; see
+  [App Store distribution](app-store-distribution.md#accessibility-in-the-app-store-build).
 
 ## Test Environment
 

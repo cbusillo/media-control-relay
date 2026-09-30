@@ -71,6 +71,7 @@ targets:
         AppStore:
           CODE_SIGN_ENTITLEMENTS: >-
             Config/MediaControlRelayAppStore.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) APP_STORE
 
   MediaControlCoreTests:
     type: bundle.unit-test
