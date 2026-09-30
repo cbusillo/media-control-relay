@@ -60,10 +60,10 @@ targets:
         ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: >-
           YES
         CODE_SIGN_ENTITLEMENTS: Config/MediaControlRelay.entitlements
-        CURRENT_PROJECT_VERSION: "10"
+        CURRENT_PROJECT_VERSION: "13"
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Config/MediaControlRelay-Info.plist
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "1.0.0"
         PRODUCT_BUNDLE_IDENTIFIER: com.shinycomputers.media-control-relay
         PRODUCT_NAME: Media Control Relay
         SWIFT_EMIT_LOC_STRINGS: YES
