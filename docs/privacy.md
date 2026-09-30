@@ -25,8 +25,9 @@ Media Control Relay is designed to operate locally.
   cloud relay.
 
 The optional custom URL actuator is intentionally narrow and unauthenticated:
-it exposes the documented local `media-control-relay://control/...` and
-`media-control-relay://remote/...` URLs to local processes only. Any local
+it exposes the documented local `media-control-relay://control/...` URLs to
+local processes only. `media-control-relay://remote/...` URLs are rejected and
+counted as rejected. Any local
 process that can invoke a registered custom URL may request those actions, so
 the feature is not an authorization boundary. The app rejects noncanonical
 URLs, records only coarse accepted/rejected/rate-limited counts, and never
@@ -49,8 +50,7 @@ model string, SSDP payload, or SOAP payload.
 
 The app never shows hosts, IDs, PINs, credentials, runtime paths, or other
 private identifiers in UI or diagnostics. Keychain is the sole persistent
-credential boundary; the local helper uses memory-only storage, and discovered
-device names remain ephemeral labels.
+credential boundary, and discovered device names remain ephemeral labels.
 
 Network recovery stores only a coarse path state and transition count. Interface
 types may be compared in memory to detect a path change, but interface names,
