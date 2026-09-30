@@ -35,8 +35,9 @@ macOS 15 or later. See [compatibility](compatibility.md).
 
 ### Privacy
 
-No account, analytics or cloud service. The app contacts only the TV you
-select, on your local network. Diagnostics you copy contain only coarse status
+No account, analytics or cloud service. Everything stays on your local
+network: finding TVs asks the media devices there to describe themselves, and
+volume and mute go only to the TV you select. Diagnostics you copy contain only coarse status
 fields and counts. See [privacy](privacy.md).
 
 ### Install

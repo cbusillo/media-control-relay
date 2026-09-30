@@ -61,8 +61,9 @@ It lives in the menu bar and stays out of the way:
 Compatibility: tested with the Samsung UN65JU670D (2015 JU series) connected
 over HDMI and used as a Mac display. Other models may work but aren't claimed.
 
-Privacy: no account, analytics or cloud service. The app contacts only the TV
-you select, on your local network.
+Privacy: no account, analytics or cloud service. Everything stays on your local
+network: finding TVs asks the media devices there to describe themselves, and
+volume and mute go only to the TV you select.
 
 Not included: TV power, input switching, navigation, app launching, other TV
 brands and Apple TV control.
