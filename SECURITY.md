@@ -2,9 +2,9 @@
 
 ## Supported Versions
 
-Media Control Relay is an early development preview without a downloadable
-release. Security fixes target the current `main` branch. A versioned support
-window will be documented before the first public release.
+Until the first public release, security fixes target the current `main`
+branch. After it, fixes ship in a new release built from `main`; only the latest
+release is supported, and earlier releases are not patched.
 
 ## Reporting a Vulnerability
 

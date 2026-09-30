@@ -8,9 +8,10 @@ automation. Neither is required for MCR keyboard routing.
 > [!IMPORTANT]
 > This repository is an early development preview. The signed app can create an
 > in-process preview target or explicitly discover and select a compatible UPnP
-> media renderer for pairing-free volume and mute control. Real-device Samsung
-> compatibility qualification is still in progress, normal Mac volume behavior
-> is preserved on unmatched routes, and there is no downloadable release.
+> media renderer for pairing-free volume and mute control. One Samsung model is
+> qualified on real hardware (see [compatibility](docs/compatibility.md)),
+> normal Mac volume behavior is preserved on unmatched routes, and there is no
+> downloadable release yet.
 
 ## Product Direction
 
@@ -94,6 +95,10 @@ scripts/generate-project.sh
 
 ## Documentation
 
+- [Compatibility](docs/compatibility.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Support](SUPPORT.md)
+- [Contributing](CONTRIBUTING.md)
 - [Architecture](docs/architecture.md)
 - [Target volume overlay](docs/target-overlay.md)
 - [Relay routing](docs/relay-routing.md)
