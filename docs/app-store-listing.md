@@ -103,9 +103,10 @@ Notes for the reviewer:
 > typed characters and never changes or blocks any event. It does not use
 > Accessibility.
 >
-> Local network: the app uses SSDP discovery to find TVs, then sends UPnP
-> volume and mute commands only to the TV the user selects. It uses no server,
-> account or analytics.
+> Local network: the app uses SSDP discovery to find TVs and reads the device
+> descriptions of the media renderers that answer. It then sends UPnP volume
+> and mute commands only to the TV the user selects. It uses no server, account
+> or analytics.
 >
 > To try it without a TV: open the app from the menu bar, follow setup to grant
 > Input Monitoring, then choose Find Media Renderers in Settings and allow local
