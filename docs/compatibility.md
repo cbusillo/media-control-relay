@@ -30,9 +30,10 @@ Companion module; see [product scope](product-scope.md).
 
 ## Distribution
 
-The first public release will be a Developer ID signed and notarized download.
-A Mac App Store build has passed TestFlight installation and permission checks,
-but App Review has not been attempted; see
+[Version 1.0.0](https://github.com/cbusillo/media-control-relay/releases/tag/v1.0.0)
+is available as a Developer ID signed and notarized download. The Mac App Store
+1.0.0 build has been uploaded, and earlier TestFlight builds passed installation
+and permission checks. App Review acceptance is not established; see
 [App Store distribution qualification](app-store-distribution.md).
 
 ## Reporting a New Model

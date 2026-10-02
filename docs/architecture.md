@@ -66,7 +66,7 @@ The native macOS shell owns:
 - local preview configuration in UserDefaults; the preview has no secrets;
 - the thin main-actor coordinator that applies reducer outputs;
 - launch-at-login registration;
-- future coordination between input monitoring and protocol adapters.
+- coordination between input monitoring and the UPnP target session.
 
 Apple TV navigation, playback, seek and relative volume belong to the separate
 Companion module. See [product scope](product-scope.md) for the migration and
@@ -95,8 +95,9 @@ profile mutator.
 The current UI reports only facts that are implemented. Preview commands remain
 local, compatible selected renderers use the real local-network target adapter,
 and Settings distinguishes Input Monitoring from the optional Accessibility
-grant used for native-HUD replacement. It does not simulate discovery, pairing,
-network connectivity, or hardware control.
+grant used for native-HUD replacement in Developer ID builds. App Store builds
+never request Accessibility and use a listen-only tap. It does not simulate
+discovery, pairing, network connectivity or hardware control.
 
 The asynchronous `MediaVolumeTarget` contract reads current volume/mute state
 and applies exactly one absolute-volume or mute operation. Apply returns the
@@ -270,8 +271,9 @@ available inside the adapter.
 `RouteSnapshot` values before they reach `RelayAppModel`. The snapshot bridges to
 the existing `ActivationSnapshot`. The `RelayRoutingReducer` invalidates cached
 matching whenever observation is not `observing`, so suspended or stopped
-observation cannot continue recording. The app coordinator sends eligible
-reducer commands to the in-process preview sink only.
+observation cannot continue recording. The coordinator records eligible reducer
+commands and returns them to `RelayAppModel`. Preview commands complete locally;
+UPnP commands enter the single-consumer target command pump.
 
 The core coalescer publishes the first snapshot immediately, suppresses
 unchanged snapshots, and retains at most one pending change during its bounded
@@ -321,9 +323,8 @@ State precedence is deterministic:
 2. `unsupported`
 3. `needsPermission`
 4. `dormant`
-5. `checkingTarget`
-6. `offline`
-7. `active`
+5. Target reachability selects `needsLocalNetworkPermission`,
+   `targetAuthenticationRejected`, `checkingTarget`, `offline`, or `active`.
 
 Configuration precedes permission so the app does not request global input
 access before the user has a media target to configure. Dormant precedes
@@ -346,8 +347,8 @@ the initial scope.
 
 ### Developer ID
 
-The direct build is the first release path. Developer ID signing and
-notarization preserve the accepted designated requirement on top of the
+The direct build is available as the public 1.0.0 release. Developer ID signing
+and notarization preserve the accepted designated requirement on top of the
 hardened-runtime build so Input Monitoring approval survives updates. The
 [Developer ID notarization runbook](developer-id-notarization.md) defines the
 exact-commit archive, Keychain-profile submission, stapling, quarantine,

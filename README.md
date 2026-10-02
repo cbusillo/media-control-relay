@@ -6,17 +6,15 @@ Companion owns explicit control-surface actions and Home Assistant owns device
 automation. Neither is required for MCR keyboard routing.
 
 > [!IMPORTANT]
-> This repository is an early development preview. The signed app can create an
-> in-process preview target or explicitly discover and select a compatible UPnP
-> media renderer for pairing-free volume and mute control. One Samsung model is
-> qualified on real hardware (see [compatibility](docs/compatibility.md)),
-> normal Mac volume behavior is preserved on unmatched routes, and there is no
-> downloadable release yet.
+> [Download Media Control Relay 1.0.0](https://github.com/cbusillo/media-control-relay/releases/tag/v1.0.0),
+> signed with Developer ID and notarized by Apple. Move the app to Applications
+> and open it to set up volume-key and local-network access. One Samsung model
+> is qualified on real hardware (see [compatibility](docs/compatibility.md)).
+> Normal Mac volume behavior is preserved on unmatched routes.
 
 ## Product Direction
 
-The finished app is intended to be a quiet menu-bar utility with a focused
-setup flow:
+The app is a quiet menu-bar utility with a focused setup flow:
 
 1. Select a supported media target.
 2. Grant the required macOS permissions.
@@ -25,19 +23,21 @@ setup flow:
 
 The initial release remains focused on reliable volume and mute control for
 compatible Samsung TVs. Media Control Relay is not a universal remote or a
-general-purpose smart-home hub. It will ship through Developer ID distribution
-first; a sandboxed Mac App Store build remains a product goal.
+general-purpose smart-home hub. The first public release uses Developer ID
+distribution. A sandboxed Mac App Store build has been uploaded; App Review
+acceptance is not established.
 
-## Current Foundation
+## Implementation
 
-This initial slice includes:
+The current implementation includes:
 
 - pure Swift control-routing and state-resolution models;
 - a deterministic routing reducer with active-route cancellation behavior;
 - a removable local preview target with bounded command recording;
 - activation matching for audio output and display names;
 - bounded repeat, debounce, deduplication, and queue policy;
-- passive listen-only volume-key observation with permission recovery UI;
+- volume-key observation with permission recovery UI, plus optional conditional
+  native-HUD replacement in the Developer ID build;
 - pairing-free UPnP RenderingControl discovery, stable-identity resolution,
   service-declared volume bounds/step, serialized volume/mute execution, and
   requested-dimension read-back;

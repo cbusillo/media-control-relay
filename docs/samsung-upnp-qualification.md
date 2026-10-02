@@ -32,7 +32,8 @@ The artifact passed:
 The previously installed signed app was preserved locally before replacement
 as a rollback candidate. The rollback candidate and merged build were each
 installed, verified, launched to an active zero-counter state, and replaced in
-the intended direction. The merged build remains installed.
+the intended direction. The merged build was restored at the end of that run.
+This historical record does not identify the currently installed artifact.
 
 ## Capability And Command Evidence
 
@@ -209,17 +210,15 @@ The evidence intentionally omits:
 - raw SSDP, device-description, SCPD, SOAP, or pairing responses; and
 - actual target volume values.
 
-## Review And Remaining Gate
+## Review And Completion
 
-Opus and a Gemini-family reviewer approved the final Local Network code changes
-after requested corrections were resolved. The current-build warm-restart
-evidence and explicit build attribution for older lifecycle checks are now
-recorded above and await final evidence review. JetBrains inspection reported no
-semantic findings; its reported items were spellcheck-only URL schemes, SF
-Symbol names, protocol tokens, and fixture bundle IDs.
+The final Local Network changes and corrected qualification evidence received
+Opus and Gemini-family reviews. JetBrains inspection reported no semantic
+findings; its reported items were spellcheck-only URL schemes, SF Symbol names,
+protocol tokens and fixture bundle IDs.
 
-Milestone 0.2 remains open pending:
-
-- publication of the complete privacy-safe exit record in issue #21; and
-- final non-empty Opus and Gemini-family approval of that completed evidence and
-  bounded compatibility scope.
+[Issue #21](https://github.com/cbusillo/media-control-relay/issues/21#issuecomment-5470420062)
+records completion on August 30, 2026: PR #53 merged as `c7c8dd2`, post-merge
+Validation and CodeQL passed, and issue #21, parent #13 and milestone 0.2 closed.
+Those historical reviews are evidence for that artifact and bounded hardware
+claim, not a standing reviewer-approval gate for later work.

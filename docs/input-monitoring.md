@@ -11,8 +11,10 @@ inactive, or failed state remains pass-through.
 
 ## Implementation Boundary
 
-- The event tap is restricted to system-defined events. It uses `.defaultTap`
-  only when Accessibility access is granted and otherwise uses `.listenOnly`.
+- The event tap is restricted to system-defined events. Developer ID builds use
+  `.defaultTap` only when Accessibility access is granted and otherwise use
+  `.listenOnly`. App Store builds never request Accessibility and stay
+  listen-only.
 - Active-tap creation failure automatically falls back to listen-only behavior.
 - A pure `MediaControlCore` policy requires active routing, fresh route
   observation, Input Monitoring and Accessibility grants, a live target
@@ -43,7 +45,7 @@ inactive, or failed state remains pass-through.
 
 ## Runtime Matrix
 
-- **Release:** Unsandboxed Developer ID Application for team `MM5YXC7T6E`.
+- **Release:** Unsandboxed Developer ID Application.
   Fresh permission recovery survived signed rebuilds, relaunches, one warm host
   reboot, and real sleep/wake. Eight isolated physical events produced four
   actions and four recorded commands; physical holds stopped after release and
@@ -145,7 +147,7 @@ issue-#38 worktree build.
 - Host: Apple silicon Mac running macOS 27.0 build `26A5421a`.
 - Toolchain: Xcode 27.0 build `27A5194q`.
 - Direct bundle: `com.shinycomputers.media-control-relay`, signed with Developer
-  ID Application for team `MM5YXC7T6E` and hardened runtime enabled.
+  ID Application with hardened runtime enabled.
 - Sandbox probe: AppStore configuration copied to the distinct local bundle ID
   `com.shinycomputers.media-control-relay.sandbox-probe`, signed with the same
   Developer ID identity and the checked-in AppStore entitlements.

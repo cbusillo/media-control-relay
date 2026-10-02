@@ -1,17 +1,18 @@
-# App Store Listing Draft: 1.0.0
+# App Store Listing: 1.0.0
 
 > [!NOTE]
-> Draft for the owner's review. Nothing here has been entered in App Store
-> Connect. The app record, privacy answers and export-compliance declaration
-> already exist from the TestFlight qualification in
-> [App Store distribution](app-store-distribution.md).
+> Listing text and App Review notes were entered in App Store Connect on
+> September 30, 2026. Build 13 was uploaded and processed as `VALID`. The
+> latest recorded walkthrough still had the demo video, screenshots, build
+> selection and submission unfinished; see [issue #16](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-5915853493).
+> This is the recorded handoff, not a live App Store status check.
 
 ## Build
 
 - Configuration: `AppStore` (App Sandbox, outbound and inbound network access).
 - Version `1.0.0`, build `13`, the same numbers as the Developer ID release.
-  App Store Connect has used builds `1` to `4` under version `0.1.0`, so `13`
-  is free. If a later App Store-only rebuild is needed, raise the build number
+  Build `13` was uploaded under `1.0.0`; builds `1` to `4` were used under
+  `0.1.0`. If a later App Store-only rebuild is needed, raise the build number
   in `project.yml` first.
 - The App Store build does not request Accessibility and does not offer native
   volume display replacement. Volume keys use the listen-only Input Monitoring
@@ -31,7 +32,7 @@
 | Marketing URL | <https://github.com/cbusillo/media-control-relay> |
 | Privacy policy URL | <https://github.com/cbusillo/media-control-relay/blob/main/docs/privacy.md> (already set) |
 | Copyright | 2026 Shiny Computers Leasing LLC |
-| Price | Owner's decision |
+| Price | Free, as Chris chose on September 30, 2026 |
 
 ## Promotional Text (170)
 
@@ -114,5 +115,5 @@ Notes for the reviewer:
 > Settings while the Mac keeps control of its own volume.
 
 Attachment: a short screen recording, with the TV in frame, of setup, choosing
-the TV, and the volume keys changing the TV's volume and mute. Only the owner
-can record it, because it needs the TV.
+the TV, and the volume keys changing the TV's volume and mute. Chris records it
+hands-on, because it needs the TV.
