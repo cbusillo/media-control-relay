@@ -28,9 +28,11 @@ closure decision.
   xcrun notarytool store-credentials "MediaControlRelay"
   ```
 
-- Keep archives, notarization responses, and rollback bundles outside the
-  repository. Never commit private keys, issuer IDs, submission IDs, raw
-  notarization logs, or local artifact paths.
+- On Chris-Studio, keep per-worktree build outputs on the verified
+  Developer-Artifacts volume. Use ignored `scratch/` storage in the task worktree
+  for archives, notarization responses and rollback bundles. Never commit
+  private keys, issuer IDs, submission IDs, raw notarization logs or local
+  artifact paths.
 
 ## Prepare the Exact Commit
 
@@ -55,7 +57,7 @@ EXPECTED_BUNDLE_ID="com.shinycomputers.media-control-relay"
 EXPECTED_VERSION="1.0.0"
 EXPECTED_BUILD="13"
 ROLLBACK_EXECUTABLE_SHA256="<accepted-predecessor-executable-sha256>"
-ARTIFACT_ROOT="${HOME}/.code/artifacts/media-control-relay/${EXPECTED_COMMIT:0:7}-notarization"
+ARTIFACT_ROOT="/Volumes/Developer-Artifacts/worktrees/media-control-relay/<task-slug>/scratch/${EXPECTED_COMMIT:0:7}-notarization"
 ARCHIVE="${ARTIFACT_ROOT}/MediaControlRelay.xcarchive"
 APP="${ARCHIVE}/Products/Applications/Media Control Relay.app"
 ROLLBACK_APP="${ARTIFACT_ROOT}/rollback/Media Control Relay.app"
@@ -105,14 +107,18 @@ read-back or operation failure.
 
 ## Archive and Sign
 
-Create an unsigned archive, then sign the archived product explicitly:
+Generate the project at the selected commit, create an unsigned archive, then
+sign the archived product explicitly:
 
 ```bash
+scripts/generate-project.sh
+
 xcodebuild \
   -project MediaControlRelay.xcodeproj \
   -scheme MediaControlRelay \
   -configuration Release \
   -archivePath "${ARCHIVE}" \
+  -derivedDataPath "${ARTIFACT_ROOT}/DerivedData" \
   CODE_SIGNING_ALLOWED=NO \
   STRIP_INSTALLED_PRODUCT=NO \
   archive
@@ -216,19 +222,13 @@ acceptance, including offline Gatekeeper and fresh Finder first open. This
 scoped approval does not qualify a new build automatically or authorize release
 publication; repeat the current runbook for each release artifact.
 
-Repository CI uses ad-hoc signatures to prove inventory, hardened-runtime
-flags, outer-bundle sealing, App Store refusal, and tamper detection. It cannot
-prove Python library loading because independently ad-hoc-signed Mach-O files
-have no shared Team ID and hardened library validation rejects them. The
-same-Team Developer ID launch check above is therefore mandatory and must not be
-replaced with `disable-library-validation` or another weakened entitlement.
-After the app opens, confirm the bundled runtime reaches the unconfigured,
-pairing, connecting, or ready flow rather than **Helper Damaged**. **Check
-Again** is available only when the current state exposes that recovery action;
-the healthy installed path refreshes during initialization. Record the result
-privately with the exact reviewed commit. The local same-Team locator acceptance
-gate and pristine VM installed-helper check pass for the recorded artifact;
-repeat the check for each newly signed artifact.
+Current CI checks the built app, its Release archive and the App Store product
+for retired Apple TV symbols and Python payloads. There is no bundled helper to
+launch, no **Helper Damaged** recovery surface and no Python library-validation
+qualification in the current app. After opening a newly signed artifact, verify
+setup, retained route configuration, permissions and target recovery. Record
+that artifact's exact source and hashes; historical helper qualification does
+not establish acceptance of a new build.
 
 ## Submit and Staple
 
@@ -446,8 +446,9 @@ pgrep -f "${PRODUCT_PROCESS_PATTERN}" >/dev/null
 At each stage, verify the expected executable hash, strict signature, Gatekeeper
 source, running process, and frontmost-application preservation. The stale
 suppression probe identified during issue #41 investigation must remain stopped;
-it is not a product component. Keep the rollback artifact until local cutover
-issue #8 is accepted.
+it is not a product component. Keep the rollback artifact until the new
+installation is accepted. The original prototype cutover completed in [issue #8](https://github.com/cbusillo/media-control-relay/issues/8);
+it is not an outstanding gate for later updates.
 
 ## Failure Handling
 

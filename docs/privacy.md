@@ -9,8 +9,9 @@ Media Control Relay is designed to operate locally.
 - Stable target identity is tracked separately from ephemeral locator data so
   diagnostics and reconciliation can avoid coupling to changing addresses.
 - Volume-key monitoring uses a system-defined-event tap. It remains listen-only
-  without Accessibility access and conditionally filters only supported volume
-  gestures while a fresh selected target is ready. Typed characters are never
+  in App Store builds and without Accessibility access. Developer ID builds
+  conditionally filter only supported volume gestures while a fresh selected
+  target is ready. Typed characters are never
   delivered to the app.
 - During the current app run, the app keeps only aggregate event and action
   counts plus the most recently detected Volume Up, Volume Down, or Mute action
@@ -101,9 +102,9 @@ the required-reason API categories used by app-owned code:
 
 The app has no third-party package dependencies, and its linked internal
 libraries are static, so the app-level manifest covers the complete shipped
-code. Validation checks the exact declarations, watches for selected new
-required-reason API families, and proves that the manifest is present in the
-built app bundle.
+code. Validation checks that declared API categories match source usage, watches for
+selected new required-reason API families, and proves that the manifest is
+present in the built app bundle.
 
 The local manifest audit does not prove whether App Store Connect currently
 enforces required-reason declarations for a Mac-only binary. Profile-backed

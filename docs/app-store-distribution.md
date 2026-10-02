@@ -140,11 +140,10 @@ distribution artifact.
 
 ## Remaining Qualification
 
-Issue #16 remains open for:
-
-- App Review's decision on the 1.0.0 submission, whose listing and reviewer
-  notes are drafted in [App Store listing](app-store-listing.md); and
-- post-storefront update behavior when a storefront build becomes available.
+Issue #16 remains open for completion of the 1.0.0 App Review submission and
+its acceptance decision, plus post-storefront update behavior when a storefront
+build becomes available. The listing and reviewer notes are recorded in
+[App Store listing](app-store-listing.md).
 
 Raw archives, packages, profiles, and logs remain local and uncommitted.
 
@@ -374,3 +373,18 @@ the same installation proof. Issue #16 remains open for that beta-feedback
 request, the App Review feasibility decision, and post-storefront update
 behavior when available. No external testing, public link, App Review
 submission, or storefront release was initiated.
+
+## September 30, 2026 Build 13 and Listing Handoff
+
+[Issue #16](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-5915752677)
+records that App Store build `1.0.0 (13)` was archived from merged commit
+`191648b`, passed local signing/entitlement checks and Apple's validation, and
+uploaded successfully. API read-back reported `VALID` and unexpired. The build
+uses the listen-only path and excludes Accessibility requests.
+
+The subsequent [walkthrough](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-5915853493)
+records the version, listing text, age rating, free pricing and reviewer notes
+saved in App Store Connect. The demo video, screenshots, build selection and
+Chris's submission remained unfinished in that record. Earlier August sections
+are historical qualification evidence, not current app-record or build status.
+No App Review acceptance or storefront availability is established here.

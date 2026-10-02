@@ -9,8 +9,8 @@
 - Push task branches and open or update pull requests; do not probe protection
   by attempting a direct push to `main`.
 - Use normal merge commits. Do not squash or rebase pull requests.
-- Run `scripts/check.sh` and wait for the required `validation` check before
-  merge.
+- Run `scripts/check.sh` and wait for both required checks, `validation` and
+  `Analyze Swift`, on the current PR head before merge.
 - Delete merged task branches and clean merged worktrees during closeout.
 
 ## Host Safety

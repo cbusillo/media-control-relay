@@ -8,6 +8,11 @@ until an explicit decision is made.
 
 ## Upstream Findings
 
+The legacy and pyatv rows preserve provenance decisions from earlier work.
+Current builds contain only the original UPnP transport; those rows do not
+authorize restoring retired Apple TV runtime or expanding the current
+[product scope](product-scope.md).
+
 <!-- markdownlint-disable MD013 -->
 <!-- prettier-ignore-start -->
 
@@ -41,12 +46,12 @@ It introduces no Samsung framing, SOAP, XML, SSDP, or network transport code,
 and no third-party-derived protocol source was used to define the contract,
 rail model, or reconciliation behavior.
 
-The approved `postlund/pyatv` Companion slice remains an external dependency;
+The former `postlund/pyatv` Companion slice used an external dependency;
 its protocol source must not be copied or reimplemented in this repository.
 The reviewed tag exposes navigation, volume up/down, play/pause,
 previous/next, and relative skip. It does not provide native mute or
-playback-position state, so the product must not claim either capability in the
-Companion-only slice. The `JaviSoto/pyatv` fork remains unapproved unless a
+playback-position state, so the historical Companion-only slice did not establish either capability.
+Current MCR provides no Apple TV controls. The `JaviSoto/pyatv` fork remains unapproved unless a
 future audit separately reviews and permits an exact revision.
 
 The UPnP MediaRenderer transport is original Swift code written from the

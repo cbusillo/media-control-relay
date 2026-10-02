@@ -1,10 +1,12 @@
 # Release Notes Draft: First Public Release
 
 > [!NOTE]
-> Draft. Nothing here is published. The version number, date and download
-> link are filled in when the owner approves the release.
+> The first public release was published on September 30, 2026 as
+> [v1.0.0](https://github.com/cbusillo/media-control-relay/releases/tag/v1.0.0).
+> That release page is the published record; the text below preserves the draft
+> used to prepare it.
 
-## Media Control Relay <version>
+## Media Control Relay 1.0.0
 
 Media Control Relay lets your Mac's volume and mute keys control a compatible
 TV when the TV is your Mac's current sound output and display. When you switch

@@ -59,5 +59,6 @@ Monitoring records were retired after the renamed signed builds passed the
 runtime matrix documented in [the Input Monitoring probe](input-monitoring.md).
 
 The separate working `Samsung TV Volume` prototype is not part of this rename.
-It remains installed until Media Control Relay reaches the cutover finish line
-tracked in issue #8.
+Its retirement completed on September 2, 2026 in
+[issue #8](https://github.com/cbusillo/media-control-relay/issues/8). That record
+describes the accepted cutover; it does not inventory today's installed runtime.

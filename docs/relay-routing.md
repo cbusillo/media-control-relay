@@ -6,8 +6,10 @@ Issue #5 adds the first honest routing proof surface: an explicitly labeled
 in-process preview target. The current signed app also supports explicit
 pairing-free UPnP media-renderer discovery and volume routing. Discovery never
 auto-selects a target; the activation rule is captured from the current route
-when the user chooses a generic renderer label. Normal Mac volume behavior is
-not intercepted or suppressed.
+when the user chooses a generic renderer label. The Developer ID build may
+conditionally suppress native volume handling only with optional Accessibility
+access and a fresh active target. Preview targets, unmatched routes and the
+App Store build retain normal Mac handling; see [Input Monitoring](input-monitoring.md).
 
 The preview target is removable and resettable from Settings. Its configuration
 is stored locally in `UserDefaults` because it contains no credentials or other
@@ -63,10 +65,13 @@ dependency.
 
 Commands require all the following:
 
-1. a configured and supported preview target;
+1. a configured and supported target;
 2. granted Input Monitoring permission;
 3. an observing route observer with a current activation match; and
-4. a reachable preview sink.
+4. a reachable preview sink or a confirmed reachable UPnP session.
+
+The coordinator records eligible commands. Preview commands complete locally;
+UPnP commands enter the app model's serialized target command pump.
 
 Any transition out of `active` immediately cancels held gestures and pending
 sink capacity. Route mismatch, permission loss, observer suspension or stop,
@@ -158,23 +163,16 @@ claimed by this milestone.
 
 ## External Custom URL Actions
 
-The menu-bar app registers one custom URL scheme with two exact host families.
-The volume actuator remains `media-control-relay://control/volume/up`,
-`media-control-relay://control/volume/down`, and
-`media-control-relay://control/volume/mute`. The remote actuator is the
-exact allowlist of `media-control-relay://remote/navigate/up`,
-`media-control-relay://remote/navigate/down`,
-`media-control-relay://remote/navigate/left`,
-`media-control-relay://remote/navigate/right`, `media-control-relay://remote/select`,
-`media-control-relay://remote/back`, `media-control-relay://remote/home`,
-`media-control-relay://remote/play-pause`, `media-control-relay://remote/previous`,
-`media-control-relay://remote/next`, `media-control-relay://remote/seek/forward/10`,
-`media-control-relay://remote/seek/forward/30`, `media-control-relay://remote/seek/backward/10`,
-`media-control-relay://remote/seek/backward/30`, `media-control-relay://remote/volume/up`,
-and `media-control-relay://remote/volume/down`. The app delegate accepts only
-those exact strings, rejects alternate casing, percent encoding, credentials,
-ports, queries, fragments, unknown hosts, and extra path components, and never
-logs the raw URL.
+The menu-bar app accepts exactly three custom URLs:
+
+- `media-control-relay://control/volume/up`
+- `media-control-relay://control/volume/down`
+- `media-control-relay://control/volume/mute`
+
+`ExternalControlURLRouter` routes only the `control` host, and
+`ExternalVolumeActionURLParser` requires an exact canonical string. Alternate
+casing, percent encoding, credentials, ports, queries, fragments, unknown hosts
+and extra path components are rejected. Raw URLs are never logged.
 
 Cold-launch URL delivery is held until `RelayAppModel` is available. Delivery
 does not itself request window presentation or activation; normal first-run
@@ -183,10 +181,10 @@ dispatch path used by menu controls with held-repeat disabled and physical-input
 counters untouched. A monotonic-time duplicate limit runs before the reducer;
 rejected and rate-limited totals are coarse diagnostics only.
 
-The two hosts are separate, host-based no-fallback boundaries. `control` volume
-URLs never fall through to the `remote` parser, and `remote` URLs never fall
-back to the volume actuator. Parsing is strict and exact, not prefix-based or
-path-normalizing.
+All former `media-control-relay://remote/...` URLs are rejected and counted in
+rejected-URL diagnostics. They never fall through to active-output volume.
+Apple TV callers must use the separate Companion module; see
+[product scope](product-scope.md).
 
 The local actuator is bounded and intentionally narrow. It exposes only the
 documented local actions, does not identify callers, does not authorize local

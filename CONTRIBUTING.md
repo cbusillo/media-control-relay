@@ -41,7 +41,8 @@ required in CI.
 
 - Branch from `main` and open a pull request; `main` is protected.
 - Explain why the change is needed, then what changed and how you tested it.
-- Add or update tests that fail without the change.
+- Add or update tests when needed to prove changed behavior; docs-only changes
+  do not need tests that assert wording.
 - Update documentation when behavior changes.
 
 ## Compatibility Reports

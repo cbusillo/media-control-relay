@@ -10,7 +10,7 @@ lifecycle, and sink state are eligible; no device commands are sent.
 
 ## Observation Boundary
 
-`MediaControlRelayApp/SystemRouteObserver.swift` owns public macOS APIs:
+`Sources/MediaControlRelayApp/SystemRouteObserver.swift` owns public macOS APIs:
 
 - Core Audio's default system output property listener and output-device
   properties for the current name, transport kind, and in-memory UID;
@@ -18,12 +18,12 @@ lifecycle, and sink state are eligible; no device commands are sent.
   for connected, active displays;
 - `NSWorkspace` sleep and wake notifications.
 
-`MediaControlCore/RouteObservation.swift` owns the platform-independent
+`Sources/MediaControlCore/RouteObservation.swift` owns the platform-independent
 `RouteSnapshot` model, text normalization, active-display filtering,
 stable-identifier-aware equality, bounded coalescing, lifecycle transitions,
 coarse diagnostics, and `ActivationSnapshot` bridging.
 
-`MediaControlRelayApp/NetworkPathObserver.swift` separately observes coarse
+`Sources/MediaControlRelayApp/NetworkPathObserver.swift` separately observes coarse
 Network framework path status and active interface kinds. It never reads or
 publishes interface names or endpoint addresses. Path changes invalidate UPnP
 resolver and command generations without changing route matching.
