@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > Listing text and App Review notes were entered in App Store Connect on
-> September 30, 2026. Build 13 was uploaded and reported ready to submit. The
+> September 30, 2026. Build 13 was uploaded and processed as `VALID`. The
 > latest recorded walkthrough still had the demo video, screenshots, build
 > selection and submission unfinished; see [issue #16](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-5915853493).
 > This is the recorded handoff, not a live App Store status check.
@@ -115,4 +115,5 @@ Notes for the reviewer:
 > Settings while the Mac keeps control of its own volume.
 
 Attachment: a short screen recording, with the TV in frame, of setup, choosing
-the TV, and the volume keys changing the TV's volume and mute. Chris records it hands-on, because it needs the TV.
+the TV, and the volume keys changing the TV's volume and mute. Chris records it
+hands-on, because it needs the TV.

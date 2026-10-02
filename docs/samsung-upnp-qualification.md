@@ -32,8 +32,8 @@ The artifact passed:
 The previously installed signed app was preserved locally before replacement
 as a rollback candidate. The rollback candidate and merged build were each
 installed, verified, launched to an active zero-counter state, and replaced in
-the intended direction. The merged build was restored at the end of that run. This historical record
-does not identify the currently installed artifact.
+the intended direction. The merged build was restored at the end of that run.
+This historical record does not identify the currently installed artifact.
 
 ## Capability And Command Evidence
 

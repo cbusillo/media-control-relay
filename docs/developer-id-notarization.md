@@ -9,8 +9,9 @@ closure decision.
 
 ## Preconditions
 
-- Work from a clean task or default-branch checkout at the exact approved
-  commit.
+- Work from a clean checkout at the exact approved commit. On Chris-Studio,
+  use a linked task worktree created by `dev-worktree` on the verified
+  Developer-Artifacts volume.
 - Use the repository's supported Xcode version and the intended Developer ID
   Application identity.
 - Install `jq` and confirm it is available on `PATH`. The other command-line
@@ -32,7 +33,10 @@ closure decision.
   Developer-Artifacts volume. Use ignored `scratch/` storage in the task worktree
   for archives, notarization responses and rollback bundles. Never commit
   private keys, issuer IDs, submission IDs, raw notarization logs or local
-  artifact paths.
+  artifact paths. Before removing the worktree, preserve the final ZIP,
+  qualification evidence and any still-needed rollback bundle in a private
+  durable location outside it; Developer-Artifacts is not backed up by Time
+  Machine.
 
 ## Prepare the Exact Commit
 
@@ -57,7 +61,7 @@ EXPECTED_BUNDLE_ID="com.shinycomputers.media-control-relay"
 EXPECTED_VERSION="1.0.0"
 EXPECTED_BUILD="13"
 ROLLBACK_EXECUTABLE_SHA256="<accepted-predecessor-executable-sha256>"
-ARTIFACT_ROOT="/Volumes/Developer-Artifacts/worktrees/media-control-relay/<task-slug>/scratch/${EXPECTED_COMMIT:0:7}-notarization"
+ARTIFACT_ROOT="$(git rev-parse --show-toplevel)/scratch/${EXPECTED_COMMIT:0:7}-notarization"
 ARCHIVE="${ARTIFACT_ROOT}/MediaControlRelay.xcarchive"
 APP="${ARCHIVE}/Products/Applications/Media Control Relay.app"
 ROLLBACK_APP="${ARTIFACT_ROOT}/rollback/Media Control Relay.app"

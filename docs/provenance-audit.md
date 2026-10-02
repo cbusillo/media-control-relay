@@ -50,9 +50,10 @@ The former `postlund/pyatv` Companion slice used an external dependency;
 its protocol source must not be copied or reimplemented in this repository.
 The reviewed tag exposes navigation, volume up/down, play/pause,
 previous/next, and relative skip. It does not provide native mute or
-playback-position state, so the historical Companion-only slice did not establish either capability.
-Current MCR provides no Apple TV controls. The `JaviSoto/pyatv` fork remains unapproved unless a
-future audit separately reviews and permits an exact revision.
+playback-position state, so the historical Companion-only slice did not
+establish either capability. Current MCR provides no Apple TV controls. The
+`JaviSoto/pyatv` fork remains unapproved unless a future audit separately reviews
+and permits an exact revision.
 
 The UPnP MediaRenderer transport is original Swift code written from the
 published specifications above. It implements endpoint safety, bounded XML,
