@@ -41,8 +41,9 @@ required in CI.
 
 - Branch from `main` and open a pull request; `main` is protected.
 - Explain why the change is needed, then what changed and how you tested it.
-- For behavior changes, add or update tests that fail without the fix and pass
-  the intended change. Docs-only changes do not need tests that assert wording.
+- Add or update tests for behavior changes. A test should fail when the product
+  is broken and pass when someone makes an intended change. Docs-only changes
+  do not need tests that assert wording.
 - Update documentation when behavior changes.
 
 ## Compatibility Reports
