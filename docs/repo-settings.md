@@ -2,8 +2,7 @@
 
 ## Authority
 
-Live GitHub repository settings enforce branch protections and merge methods;
-the explicit approval requirement below is an agent process rule.
+Live GitHub repository settings enforce branch protections and merge methods.
 `.github/github.json` records the expected state in the shared repository-metadata
 schema. Current
 snapshot automation verifies merged-branch deletion and exposes the live
@@ -20,13 +19,12 @@ disabled. This matches the established convention in the owner's maintained
 repositories and preserves the reviewed branch history as one integration
 unit.
 
-The merge policy in `.github/github.json` requires Chris's explicit approval
-for the change and destination under
-[task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md).
-An instruction to land, an approved plan ending in a merge, or a standing grant
-can supply that approval; do not ask again when it already covers the work.
-Green checks and accounted-for required review findings establish readiness;
-they do not supply missing merge approval.
+Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
+lets agents merge pull requests into `main` after current checks are green and any
+required review findings are accounted for, without a separate approval from
+Chris. Work stays within the owning issue's scope and the Director's overall
+stop boundaries. App Store and TestFlight submissions and other outside-party
+steps remain Chris's responsibility.
 
 GitHub deletes merged remote branches automatically. Local merged branches and
 clean merged worktrees are removed during normal closeout.

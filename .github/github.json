@@ -68,11 +68,6 @@
     }
   },
   "prWorkflow": {
-    "mergePolicy": {
-      "requireExplicitUserApproval": true,
-      "readyStateIsMergeIntent": false,
-      "fixTrainSettling": "Green and mergeable pull requests are ready for a merge decision, not automatic merge intent."
-    },
     "watchSkill": "babysit-pr",
     "watchSkillSource": "shared-codex-skills"
   },
