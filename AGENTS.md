@@ -10,8 +10,8 @@ Use the maintained [executing loop](https://github.com/cbusillo/codex-skills/blo
 and its owning skills for issue claims, linked worktrees, bot commits, validation,
 PR follow-through and closeout. Keep recovery state on the owning GitHub issue.
 Apply [reviews by another model](https://github.com/cbusillo/codex-skills/blob/main/skills/references/model-review.md)
-to execution-guidance, approval and safety changes; account for the findings
-instead of treating reviewer approval as a gate.
+for when to request a review and how to weigh its findings, instead of treating
+reviewer approval as a gate.
 
 ## GitHub Workflow
 
@@ -26,8 +26,8 @@ instead of treating reviewer approval as a gate.
   `Analyze Swift`, on the current PR head before merge.
 - Follow `.github/github.json`'s merge policy and
   [task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md):
-  Chris's explicit approval covers the change and destination and may already
-  come from an instruction to land, an approved plan ending in a merge, or a
+  Merging requires Chris's explicit approval for the change and destination;
+  it may already come from an instruction to land, an approved plan ending in a merge, or a
   standing grant. With current checks green and any required review findings
   accounted for, carry an authorized merge through. Ask only when approval is
   missing; keep the PR open and record that question on its issue and in the

@@ -2,8 +2,10 @@
 
 ## Authority
 
-Live GitHub repository settings enforce this policy. `.github/github.json`
-records the expected state in the shared repository-metadata schema. Current
+Live GitHub repository settings enforce branch protections and merge methods;
+the explicit approval requirement below is an agent process rule.
+`.github/github.json` records the expected state in the shared repository-metadata
+schema. Current
 snapshot automation verifies merged-branch deletion and exposes the live
 default branch; merge-method and protection drift still require a live GitHub
 settings check. This document explains the human-facing intent.
