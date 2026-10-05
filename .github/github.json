@@ -31,7 +31,6 @@
       "codeScanning": "Analyze Swift"
     },
     "inspection": {
-      "tool": "jetbrains",
       "ide": "IntelliJ IDEA",
       "scopePreference": [
         "changed_files",
@@ -65,14 +64,8 @@
       "deleteBranchOnMerge": true,
       "actionsDefaultWorkflowPermissions": "read",
       "actionsCanCreatePullRequests": false,
-      "actionsRequireShaPinning": true
+      "actionsRequireShaPinning": false
     }
-  },
-  "pullRequests": {
-    "preferredMergeMethod": "merge",
-    "allowedMergeMethods": [
-      "merge"
-    ]
   },
   "prWorkflow": {
     "mergePolicy": {
@@ -82,28 +75,6 @@
     },
     "watchSkill": "babysit-pr",
     "watchSkillSource": "shared-codex-skills"
-  },
-  "branchProtection": {
-    "main": {
-      "system": "classic",
-      "requiresPullRequest": true,
-      "requiredStatusChecks": [
-        "validation",
-        "Analyze Swift"
-      ],
-      "requiresStrictStatusChecks": true,
-      "requiredApprovals": 0,
-      "dismissStaleReviews": true,
-      "enforceAdmins": true,
-      "blocksForcePushes": true,
-      "blocksDeletion": true,
-      "requiresConversationResolution": true
-    }
-  },
-  "runnerPolicy": {
-    "pullRequestMacOS": "macos-15",
-    "routineMacOS": "macos-15",
-    "notes": "Pin validation and CodeQL to an explicit GitHub-hosted macOS image instead of macos-latest. Review the baseline quarterly and whenever GitHub announces image retirement, the required Xcode or Swift baseline changes, Apple distribution requirements change, or CI emits image-deprecation warnings. Trial replacements on a task-branch pull request, move validation and CodeQL together after both pass, and retain a rollback image only while GitHub still supports it."
   },
   "githubSignals": {
     "postMerge": {
