@@ -57,6 +57,12 @@ navigation, app control, and unqualified model-family claims remain excluded.
 
 ## Development
 
+Project priorities and stop boundaries follow the Director's
+[overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md);
+this repository has no separate `DIRECTION.md`. Agent execution guidance lives
+in [AGENTS.md](AGENTS.md). The [repository settings](docs/repo-settings.md)
+describe validation and the explicit merge approval policy.
+
 Requirements:
 
 - macOS 15 or later to run the app (runtime floor)

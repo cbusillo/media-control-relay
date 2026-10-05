@@ -2,8 +2,10 @@
 
 ## Authority
 
-Live GitHub repository settings enforce this policy. `.github/github.json`
-records the expected state in the shared repository-metadata schema. Current
+Live GitHub repository settings enforce branch protections and merge methods;
+the explicit approval requirement below is an agent process rule.
+`.github/github.json` records the expected state in the shared repository-metadata
+schema. Current
 snapshot automation verifies merged-branch deletion and exposes the live
 default branch; merge-method and protection drift still require a live GitHub
 settings check. This document explains the human-facing intent.
@@ -17,6 +19,14 @@ Pull requests merge with normal merge commits. Squash and rebase merges are
 disabled. This matches the established convention in the owner's maintained
 repositories and preserves the reviewed branch history as one integration
 unit.
+
+The merge policy in `.github/github.json` requires Chris's explicit approval
+for the change and destination under
+[task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md).
+An instruction to land, an approved plan ending in a merge, or a standing grant
+can supply that approval; do not ask again when it already covers the work.
+Green checks and accounted-for required review findings establish readiness;
+they do not supply missing merge approval.
 
 GitHub deletes merged remote branches automatically. Local merged branches and
 clean merged worktrees are removed during normal closeout.

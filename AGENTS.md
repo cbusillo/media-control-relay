@@ -1,5 +1,18 @@
 # Media Control Relay Agent Notes
 
+## Direction and execution
+
+Read the Director's [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md)
+before starting work. This repository has no `DIRECTION.md` of its own.
+`AGENTS.md` is the repository's only agent-instruction file.
+
+Use the maintained [executing loop](https://github.com/cbusillo/codex-skills/blob/main/skills/references/executing-loop.md)
+and its owning skills for issue claims, linked worktrees, bot commits, validation,
+PR follow-through and closeout. Keep recovery state on the owning GitHub issue.
+Apply [reviews by another model](https://github.com/cbusillo/codex-skills/blob/main/skills/references/model-review.md)
+for when to request a review and how to weigh its findings, instead of treating
+reviewer approval as a gate.
+
 ## GitHub Workflow
 
 - Treat `main` and any future shared, release, or production branch as a
@@ -11,6 +24,14 @@
 - Use normal merge commits. Do not squash or rebase pull requests.
 - Run `scripts/check.sh` and wait for both required checks, `validation` and
   `Analyze Swift`, on the current PR head before merge.
+- Follow `.github/github.json`'s merge policy and
+  [task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md):
+  Merging requires Chris's explicit approval for the change and destination;
+  it may already come from an instruction to land, an approved plan ending in a merge, or a
+  standing grant. With current checks green and any required review findings
+  accounted for, carry an authorized merge through. Ask only when approval is
+  missing; keep the PR open and record that question on its issue and in the
+  final handoff while waiting.
 - Delete merged task branches and clean merged worktrees during closeout.
 
 ## Host Safety
