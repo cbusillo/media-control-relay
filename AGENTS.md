@@ -1,5 +1,18 @@
 # Media Control Relay Agent Notes
 
+## Direction and execution
+
+Read the Director's [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md)
+before starting work. This repository has no `DIRECTION.md` of its own.
+`AGENTS.md` is the repository's only agent-instruction file.
+
+Use the maintained [executing loop](https://github.com/cbusillo/codex-skills/blob/main/skills/references/executing-loop.md)
+and its owning skills for issue claims, linked worktrees, bot commits, validation,
+PR follow-through and closeout. Keep recovery state on the owning GitHub issue.
+Apply [reviews by another model](https://github.com/cbusillo/codex-skills/blob/main/skills/references/model-review.md)
+to execution-guidance, approval and safety changes; account for the findings
+instead of treating reviewer approval as a gate.
+
 ## GitHub Workflow
 
 - Treat `main` and any future shared, release, or production branch as a
@@ -11,6 +24,10 @@
 - Use normal merge commits. Do not squash or rebase pull requests.
 - Run `scripts/check.sh` and wait for both required checks, `validation` and
   `Analyze Swift`, on the current PR head before merge.
+- Follow `.github/github.json`'s merge policy: obtain Chris's explicit approval
+  for the change and destination before merging. A green, reviewed PR is ready
+  for that decision. Keep the PR open and record the merge question on its issue
+  while approval is pending.
 - Delete merged task branches and clean merged worktrees during closeout.
 
 ## Host Safety

@@ -18,6 +18,10 @@ disabled. This matches the established convention in the owner's maintained
 repositories and preserves the reviewed branch history as one integration
 unit.
 
+The merge policy in `.github/github.json` requires Chris's explicit approval
+for the change and destination. Green checks and accounted-for review findings
+make a PR ready for that decision; they do not authorize an automatic merge.
+
 GitHub deletes merged remote branches automatically. Local merged branches and
 clean merged worktrees are removed during normal closeout.
 
