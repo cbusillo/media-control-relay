@@ -19,8 +19,12 @@ repositories and preserves the reviewed branch history as one integration
 unit.
 
 The merge policy in `.github/github.json` requires Chris's explicit approval
-for the change and destination. Green checks and accounted-for review findings
-make a PR ready for that decision; they do not authorize an automatic merge.
+for the change and destination under
+[task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md).
+An instruction to land, an approved plan ending in a merge, or a standing grant
+can supply that approval; do not ask again when it already covers the work.
+Green checks and accounted-for required review findings establish readiness;
+they do not supply missing merge approval.
 
 GitHub deletes merged remote branches automatically. Local merged branches and
 clean merged worktrees are removed during normal closeout.

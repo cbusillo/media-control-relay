@@ -24,10 +24,14 @@ instead of treating reviewer approval as a gate.
 - Use normal merge commits. Do not squash or rebase pull requests.
 - Run `scripts/check.sh` and wait for both required checks, `validation` and
   `Analyze Swift`, on the current PR head before merge.
-- Follow `.github/github.json`'s merge policy: obtain Chris's explicit approval
-  for the change and destination before merging. A green, reviewed PR is ready
-  for that decision. Keep the PR open and record the merge question on its issue
-  while approval is pending.
+- Follow `.github/github.json`'s merge policy and
+  [task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md):
+  Chris's explicit approval covers the change and destination and may already
+  come from an instruction to land, an approved plan ending in a merge, or a
+  standing grant. With current checks green and any required review findings
+  accounted for, carry an authorized merge through. Ask only when approval is
+  missing; keep the PR open and record that question on its issue and in the
+  final handoff while waiting.
 - Delete merged task branches and clean merged worktrees during closeout.
 
 ## Host Safety
