@@ -24,14 +24,12 @@ reviewer approval as a gate.
 - Use normal merge commits. Do not squash or rebase pull requests.
 - Run `scripts/check.sh` and wait for both required checks, `validation` and
   `Analyze Swift`, on the current PR head before merge.
-- Follow `.github/github.json`'s merge policy and
-  [task scope and authorization](https://github.com/cbusillo/codex-skills/blob/main/skills/references/execution-scope.md):
-  Merging requires Chris's explicit approval for the change and destination;
-  it may already come from an instruction to land, an approved plan ending in a merge, or a
-  standing grant. With current checks green and any required review findings
-  accounted for, carry an authorized merge through. Ask only when approval is
-  missing; keep the PR open and record that question on its issue and in the
-  final handoff while waiting.
+- Agents merge pull requests into `main` after current checks are green and
+  any required review findings are accounted for, without a separate approval
+  from Chris. Keep the work within its issue's scope and the overall direction's
+  stop boundaries.
+- App Store and TestFlight submissions and other outside-party steps remain
+  Chris's responsibility.
 - Delete merged task branches and clean merged worktrees during closeout.
 
 ## Host Safety
