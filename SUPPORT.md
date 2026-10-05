@@ -22,6 +22,8 @@ Open an issue at
 
 Diagnostics contain only coarse status fields and counts. Do not add IP
 addresses, device identifiers, network names or screenshots that show them.
+The `target_kind` field identifies the configured target, including a recording
+preview; it does not describe the app's release status.
 
 ## Security Issues
 
