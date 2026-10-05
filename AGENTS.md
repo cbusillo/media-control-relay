@@ -24,7 +24,8 @@ reviewer approval as a gate.
 - Use normal merge commits. Do not squash or rebase pull requests.
 - Run `scripts/check.sh` and wait for both required checks, `validation` and
   `Analyze Swift`, on the current PR head before merge.
-- Agents merge pull requests into `main` after current checks are green and
+- Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
+  lets agents merge pull requests into `main` after current checks are green and
   any required review findings are accounted for, without a separate approval
   from Chris. Keep the work within its issue's scope and the overall direction's
   stop boundaries.

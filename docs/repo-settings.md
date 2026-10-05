@@ -19,7 +19,8 @@ disabled. This matches the established convention in the owner's maintained
 repositories and preserves the reviewed branch history as one integration
 unit.
 
-Agents merge pull requests into `main` after current checks are green and any
+Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
+lets agents merge pull requests into `main` after current checks are green and any
 required review findings are accounted for, without a separate approval from
 Chris. Work stays within the owning issue's scope and the Director's overall
 stop boundaries. App Store and TestFlight submissions and other outside-party
