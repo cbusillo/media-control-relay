@@ -123,7 +123,9 @@ command and recovery counts, `target_connection`, `network_path`, and
 transport kind, and active display count fields. They never include route names,
 audio/display UIDs or UUIDs, target labels, interface names, addresses,
 credentials, errors, or raw events. Preview connection status is
-`preview-sink`; without a configured target it is `not-available`.
+`preview-sink`; without a configured target it is `not-available`. The
+`target_kind` field comes from the selected target configuration, including a
+recording preview; it does not describe the app's release status.
 
 ## Manual Qualification Boundary
 
