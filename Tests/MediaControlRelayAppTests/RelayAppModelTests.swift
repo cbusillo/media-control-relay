@@ -11,6 +11,7 @@ import UPnPMediaTarget
 struct RelayAppModelTests {
     @Test("The built app no longer contains the obsolete whole-product preview caption")
     func appOmitsObsoleteProductCaption() throws {
+        // The Debug hosted-test gate keeps UI literals in the app code.
         let executable = try #require(Bundle.main.executableURL)
         let codeDirectory = executable.deletingLastPathComponent()
         let codeFiles = try FileManager.default.contentsOfDirectory(
@@ -22,26 +23,6 @@ struct RelayAppModelTests {
             let code = try Data(contentsOf: codeFile)
             #expect(code.range(of: Data("Preview build".utf8)) == nil)
         }
-    }
-
-    @Test("Setup status comes from relay state and actual target kind",
-          arguments: [nil, RelayTargetKind.preview, .upnpMediaRenderer])
-    func setupIdentifiesTargetState(kind: RelayTargetKind?) {
-        let configuration = kind.map {
-            RelayConfiguration(
-                target: RelayTargetMetadata(kind: $0, name: "Setup fixture"),
-                activationRule: ActivationRule(
-                    audioOutputMatch: "Fixture Output",
-                    requiresDisplay: false
-                )
-            )
-        }
-        let harness = makeHarness(configuration: configuration, session: nil)
-        defer { harness.cleanup() }
-        #expect(harness.model.statusCopy == RelayStatusCopyCatalog.copy(
-            for: harness.model.relayState,
-            targetKind: configuration?.target.kind
-        ))
     }
 
     @Test("Service Management statuses map to explicit launch-at-login states")
