@@ -73,7 +73,6 @@ final class RelayAppModel {
     private(set) var accessibleTargetStatus: String?
     var presentationInvalidationEpoch: UInt64 { targetPresentation.invalidationEpoch }
 
-    let productStatus: LocalizedStringResource = "Preview build"
     let discovery: MediaTargetDiscoveryModel
 
     private let volumeKeyMonitor: any VolumeKeyMonitoring

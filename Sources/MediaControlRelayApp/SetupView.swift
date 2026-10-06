@@ -20,13 +20,6 @@ struct SetupView: View {
                             .accessibilityAddTraits(.isHeader)
                         Text("Route Mac volume controls to a preview target or compatible local media renderer")
                             .foregroundStyle(.secondary)
-                        Label {
-                            Text(model.productStatus)
-                        } icon: {
-                            Image(systemName: "hammer")
-                        }
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
                     }
                 }
 
