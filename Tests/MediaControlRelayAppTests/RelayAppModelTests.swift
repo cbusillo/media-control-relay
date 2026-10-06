@@ -707,6 +707,37 @@ struct RelayAppModelTests {
         harness.cleanup()
     }
 
+    @Test("Diagnostics identify the configured target without claiming product status",
+          arguments: [nil, RelayTargetKind.preview, .upnpMediaRenderer])
+    func diagnosticsIdentifyTargetKind(kind: RelayTargetKind?) {
+        let privateName = "private-diagnostics-target"
+        let privateIdentifier = "private-diagnostics-identifier"
+        let configuration = kind.map {
+            RelayConfiguration(
+                target: RelayTargetMetadata(
+                    kind: $0,
+                    name: privateName,
+                    stableIdentifier: privateIdentifier
+                ),
+                activationRule: ActivationRule(
+                    audioOutputMatch: "Fixture Output",
+                    requiresDisplay: false
+                )
+            )
+        }
+        let harness = makeHarness(configuration: configuration, session: nil)
+        defer { harness.cleanup() }
+
+        let diagnostics = harness.model.diagnosticsSummary
+        let fields = diagnostics.split(separator: "\n")
+        #expect(fields.contains(
+            "target_kind=\(configuration?.target.kind.rawValue ?? "unconfigured")"
+        ))
+        #expect(!fields.contains { $0.hasPrefix("product_status=") })
+        #expect(!diagnostics.contains(privateName))
+        #expect(!diagnostics.contains(privateIdentifier))
+    }
+
     @Test("Command failures publish only coarse private diagnostics")
     func commandFailureDiagnosticsRemainPrivate() async {
         let sensitiveIdentifier = "secret-udn-1234"

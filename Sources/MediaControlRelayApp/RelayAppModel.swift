@@ -357,7 +357,6 @@ final class RelayAppModel {
                 ? "conditional"
                 : "listen-only",
             "macos_version": ProcessInfo.processInfo.operatingSystemVersionString,
-            "product_status": "preview",
             "setup_complete": targetConfiguration == nil ? "no" : "yes",
             "target_kind": targetConfiguration?.target.kind.rawValue ?? "unconfigured",
             "activation": targetConfiguration == nil
@@ -384,7 +383,6 @@ final class RelayAppModel {
             "accessibility",
             "volume_key_suppression",
             "macos_version",
-            "product_status",
             "setup_complete",
             "target_kind",
             "activation",

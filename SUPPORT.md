@@ -22,6 +22,8 @@ Open an issue at
 
 Diagnostics contain only coarse status fields and counts. Do not add IP
 addresses, device identifiers, network names or screenshots that show them.
+See [Status and diagnostics](docs/relay-routing.md#status-and-diagnostics) for
+the meaning of target and preview fields.
 
 ## Security Issues
 
