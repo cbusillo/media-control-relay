@@ -9,6 +9,22 @@ import UPnPMediaTarget
 @Suite("Relay app target health", .serialized)
 @MainActor
 struct RelayAppModelTests {
+    @Test("The built app no longer contains the obsolete whole-product preview caption")
+    func appOmitsObsoleteProductCaption() throws {
+        // The Debug hosted-test gate keeps UI literals in the app code.
+        let executable = try #require(Bundle.main.executableURL)
+        let codeDirectory = executable.deletingLastPathComponent()
+        let codeFiles = try FileManager.default.contentsOfDirectory(
+            at: codeDirectory,
+            includingPropertiesForKeys: nil
+        ).filter { $0 == executable || $0.pathExtension == "dylib" }
+        #expect(!codeFiles.isEmpty)
+        for codeFile in codeFiles {
+            let code = try Data(contentsOf: codeFile)
+            #expect(code.range(of: Data("Preview build".utf8)) == nil)
+        }
+    }
+
     @Test("Service Management statuses map to explicit launch-at-login states")
     func launchAtLoginStatusMapping() {
         #expect(LaunchAtLoginState(serviceStatus: .notRegistered) == .notRegistered)

@@ -112,7 +112,8 @@ suppression remains disarmed until a fresh successful probe restores active stat
 
 ## Status And Diagnostics
 
-Status copy is keyed by `RelayState` and target kind. Preview active copy says
+Setup shows the current relay/target status. Status copy is keyed by
+`RelayState` and target kind. Preview active copy says
 that commands are being recorded or relayed to a preview target, that no media
 device is connected or controlled, and that the Mac continues handling volume
 normally. The checking-target state has distinct copy and an icon.
