@@ -1878,11 +1878,15 @@ private struct AppModelHarness {
     let networkPathObserver: AppModelNetworkPathObserver
     let applicationNotificationCenter: NotificationCenter
     let defaults: UserDefaults
-    let suiteName: String
+    let preferences: IsolatedUserDefaults
 
     func cleanup() {
         model.shutdown()
-        defaults.removePersistentDomain(forName: suiteName)
+        do {
+            try preferences.tearDown()
+        } catch {
+            Issue.record(error, "Unable to remove harness preferences")
+        }
     }
 }
 
@@ -1906,8 +1910,8 @@ private func makeHarness(
     reconnectClock: ManualReconnectClock? = nil,
     sessionFactory: ((RelayConfiguration?) -> MediaTargetSession?)? = nil
 ) -> AppModelHarness {
-    let suiteName = "com.media-control-relay.app-model-tests.\(UUID().uuidString)"
-    let defaults = UserDefaults(suiteName: suiteName)!
+    let preferences = try! IsolatedUserDefaults()
+    let defaults = preferences.defaults
     let configurationStore = RelayConfigurationStore(defaults: defaults)
     if let configuration {
         configurationStore.save(configuration)
@@ -1954,7 +1958,7 @@ private func makeHarness(
         networkPathObserver: networkPathObserver,
         applicationNotificationCenter: applicationNotificationCenter,
         defaults: defaults,
-        suiteName: suiteName
+        preferences: preferences
     )
 }
 
