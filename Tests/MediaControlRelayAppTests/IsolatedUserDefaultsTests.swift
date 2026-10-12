@@ -4,6 +4,21 @@ import Testing
 
 struct IsolatedUserDefaultsTests {
     @MainActor
+    @Test func welcomeStateUsesTestHostPreferences() throws {
+        let app = RelayApp()
+        let original = app.hasShownWelcome
+        defer { app.hasShownWelcome = original }
+        app.hasShownWelcome = !original
+        #expect(RelayApp().hasShownWelcome == !original)
+        let stored = try #require(
+            RelayApp.testHostPreferences.persistentDomain(
+                forName: RelayApp.testHostPreferencesDomain
+            )
+        )
+        #expect(stored.values.contains { ($0 as? Bool) == !original })
+    }
+
+    @MainActor
     @Test func testHostPreferencesPersistWithBuildProducts() throws {
         let domain = RelayApp.testHostPreferencesDomain
         let products = Bundle.main.bundleURL.deletingLastPathComponent().path

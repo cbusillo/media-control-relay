@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-/// Absolute-path domains keep cfprefsd's plist inside a disposable test directory.
+/// Absolute-path domains keep the preferences daemon's plist inside a disposable test directory.
 final class IsolatedUserDefaults {
     let directory: URL
     let domain: String
@@ -19,7 +19,7 @@ final class IsolatedUserDefaults {
     func tearDown() throws {
         guard !cleanedUp else { return }
         defaults.removePersistentDomain(forName: domain)
-        // Flush cfprefsd before deleting the directory so it cannot recreate an empty plist.
+        // Flush the preferences daemon before deleting the directory to prevent a late empty plist.
         defaults.synchronize()
         try FileManager.default.removeItem(at: directory)
         cleanedUp = true

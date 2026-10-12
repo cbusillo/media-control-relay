@@ -16,13 +16,27 @@ struct RelayApp: App {
     }()
 #endif
 
-    @AppStorage("hasShownWelcome") private var hasShownWelcome = false
+    static var appPreferences: UserDefaults {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return testHostPreferences
+        }
+#endif
+        return .standard
+    }
+
+    @AppStorage("hasShownWelcome") var hasShownWelcome = false
     @State private var model: RelayAppModel
     @NSApplicationDelegateAdaptor(RelayAppDelegate.self)
     private var appDelegate
 
     init() {
         _model = State(initialValue: Self.makeModel())
+        _hasShownWelcome = AppStorage(
+            wrappedValue: false,
+            "hasShownWelcome",
+            store: Self.appPreferences
+        )
     }
 
     var body: some Scene {
