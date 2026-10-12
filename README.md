@@ -94,6 +94,11 @@ Or run the package tests directly:
 swift test
 ```
 
+Hosted app tests keep each model's preferences in a disposable temporary directory.
+The Debug test host keeps its own preferences beside the built app and resets that
+domain on startup. These test domains do not create files in the user's Preferences
+directory; normal app settings continue to use the user's defaults.
+
 Generate the Xcode project:
 
 ```sh

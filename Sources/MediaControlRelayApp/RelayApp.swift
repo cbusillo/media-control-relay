@@ -3,13 +3,42 @@ import SwiftUI
 
 @main
 struct RelayApp: App {
-    @AppStorage("hasShownWelcome") private var hasShownWelcome = false
+#if DEBUG
+    // Keep hosted-test settings with the disposable build products, not user preferences.
+    static let testHostPreferencesDomain = Bundle.main.bundleURL
+        .deletingLastPathComponent()
+        .appendingPathComponent("MCRTestHostPreferences").path
+
+    static let testHostPreferences: UserDefaults = {
+        let defaults = UserDefaults(suiteName: testHostPreferencesDomain)!
+        defaults.removePersistentDomain(forName: testHostPreferencesDomain)
+        return defaults
+    }()
+#endif
+
+    static var appPreferences: UserDefaults {
+#if DEBUG
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+            return testHostPreferences
+        }
+#endif
+        return .standard
+    }
+
+    static let welcomePreferenceKey = "hasShownWelcome"
+
+    static var welcomeStorage: AppStorage<Bool> {
+        AppStorage(wrappedValue: false, welcomePreferenceKey, store: appPreferences)
+    }
+
+    @AppStorage private var hasShownWelcome: Bool
     @State private var model: RelayAppModel
     @NSApplicationDelegateAdaptor(RelayAppDelegate.self)
     private var appDelegate
 
     init() {
         _model = State(initialValue: Self.makeModel())
+        _hasShownWelcome = Self.welcomeStorage
     }
 
     var body: some Scene {
@@ -58,13 +87,10 @@ struct RelayApp: App {
             )
         }
 
-        let suiteName = "com.shinycomputers.media-control-relay.test-host"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
         return RelayAppModel(
             routeObserver: InactiveRouteObserver(),
             networkPathObserver: InactiveNetworkPathObserver(),
-            configurationStore: RelayConfigurationStore(defaults: defaults),
+            configurationStore: RelayConfigurationStore(defaults: testHostPreferences),
             volumeKeyMonitor: InactiveVolumeKeyMonitor(),
             inputMonitoringAccess: .denied,
             accessibilityAccess: .denied,
