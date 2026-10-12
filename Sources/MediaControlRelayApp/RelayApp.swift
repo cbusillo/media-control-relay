@@ -25,18 +25,20 @@ struct RelayApp: App {
         return .standard
     }
 
-    @AppStorage("hasShownWelcome") var hasShownWelcome = false
+    static let welcomePreferenceKey = "hasShownWelcome"
+
+    static var welcomeStorage: AppStorage<Bool> {
+        AppStorage(wrappedValue: false, welcomePreferenceKey, store: appPreferences)
+    }
+
+    @AppStorage private var hasShownWelcome: Bool
     @State private var model: RelayAppModel
     @NSApplicationDelegateAdaptor(RelayAppDelegate.self)
     private var appDelegate
 
     init() {
         _model = State(initialValue: Self.makeModel())
-        _hasShownWelcome = AppStorage(
-            wrappedValue: false,
-            "hasShownWelcome",
-            store: Self.appPreferences
-        )
+        _hasShownWelcome = Self.welcomeStorage
     }
 
     var body: some Scene {

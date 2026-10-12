@@ -5,17 +5,13 @@ import Testing
 struct IsolatedUserDefaultsTests {
     @MainActor
     @Test func welcomeStateUsesTestHostPreferences() throws {
-        let app = RelayApp()
-        let original = app.hasShownWelcome
-        defer { app.hasShownWelcome = original }
-        app.hasShownWelcome = !original
-        #expect(RelayApp().hasShownWelcome == !original)
-        let stored = try #require(
-            RelayApp.testHostPreferences.persistentDomain(
-                forName: RelayApp.testHostPreferencesDomain
-            )
-        )
-        #expect(stored.values.contains { ($0 as? Bool) == !original })
+        let storage = RelayApp.welcomeStorage
+        let original = storage.wrappedValue
+        defer { storage.wrappedValue = original }
+        storage.wrappedValue = !original
+        #expect(RelayApp.welcomeStorage.wrappedValue == !original)
+        #expect(RelayApp.testHostPreferences.object(forKey: RelayApp.welcomePreferenceKey) as? Bool
+            == !original)
     }
 
     @MainActor
