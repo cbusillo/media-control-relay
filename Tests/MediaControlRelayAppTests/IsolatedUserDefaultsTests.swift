@@ -1,7 +1,30 @@
 import Foundation
 import Testing
+@testable import Media_Control_Relay
 
 struct IsolatedUserDefaultsTests {
+    @MainActor
+    @Test func testHostPreferencesPersistWithBuildProducts() throws {
+        let domain = RelayApp.testHostPreferencesDomain
+        let products = Bundle.main.bundleURL.deletingLastPathComponent().path
+        #expect(domain.hasPrefix(products + "/"))
+        let defaults = RelayApp.testHostPreferences
+        let key = UUID().uuidString
+        let value = UUID().uuidString
+        defaults.set(value, forKey: key)
+        defer {
+            defaults.removeObject(forKey: key)
+            defaults.synchronize()
+        }
+        #expect(defaults.synchronize())
+        let plist = URL(fileURLWithPath: domain).appendingPathExtension("plist")
+        let stored = try #require(
+            PropertyListSerialization.propertyList(from: Data(contentsOf: plist), format: nil)
+                as? [String: Any]
+        )
+        #expect(stored[key] as? String == value)
+    }
+
     @Test func persistenceAndTeardown() throws {
         let fixture = try IsolatedUserDefaults()
         let key = UUID().uuidString

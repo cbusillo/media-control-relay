@@ -3,6 +3,19 @@ import SwiftUI
 
 @main
 struct RelayApp: App {
+#if DEBUG
+    // Keep hosted-test settings with the disposable build products, not user preferences.
+    static let testHostPreferencesDomain = Bundle.main.bundleURL
+        .deletingLastPathComponent()
+        .appendingPathComponent("MCRTestHostPreferences").path
+
+    static let testHostPreferences: UserDefaults = {
+        let defaults = UserDefaults(suiteName: testHostPreferencesDomain)!
+        defaults.removePersistentDomain(forName: testHostPreferencesDomain)
+        return defaults
+    }()
+#endif
+
     @AppStorage("hasShownWelcome") private var hasShownWelcome = false
     @State private var model: RelayAppModel
     @NSApplicationDelegateAdaptor(RelayAppDelegate.self)
@@ -58,13 +71,10 @@ struct RelayApp: App {
             )
         }
 
-        let suiteName = "com.shinycomputers.media-control-relay.test-host"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
         return RelayAppModel(
             routeObserver: InactiveRouteObserver(),
             networkPathObserver: InactiveNetworkPathObserver(),
-            configurationStore: RelayConfigurationStore(defaults: defaults),
+            configurationStore: RelayConfigurationStore(defaults: testHostPreferences),
             volumeKeyMonitor: InactiveVolumeKeyMonitor(),
             inputMonitoringAccess: .denied,
             accessibilityAccess: .denied,
