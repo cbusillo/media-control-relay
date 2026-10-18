@@ -29,16 +29,17 @@ reviewer approval as a gate.
   any required review findings are accounted for, without a separate approval
   from Chris. Keep the work within its issue's scope and the overall direction's
   stop boundaries.
-- App Store and TestFlight submissions and other outside-party steps remain
-  Chris's responsibility.
+- TestFlight uploads through the supported path in
+  [App Store distribution](docs/app-store-distribution.md) are agent work. App
+  Review submission and store release stay Chris's decision
+  ([Q479](https://github.com/cbusillo/codex-skills/issues/1228#issuecomment-6244384620)).
 - Delete merged task branches and clean merged worktrees during closeout.
 
 ## Host Safety
 
-- Never restart this Mac without obtaining fresh, explicit user confirmation
-  immediately before initiating the restart. Earlier or general authorization
-  does not carry forward, and an automatic or scheduled restart is not a
-  substitute for asking again.
+- Before restarting this Mac, follow the Chris-Studio restart rule in
+  shiny-infra-ops [AGENTS.md Safety rules](https://github.com/cbusillo/shiny-infra-ops/blob/main/AGENTS.md#safety-rules).
+  Nothing in this repository authorizes a restart.
 
 ## Product Shape
 
