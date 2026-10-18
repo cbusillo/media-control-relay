@@ -23,8 +23,9 @@ Chris's [standing merge authorization](https://github.com/cbusillo/media-control
 lets agents merge pull requests into `main` after current checks are green and any
 required review findings are accounted for, without a separate approval from
 Chris. Work stays within the owning issue's scope and the Director's overall
-stop boundaries. App Store and TestFlight submissions and other outside-party
-steps remain Chris's responsibility.
+stop boundaries. TestFlight uploads through the supported path in
+[App Store distribution](app-store-distribution.md) are agent work; App Review
+submission and store release stay Chris's decision ([Q479](https://github.com/cbusillo/codex-skills/issues/1228#issuecomment-6244384620)).
 
 GitHub deletes merged remote branches automatically. Local merged branches and
 clean merged worktrees are removed during normal closeout.

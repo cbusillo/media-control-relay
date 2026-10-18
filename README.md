@@ -62,7 +62,7 @@ Project priorities and stop boundaries follow the Director's
 this repository has no separate `DIRECTION.md`. Agent execution guidance lives
 in [AGENTS.md](AGENTS.md). The [repository settings](docs/repo-settings.md)
 describe validation, normal agent merges after green CI and required review,
-and Chris's responsibility for App Store/TestFlight and other outside-party steps.
+and that App Review submission and store release stay Chris's decision.
 
 Requirements:
 
