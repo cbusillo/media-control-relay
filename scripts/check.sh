@@ -48,8 +48,6 @@ find .github/workflows -type f \( -name '*.yml' -o -name '*.yaml' \) \
 	-print0 | xargs -0 actionlint
 ruby -e 'require "json"; JSON.parse(File.read(ARGV.fetch(0)))' \
 	.github/github.json
-ruby -e 'require "yaml"; YAML.safe_load(File.read(ARGV.fetch(0)), aliases: false)' \
-	.github/dependabot.yml
 plutil -lint Config/*.plist Config/*.entitlements Config/*.xcprivacy
 git diff --check
 scripts/generate-project.sh

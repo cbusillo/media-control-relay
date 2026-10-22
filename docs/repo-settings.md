@@ -52,7 +52,7 @@ or pull request and are not replaced by the branch rule.
 The stable required build check is the `validation` job in the `Validation`
 workflow. It runs `scripts/check.sh`, which includes Swift tests, secret checks,
 shell and workflow linting, immutable GitHub Action pin checks, repository
-metadata and Dependabot syntax checks, a check that the privacy manifest's API
+metadata syntax checks, a check that the privacy manifest's API
 categories match source usage, a check that local App Store exports never
 upload, plist and entitlement validation, diff checks, Xcode project generation,
 Debug tests, and Release and App Store builds. Hosted app tests also prove that
@@ -81,7 +81,7 @@ The `CodeQL` workflow analyzes Swift on pull requests, pushes to `main`, a
 weekly schedule, and manual dispatch. It uses manual build tracing around the
 repository's deterministic XcodeGen-generated macOS application build. The
 `Analyze Swift` job is a required status check. CodeQL and checkout actions are
-pinned to immutable commit SHAs and maintained through Dependabot.
+pinned to immutable commit SHAs and maintained through Renovate.
 
 Suspected vulnerabilities must be reported through GitHub Private
 Vulnerability Reporting rather than public issues. `SECURITY.md` defines the
@@ -90,16 +90,16 @@ and project-specific security scope.
 
 ## Dependency Maintenance
 
-Dependabot checks Swift Package Manager and GitHub Actions weekly. It groups
-routine and security updates by ecosystem and limits concurrent pull requests
-to keep review noise bounded.
+Renovate checks Swift Package Manager and GitHub Actions weekly. It groups
+minor and patch updates into one pull request and limits concurrent pull
+requests to keep review noise bounded.
 
 XcodeGen is installed from Homebrew during GitHub-hosted runs. `project.yml`
 enforces the minimum supported XcodeGen version, and runner-image migration
 pull requests provide the compatibility checkpoint for newer formula versions.
 
 Third-party GitHub Actions must use immutable 40-character commit SHAs. A
-release-tag comment keeps each pin readable, while Dependabot proposes future
+release-tag comment keeps each pin readable, while Renovate proposes future
 pin updates through normal pull requests.
 
 ## Runner Image Refresh Policy
