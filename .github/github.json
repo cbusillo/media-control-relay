@@ -20,10 +20,8 @@
   },
   "qualityGate": {
     "test": {
-      "default": "swift test"
-    },
-    "validate": {
-      "default": "scripts/check.sh"
+      "local": "swift test --filter '{test_filter}'",
+      "ci": "scripts/check.sh"
     },
     "security": {
       "secretScan": "scripts/check-secrets.sh",
