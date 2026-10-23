@@ -78,8 +78,8 @@ keyboard routing independent of those services. See docs/product-scope.md.
 
 ## Validation
 
-Use the focused `local` command under `qualityGate.test` in workflow metadata, replacing `{test_filter}`
-with the affected Swift package test suite or case. Hosted app behavior uses
+Use the focused `local` command under `qualityGate.test` in workflow metadata,
+replacing `{test_filter}` with the affected Swift package test suite or case. Hosted app behavior uses
 focused `xcodebuild test -only-testing:<target>/<suite>` with DerivedData and
 TMPDIR in the task worktree. Safety, authorization, destructive-helper and
 shared-infrastructure changes also run complete modules selected through the
