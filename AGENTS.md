@@ -22,8 +22,9 @@ reviewer approval as a gate.
 - Push task branches and open or update pull requests; do not probe protection
   by attempting a direct push to `main`.
 - Use normal merge commits. Do not squash or rebase pull requests.
-- Run `scripts/check.sh` and wait for both required checks, `validation` and
-  `Analyze Swift`, on the current PR head before merge.
+- Run focused local tests under the Validation section. CI runs the complete
+  `qualityGate.test.ci` gate; wait for `validation` and `Analyze Swift` on the
+  current PR head before handing it to the merge train with `gh-pr.py ready`.
 - Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
   lets agents merge pull requests into `main` after current checks are green and
   any required review findings are accounted for, without a separate approval
@@ -77,8 +78,16 @@ keyboard routing independent of those services. See docs/product-scope.md.
 
 ## Validation
 
-Run `scripts/check.sh` before review. Real-device tests are opt-in and must never
-be required for public CI.
+Use the focused `local` command under `qualityGate.test` in workflow metadata,
+replacing `{test_filter}` with the affected Swift package test suite or case. Hosted app behavior uses
+focused `xcodebuild test -only-testing:<target>/<suite>` with DerivedData and
+TMPDIR in the task worktree. Safety, authorization, destructive-helper and
+shared-infrastructure changes also run complete modules selected through the
+changed code and its callers; record missing evidence. Keep required secret,
+action-pin, shell, workflow, type and platform checks for the changed scope.
+CI runs the complete `qualityGate.test.ci` script, including package and hosted
+app tests and artifact checks, before ready. The full suite runs only in CI.
+Real-device tests are opt-in and must never be required for public CI.
 
 A test or check stays only if it fails when the product is broken and passes
 when someone makes an intended change:

@@ -14,14 +14,11 @@ be accepted; see [product scope](docs/product-scope.md).
 ## Setup
 
 Requirements and commands are in the [README](README.md#development). The
-complete local gate is:
-
-```sh
-scripts/check.sh
-```
-
-Pull requests must pass it. Real-device tests are optional and are never
-required in CI.
+focused local command and full CI command are declared in
+[workflow metadata](.github/github.json). Select affected package or hosted app
+tests using [AGENTS.md](AGENTS.md#validation), plus required static checks and
+complete affected safety modules. CI runs the complete suite and validation
+script for every PR head before ready. Real-device tests remain optional.
 
 ## Rules
 

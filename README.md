@@ -82,17 +82,12 @@ Install the command-line validation tools with Homebrew:
 brew install actionlint ripgrep shellcheck xcodegen
 ```
 
-Run the complete local gate:
-
-```sh
-scripts/check.sh
-```
-
-Or run the package tests directly:
-
-```sh
-swift test
-```
+For focused tests use the `local` entry under `qualityGate.test` in
+[workflow metadata](.github/github.json), replacing `{test_filter}` with an
+affected package test suite or case. [AGENTS.md](AGENTS.md#validation) describes
+hosted-app selection, complete safety modules and required static checks.
+CI runs `qualityGate.test.ci`, the unchanged full validation script, on every
+PR and train head before ready. The complete suite runs only in CI.
 
 Hosted app tests keep each model's preferences in a disposable temporary directory.
 The Debug test host keeps its own preferences beside the built app and resets that

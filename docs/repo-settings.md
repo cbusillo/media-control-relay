@@ -59,9 +59,10 @@ Debug tests, and Release and App Store builds. Hosted app tests also prove that
 the built application bundle ships the privacy manifest and registers the URL
 scheme the app parses.
 
-Pull requests that change only Markdown or `docs/` files skip the build and test
-steps; the required `validation` and `Analyze Swift` checks still report
-success. Each job reports its elapsed time and warns when it exceeds its
+The required `validation` job runs the complete script for every PR and train
+head, including Markdown-only changes. `Analyze Swift` retains its existing
+Markdown/docs-only analysis skip on PRs; train and main pushes still analyze
+fully. Each job reports its elapsed time and warns when it exceeds its
 pull-request budget (10 minutes for `validation`, 25 minutes for
 `Analyze Swift`).
 
