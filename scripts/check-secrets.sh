@@ -12,4 +12,4 @@ for tool in rg python3; do
 	}
 done
 
-exec python3 scripts/check-private-source.py
+exec python3 -I scripts/check-private-source.py

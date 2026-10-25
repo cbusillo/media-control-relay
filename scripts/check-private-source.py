@@ -17,6 +17,7 @@ import sys
 from fnmatch import fnmatchcase
 from pathlib import Path
 
+# Separate suffix spelling lets the checker inspect its own source.
 MDNS_SUFFIX = "local"
 PRIVATE = rf"\b(10\.[0-9]{{1,3}}\.[0-9]{{1,3}}\.[0-9]{{1,3}}|192\.168\.[0-9]{{1,3}}\.[0-9]{{1,3}}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{{1,3}}\.[0-9]{{1,3}}|169\.254\.[0-9]{{1,3}}\.[0-9]{{1,3}})\b|(?i:\.{MDNS_SUFFIX}\b)"
 CODE = re.compile(r"(?<!`)(`+)([A-Za-z_][A-Za-z_0-9.]*)\1(?!`)")
@@ -67,7 +68,7 @@ def forbidden_files(root: Path) -> list[Path]:
 
 
 def scan(root: Path) -> bool:
-    metadata = json.loads((root / ".github/github.json").read_text())
+    metadata = json.loads((root / ".github/github.json").read_text(encoding="utf-8"))
     if not isinstance(metadata, dict):
         raise TypeError("invalid workflow metadata")
     paths = metadata_paths(metadata)
@@ -76,7 +77,7 @@ def scan(root: Path) -> bool:
                      "scratch/**"):
         command += ["--glob", f"!{excluded}"]
     command += [PRIVATE, "."]
-    result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
+    result = subprocess.run(command, cwd=root, text=True, encoding="utf-8", capture_output=True, check=False)
     if result.returncode not in (0, 1):
         raise ValueError("source search failed")
     found = False
@@ -111,7 +112,8 @@ def main() -> int:
             return 1
         print("Public secret checks passed.")
         return 0
-    except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, RecursionError,
+            subprocess.SubprocessError):
         print("Public source scan unavailable; check workflow metadata and ripgrep.", file=sys.stderr)
         return 2
 

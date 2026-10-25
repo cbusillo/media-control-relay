@@ -1,5 +1,6 @@
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -96,7 +97,9 @@ class SecretScanTests(unittest.TestCase):
         tools.mkdir()
         rg = tools / "rg"
         env = {**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"]}
-        for body in ("exit 2", "exit 0", "printf '%s\\n' invalid-json"):
+        malformed = json.dumps({"type": "match", "data": {"lines": []}})
+        for body in ("exit 2", "exit 0", "printf '%s\\n' invalid-json",
+                     "printf '%s\\n' " + shlex.quote(malformed)):
             with self.subTest(body=body):
                 rg.write_text("#!/bin/sh\n" + body + "\n")
                 rg.chmod(0o755)
