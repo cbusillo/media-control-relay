@@ -14,16 +14,13 @@ second, drifting documentation surface.
 
 ## Merge Policy
 
-Pull requests merge with normal merge commits. Squash and rebase merges are
-disabled. This matches the established convention in the owner's maintained
-repositories and preserves the reviewed branch history as one integration
-unit.
+Train routing follows the Director's
+[overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md#stop-boundaries)
+and the shared [merging procedure](https://github.com/cbusillo/codex-skills/blob/main/skills/github/SKILL.md#merging).
+The standing merge grant is linked from [agent guidance](../AGENTS.md#github-workflow).
+This repository permits normal merge commits; squash and rebase merges are disabled.
 
-Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
-lets agents merge pull requests into `main` after current checks are green and any
-required review findings are accounted for, without a separate approval from
-Chris. Work stays within the owning issue's scope and the Director's overall
-stop boundaries. TestFlight uploads through the supported path in
+TestFlight uploads through the supported path in
 [App Store distribution](app-store-distribution.md) are agent work; App Review
 submission and store release stay Chris's decision ([Q479](https://github.com/cbusillo/codex-skills/issues/1228#issuecomment-6244384620)).
 
@@ -50,7 +47,7 @@ or pull request and are not replaced by the branch rule.
 ## Validation
 
 The stable required build check is the `validation` job in the `Validation`
-workflow. It runs `scripts/check.sh`, which includes Swift tests, secret checks,
+workflow. It runs the CI command declared in [workflow metadata](../.github/github.json), which includes Swift tests, secret checks,
 shell and workflow linting, immutable GitHub Action pin checks, repository
 metadata syntax checks, a check that the privacy manifest's API
 categories match source usage, a check that local App Store exports never
@@ -115,7 +112,7 @@ an image deprecation or removal, CI emits retirement warnings, the required
 Xcode or Swift baseline changes, or Apple distribution requirements change.
 
 An image migration uses a focused task-branch pull request. The candidate image
-must pass `scripts/check.sh`, CodeQL, and any then-current signing or release
+must pass the declared CI command, CodeQL, and any then-current signing or release
 checks before Validation and CodeQL move together. The previous image is a
 rollback option only while GitHub still supports it; the repository does not
 carry a permanent compatibility matrix for retired images.

@@ -4,7 +4,8 @@
 
 Read the Director's [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md)
 before starting work. This repository has no `DIRECTION.md` of its own.
-`AGENTS.md` is the repository's only agent-instruction file.
+`AGENTS.md` is the repository's only agent-instruction file. The Director is
+this product's Client.
 
 Use the maintained [executing loop](https://github.com/cbusillo/codex-skills/blob/main/skills/references/executing-loop.md)
 and its owning skills for issue claims, linked worktrees, bot commits, validation,
@@ -15,26 +16,17 @@ reviewer approval as a gate.
 
 ## GitHub Workflow
 
-- Treat `main` and any future shared, release, or production branch as a
-  protected no-direct-work zone.
-- Create a focused task branch before editing or committing implementation or
-  repository-policy changes.
-- Push task branches and open or update pull requests; do not probe protection
-  by attempting a direct push to `main`.
-- Use normal merge commits. Do not squash or rebase pull requests.
-- Run focused local tests under the Validation section. CI runs the complete
-  `qualityGate.test.ci` gate; wait for `validation` and `Analyze Swift` on the
-  current PR head before handing it to the merge train with `gh-pr.py ready`.
-- Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
-  lets agents merge pull requests into `main` after current checks are green and
-  any required review findings are accounted for, without a separate approval
-  from Chris. Keep the work within its issue's scope and the overall direction's
-  stop boundaries.
-- TestFlight uploads through the supported path in
-  [App Store distribution](docs/app-store-distribution.md) are agent work. App
-  Review submission and store release stay Chris's decision
-  ([Q479](https://github.com/cbusillo/codex-skills/issues/1228#issuecomment-6244384620)).
-- Delete merged task branches and clean merged worktrees during closeout.
+Train routing follows the Director's
+[overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md#stop-boundaries);
+use the shared [merging procedure](https://github.com/cbusillo/codex-skills/blob/main/skills/github/SKILL.md#merging).
+Standing merge authorization: [the Director's recorded grant](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026).
+This repository uses normal merge commits, with `validation` and `Analyze Swift`
+required on the current PR head.
+
+TestFlight uploads through the supported path in
+[App Store distribution](docs/app-store-distribution.md) are agent work. App
+Review submission and store release stay Chris's decision
+([Q479](https://github.com/cbusillo/codex-skills/issues/1228#issuecomment-6244384620)).
 
 ## Host Safety
 
@@ -78,25 +70,15 @@ keyboard routing independent of those services. See docs/product-scope.md.
 
 ## Validation
 
-Use the focused `local` command under `qualityGate.test` in workflow metadata,
-replacing `{test_filter}` with the affected Swift package test suite or case. Hosted app behavior uses
-focused `xcodebuild test -only-testing:<target>/<suite>` with DerivedData and
-TMPDIR in the task worktree. Safety, authorization, destructive-helper and
-shared-infrastructure changes also run complete modules selected through the
-changed code and its callers; record missing evidence. Keep required secret,
-action-pin, shell, workflow, type and platform checks for the changed scope.
-CI runs the complete `qualityGate.test.ci` script, including package and hosted
-app tests and artifact checks, before ready. The full suite runs only in CI.
-Real-device tests are opt-in and must never be required for public CI.
+Follow the shared [Tests rule](https://github.com/cbusillo/codex-skills/blob/main/instructions/global.md#tests).
+The focused package-test command is declared in [workflow metadata](.github/github.json);
+replace `{test_filter}` with the affected Swift package suite or case. Hosted app
+behavior uses `xcodebuild test -only-testing:<target>/<suite>`, with DerivedData
+and TMPDIR in the task worktree. CI uses the complete validation command declared in
+that metadata. Real-device tests are opt-in and never required for public CI.
 
-A test or check stays only if it fails when the product is broken and passes
-when someone makes an intended change:
-
-- Do not assert a literal that is defined elsewhere, such as a version, build
-  number, toolchain, hash, UI copy, SF Symbol name, or config value. Check
-  agreement with the single source of truth instead, or check behavior.
-- Do not assert workflow or config text. Enforce the rule where it executes:
-  the workflow itself, the built product, or `actionlint`.
-- Verification code must not depend on working-tree state. Inspect the built
-  app bundle or product code, not repository files read through `#filePath`.
-- Keep byte-exact and hash gates on real artifacts, such as the built icon.
+Run scope-applicable secret, action-pin, shell, workflow, type and platform checks.
+Select full safety modules through changed code and its callers; record missing
+evidence. For Swift app tests, inspect the built bundle or product code rather
+than repository files read through `#filePath`. A byte-exact icon check belongs
+on the built icon.
