@@ -42,12 +42,11 @@ reviewer approval as a gate.
   shiny-infra-ops [AGENTS.md Safety rules](https://github.com/cbusillo/shiny-infra-ops/blob/main/AGENTS.md#safety-rules).
   Nothing in this repository authorizes a restart.
 
-## Product Shape
+## What Media Control Relay does
 
-Media Control Relay retains native keyboard volume/mute routing, active-route
-matching, direct Samsung UPnP transport and native Mac fallback. Companion owns
-control-surface pages and Apple TV actions; Home Assistant owns automation. Keep
-keyboard routing independent of those services. See docs/product-scope.md.
+Media Control Relay routes Mac keyboard volume and mute keys to compatible Samsung TVs, preserving normal Mac behavior on unmatched routes.
+It retains direct Samsung UPnP control and active-route matching. Companion owns control-surface pages and Apple TV actions; Home Assistant owns automation.
+Keyboard routing works independently of those services. Evidence: [product scope](docs/product-scope.md) and [README.md](README.md).
 
 ## Engineering Defaults
 
