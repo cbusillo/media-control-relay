@@ -10,12 +10,15 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import re
 import subprocess
 import sys
+from fnmatch import fnmatchcase
 from pathlib import Path
 
-PRIVATE = r"\b(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|169\.254\.[0-9]{1,3}\.[0-9]{1,3})\b|(?i:\.local\b)"
+MDNS_SUFFIX = "local"
+PRIVATE = rf"\b(10\.[0-9]{{1,3}}\.[0-9]{{1,3}}\.[0-9]{{1,3}}|192\.168\.[0-9]{{1,3}}\.[0-9]{{1,3}}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{{1,3}}\.[0-9]{{1,3}}|169\.254\.[0-9]{{1,3}}\.[0-9]{{1,3}})\b|(?i:\.{MDNS_SUFFIX}\b)"
 CODE = re.compile(r"(?<!`)(`+)([A-Za-z_][A-Za-z_0-9.]*)\1(?!`)")
 
 
@@ -37,6 +40,32 @@ def text_field(value: dict) -> str:
     return base64.b64decode(value["bytes"], validate=True).decode("utf-8", errors="replace")
 
 
+def safe_location(path: str) -> str:
+    return "/".join("[private]" if re.search(PRIVATE, part) else part
+                    for part in Path(path).parts)
+
+
+def forbidden_files(root: Path) -> list[Path]:
+    patterns = (".env*", "*.env", "*.env.*", "*.p8", "*.p12", "*.pem", "*.key", "*.cer",
+                "*.mobileprovision", "*.provisionprofile", "samtvcli.yaml")
+    excluded = {".git", ".build", "MediaControlRelay.xcodeproj", "scratch"}
+    found = []
+
+    def unavailable(error):
+        raise error
+
+    for directory, dirs, files in os.walk(root, onerror=unavailable):
+        here = Path(directory)
+        dirs[:] = [name for name in dirs if name != ".venv"
+                   and not (here == root and name in excluded)]
+        for name in files:
+            path = here / name
+            if not path.is_symlink() and path.is_file() and any(fnmatchcase(name, pattern)
+                                                             for pattern in patterns):
+                found.append(path.relative_to(root))
+    return found
+
+
 def scan(root: Path) -> bool:
     metadata = json.loads((root / ".github/github.json").read_text())
     if not isinstance(metadata, dict):
@@ -44,7 +73,7 @@ def scan(root: Path) -> bool:
     paths = metadata_paths(metadata)
     command = ["rg", "--json", "--hidden"]
     for excluded in (".git/**", ".build/**", "MediaControlRelay.xcodeproj/**", ".venv/**",
-                     "scratch/**", "scripts/check-secrets.sh", "scripts/check-private-source.py"):
+                     "scratch/**"):
         command += ["--glob", f"!{excluded}"]
     command += [PRIVATE, "."]
     result = subprocess.run(command, cwd=root, text=True, capture_output=True, check=False)
@@ -61,7 +90,7 @@ def scan(root: Path) -> bool:
         line = text_field(data["lines"])
         line = CODE.sub(lambda match: " " * len(match[0]) if match[2] in paths else match[0], line)
         if re.search(PRIVATE, line):
-            print(f"{text_field(data['path'])}:{data.get('line_number') or '?'}: private network address")
+            print(f"{safe_location(text_field(data['path']))}:{data.get('line_number') or '?'}: private network address", file=sys.stderr)
             found = True
     if result.returncode == 0 and not matched:
         raise ValueError("source search evidence missing")
@@ -70,7 +99,18 @@ def scan(root: Path) -> bool:
 
 def main() -> int:
     try:
-        return int(scan(Path(__file__).resolve().parents[1]))
+        root = Path(__file__).resolve().parents[1]
+        forbidden = forbidden_files(root)
+        if forbidden:
+            print("Forbidden secret-bearing files found:", file=sys.stderr)
+            for path in forbidden:
+                print(safe_location(str(path)), file=sys.stderr)
+            return 1
+        if scan(root):
+            print("Private network address found in public source.", file=sys.stderr)
+            return 1
+        print("Public secret checks passed.")
+        return 0
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError):
         print("Public source scan unavailable; check workflow metadata and ripgrep.", file=sys.stderr)
         return 2
