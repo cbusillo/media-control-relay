@@ -44,9 +44,9 @@ reviewer approval as a gate.
 
 ## What Media Control Relay does
 
-Media Control Relay routes Mac keyboard volume and mute keys to compatible Samsung TVs, preserving normal Mac behavior on unmatched routes.
+Media Control Relay routes Mac keyboard volume and mute keys to compatible Samsung TVs, preserving normal Mac behavior on unmatched routes; one model is hardware-qualified.
 It retains direct Samsung UPnP control and active-route matching. Companion owns control-surface pages and Apple TV actions; Home Assistant owns automation.
-Keyboard routing works independently of those services. Evidence: [product scope](docs/product-scope.md) and [README.md](README.md).
+Keep keyboard routing independent of those services. Evidence: [product scope](docs/product-scope.md) and [README.md](README.md).
 
 ## Engineering Defaults
 
