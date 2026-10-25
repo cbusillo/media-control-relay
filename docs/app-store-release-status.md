@@ -25,6 +25,11 @@ planned. Ownership requires both this checker's marker and the GitHub Actions
 actor; a different workflow deliberately using the same marker would share
 that identity. Human-authored issues and PRs are excluded.
 
+Retirement is permanent even if a withdrawn release is restored. Reopening its
+record explicitly resumes tracking. GitHub can also disable public-repository
+schedules after [60 days without repository activity](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule);
+re-enable the workflow and dispatch it to resume after that platform limit.
+
 The checker cannot submit, approve or change an App Store build. Public marketing
 versions cannot prove exact uploaded build identity or an installed storefront
 update, so broader qualification issues stay separate.

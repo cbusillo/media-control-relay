@@ -24,7 +24,7 @@ class FakeGitHub:
     def pages(self, path):
         if path == "releases":
             return copy.deepcopy(self.releases)
-        if path == "issues?state=all":
+        if path.startswith("issues?"):
             return copy.deepcopy(self.issues)
         return copy.deepcopy(self.comments.get(int(path.split("/")[1]), []))
 

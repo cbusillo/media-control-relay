@@ -65,7 +65,7 @@ class GitHub:
             text=True, capture_output=True, timeout=60, check=False,
         )
         if result.returncode:
-            raise StatusError("GitHub request failed; check this workflow's permissions")
+            raise StatusError("GitHub request failed; check API availability, rate limits and permissions")
         return json.loads(result.stdout)
 
     def pages(self, path: str) -> list[dict]:
@@ -104,8 +104,7 @@ def public_version(payload: dict, app_id: int) -> str | None:
 
 
 def fetch_public_version(config: dict) -> str | None:
-    query = urlencode({"id": config["appId"], "entity": "macSoftware",
-                       "country": config["storefront"]})
+    query = urlencode({"id": config["appId"], "country": config["storefront"]})
     with urlopen(f"https://itunes.apple.com/lookup?{query}", timeout=30) as response:
         return public_version(json.load(response), config["appId"])
 
@@ -124,7 +123,7 @@ def ensure_record(client, issues: list[dict], release: dict, target: str) -> dic
         raise StatusError("duplicate release records; no automatic closure is safe")
     if matches:
         return matches[0]
-    url = f"https://github.com/{client.repository}/releases/tag/{release['tag_name']}"
+    url = f"https://github.com/{client.repository}/releases"
     issue = client.api("issues", {
         "title": f"App Store release pending: {target}",
         "body": (
@@ -178,7 +177,7 @@ def observe(client, issue: dict, target: str, public: str | None, unknown: bool)
 def monitor(client, config: dict, lookup=fetch_public_version) -> list[dict]:
     # Complete inventories are required before retiring obsolete open records.
     releases = client.pages("releases")
-    issues = client.pages("issues?state=all")
+    issues = client.pages(f"issues?state=all&creator={WORKFLOW_ACTOR}")
     targets = []
     for release in releases:
         if release.get("draft") or release.get("prerelease"):
