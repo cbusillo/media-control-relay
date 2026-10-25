@@ -14,7 +14,6 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import urlopen
@@ -118,9 +117,8 @@ def ensure_record(client, issues: list[dict], release: dict, target: str) -> dic
         if "pull_request" in issue or issue.get("user", {}).get("login") != WORKFLOW_ACTOR:
             continue
         saved = read_marker(RECORD, issue.get("body") or "")
-        if saved and saved.get("releaseId") == record["releaseId"]:
-            if saved != record:
-                raise StatusError("tracking record disagrees with its GitHub release")
+        if (saved and saved.get("releaseId") == record["releaseId"]
+                and version(saved.get("version")) == version(target)):
             matches.append(issue)
     if len(matches) > 1:
         raise StatusError("duplicate release records; no automatic closure is safe")
@@ -134,9 +132,8 @@ def ensure_record(client, issues: list[dict], release: dict, target: str) -> dic
             "The scheduled App Store Release Status workflow owns this record. "
             "It stays open until Apple publicly lists this version. GitHub publication, "
             "TestFlight and review submission alone do not complete delivery. "
-            "The configured lag allowance starts when this record is created.\n\n"
             "This records marketing-version availability, not exact binary/build identity "
-            "or an installed storefront-update test. Broader qualification stays in #16.\n\n"
+            "or an installed storefront-update test.\n\n"
             + marker(RECORD, record)
         ),
     })
@@ -144,12 +141,7 @@ def ensure_record(client, issues: list[dict], release: dict, target: str) -> dic
     return issue
 
 
-def observe(client, issue: dict, target: str, public: str | None,
-            unknown: bool, now: datetime, lag_hours: int) -> dict:
-    created = datetime.fromisoformat(issue["created_at"].replace("Z", "+00:00"))
-    if created.tzinfo is None:
-        raise StatusError("tracking timestamp has no time zone")
-    overdue = now - created >= timedelta(hours=lag_hours)
+def observe(client, issue: dict, target: str, public: str | None, unknown: bool) -> dict:
     if unknown:
         status = "unknown"
     elif public is not None and version(public) == version(target):
@@ -157,7 +149,7 @@ def observe(client, issue: dict, target: str, public: str | None,
     elif public is not None and version(public) > version(target):
         status = "superseded"
     else:
-        status = "overdue" if overdue else "pending"
+        status = "pending"
     value = {"version": target, "publicVersion": public, "status": status}
     comments = client.pages(f"issues/{issue['number']}/comments")
     observations = [read_marker(OBSERVATION, comment.get("body") or "")
@@ -167,13 +159,13 @@ def observe(client, issue: dict, target: str, public: str | None,
     if not previous or previous[-1] != value:
         client.api(f"issues/{issue['number']}/comments", {
             "body": f"App Store delivery: **{status}**. Target: {target}; "
-            f"public US Mac version: {public or 'not established'}.\n\n"
+            f"public Mac version: {public or 'not established'}.\n\n"
             "Live means this marketing version is publicly available; it does not identify "
             "the exact build or prove installed update behavior. A newer public version "
             "supersedes this record without claiming this older version went live. "
-            "Pending/overdue does not distinguish waiting for review from rejection. "
-            "For overdue or unknown delivery, inspect Apple's review response or the failed "
-            "lookup before changing anything. No App Store Connect mutation was made.\n\n"
+            "Pending does not distinguish a version not submitted from waiting for review "
+            "or rejection. Unknown means the public lookup could not be established. "
+            "No App Store Connect mutation was made.\n\n"
             + marker(OBSERVATION, value),
         })
     if status in {"live", "superseded"} and issue["state"] == "open":
@@ -183,9 +175,8 @@ def observe(client, issue: dict, target: str, public: str | None,
     return {"issue": issue["number"], **value}
 
 
-def monitor(client, config: dict, now: datetime, lookup=fetch_public_version) -> list[dict]:
-    # Read both inventories completely before any write. PRs and foreign-authored
-    # issue markers are never adopted; closed not-planned records stay retired.
+def monitor(client, config: dict, lookup=fetch_public_version) -> list[dict]:
+    # Complete inventories are required before retiring obsolete open records.
     releases = client.pages("releases")
     issues = client.pages("issues?state=all")
     targets = []
@@ -196,6 +187,23 @@ def monitor(client, config: dict, now: datetime, lookup=fetch_public_version) ->
         if match:
             targets.append((release, match[1]))
     if not targets:
+        latest = None
+    else:
+        latest = max(targets, key=lambda item: version(item[1]))
+    owned = [(issue, read_marker(RECORD, issue.get("body") or "")) for issue in issues
+             if "pull_request" not in issue and issue.get("user", {}).get("login") == WORKFLOW_ACTOR]
+    for issue, saved in owned:
+        if saved and issue["state"] == "open" and (
+                latest is None or saved.get("releaseId") != latest[0]["id"]
+                or version(saved.get("version")) != version(latest[1])):
+            client.api(f"issues/{issue['number']}", {
+                "state": "closed", "state_reason": "not_planned",
+            }, method="PATCH")
+    if latest is None:
+        return []
+    release, target = latest
+    issue = ensure_record(client, issues, release, target)
+    if issue["state"] == "closed":
         return []
     try:
         public = lookup(config)
@@ -204,13 +212,7 @@ def monitor(client, config: dict, now: datetime, lookup=fetch_public_version) ->
         unknown = False
     except (OSError, ValueError, TypeError, KeyError, StatusError):
         public, unknown = None, True
-    outcomes = []
-    for release, target in targets:
-        issue = ensure_record(client, issues, release, target)
-        if issue.get("state_reason") == "not_planned":
-            continue
-        outcomes.append(observe(client, issue, target, public, unknown, now, config["lagHours"]))
-    return outcomes
+    return [observe(client, issue, target, public, unknown)]
 
 
 def main() -> int:
@@ -223,15 +225,14 @@ def main() -> int:
     try:
         config = json.loads(args.config.read_text())
         if (type(config["appId"]) is not int or config["appId"] <= 0
-                or not re.fullmatch(r"[a-z]{2}", config["storefront"])
-                or type(config["lagHours"]) is not int or config["lagHours"] <= 0):
+                or not re.fullmatch(r"[a-z]{2}", config["storefront"])):
             raise StatusError("invalid App Store release configuration")
         if args.lookup_only:
             print(json.dumps({"publicVersion": fetch_public_version(config)}))
             return 0
-        outcomes = monitor(GitHub(args.repo), config, datetime.now(timezone.utc))
+        outcomes = monitor(GitHub(args.repo), config)
         print(json.dumps(outcomes, indent=2))
-        return int(any(item["status"] in {"overdue", "unknown"} for item in outcomes))
+        return 0
     except (OSError, ValueError, TypeError, KeyError, StatusError, subprocess.SubprocessError) as error:
         print(f"Release status unavailable: {error}", file=sys.stderr)
         return 1

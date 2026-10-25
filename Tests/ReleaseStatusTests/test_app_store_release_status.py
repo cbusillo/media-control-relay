@@ -1,7 +1,6 @@
 import copy
 import importlib.util
 import unittest
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
@@ -9,8 +8,7 @@ SPEC = importlib.util.spec_from_file_location(
 )
 status = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(status)
-NOW = datetime(2026, 1, 2, tzinfo=timezone.utc)
-CONFIG = {"appId": 17, "storefront": "us", "lagHours": 48}
+CONFIG = {"appId": 17, "storefront": "us"}
 
 
 class FakeGitHub:
@@ -33,8 +31,7 @@ class FakeGitHub:
     def api(self, path, body, method="POST"):
         self.writes.append((path, copy.deepcopy(body)))
         if path == "issues":
-            item = {"number": len(self.issues) + 1, "created_at": NOW.isoformat(),
-                    "state": "open", "state_reason": None, **body,
+            item = {"number": len(self.issues) + 1, "state": "open", "state_reason": None, **body,
                     "user": {"login": status.WORKFLOW_ACTOR}}
             self.issues.append(item)
             return copy.deepcopy(item)
@@ -51,33 +48,34 @@ class FakeGitHub:
 
 
 class ReleaseStatusTests(unittest.TestCase):
-    def run_check(self, client, public=None, now=NOW):
-        return status.monitor(client, CONFIG, now, lookup=lambda _: public)
+    def run_check(self, client, public=None):
+        return status.monitor(client, CONFIG, lookup=lambda _: public)
 
     def test_first_release_absent_then_live_creates_one_record_and_closes_it(self):
         client = FakeGitHub()
         first = self.run_check(client)
         self.assertEqual(first[0]["status"], "pending")
+        writes = len(client.writes)
         self.run_check(client)
         self.assertEqual(len(client.issues), 1)
-        self.assertEqual(len(client.comments[1]), 1)
+        self.assertEqual(len(client.writes), writes)
         live = self.run_check(client, "2.3.0")
         self.assertEqual(live[0]["status"], "live")
         self.assertEqual(client.issues[0]["state_reason"], "completed")
+        writes = len(client.writes)
         self.run_check(client, "2.3.0")
-        self.assertEqual(len(client.comments[1]), 2)
-        self.assertEqual(len(client.writes), 4)
+        self.assertEqual(len(client.writes), writes)
 
-    def test_unavailable_or_old_store_version_becomes_overdue_without_closing(self):
+    def test_unavailable_or_old_store_version_stays_pending_without_repeat_writes(self):
         for public in (None, "2.2.9"):
             with self.subTest(public=public):
                 client = FakeGitHub()
                 self.run_check(client, public)
-                result = self.run_check(client, public, NOW + timedelta(hours=48))
-                self.assertEqual(result[0]["status"], "overdue")
+                writes = len(client.writes)
+                result = self.run_check(client, public)
+                self.assertEqual(result[0]["status"], "pending")
                 self.assertEqual(client.issues[0]["state"], "open")
-                self.run_check(client, public, NOW + timedelta(hours=72))
-                self.assertEqual(len(client.comments[1]), 2)
+                self.assertEqual(len(client.writes), writes)
 
     def test_unknown_evidence_is_not_a_missing_listing_or_success(self):
         client = FakeGitHub()
@@ -85,7 +83,7 @@ class ReleaseStatusTests(unittest.TestCase):
         def broken(_):
             raise OSError("lookup failed")
 
-        result = status.monitor(client, CONFIG, NOW, lookup=broken)
+        result = status.monitor(client, CONFIG, lookup=broken)
         self.assertEqual(result[0]["status"], "unknown")
         self.assertEqual(client.issues[0]["state"], "open")
         self.run_check(client, "2.3.0")
@@ -139,21 +137,52 @@ class ReleaseStatusTests(unittest.TestCase):
         self.assertEqual(len(client.comments[1]), 1)
         self.assertEqual(client.issues[0]["state_reason"], "completed")
 
-    def test_duplicate_or_changed_bot_record_refuses_automatic_closure(self):
-        for duplicate in (True, False):
-            with self.subTest(duplicate=duplicate):
+    def test_duplicate_record_refuses_automatic_closure(self):
+        client = FakeGitHub()
+        self.run_check(client)
+        client.issues.append(copy.deepcopy(client.issues[0]))
+        writes = len(client.writes)
+        with self.assertRaises(status.StatusError):
+            self.run_check(client, "2.3.0")
+        self.assertEqual(len(client.writes), writes)
+
+    def test_only_newest_version_is_tracked_and_obsolete_records_retire(self):
+        client = FakeGitHub()
+        self.run_check(client)
+        client.releases.append({"id": 9, "tag_name": "v2.10"})
+        result = self.run_check(client)
+        self.assertEqual(result[0]["version"], "2.10")
+        self.assertEqual(client.issues[0]["state_reason"], "not_planned")
+        self.assertEqual(client.issues[1]["state"], "open")
+        fresh = FakeGitHub()
+        fresh.releases = client.releases
+        self.run_check(fresh)
+        self.assertEqual(len(fresh.issues), 1)
+
+    def test_withdrawn_or_retagged_release_does_not_orphan_its_record(self):
+        for replacement in ([], [{"id": 8, "tag_name": "nightly"}],
+                            [{"id": 8, "tag_name": "v2.3.0", "prerelease": True}],
+                            [{"id": 8, "tag_name": "v2.4"}]):
+            with self.subTest(replacement=replacement):
                 client = FakeGitHub()
                 self.run_check(client)
-                if duplicate:
-                    client.issues.append(copy.deepcopy(client.issues[0]))
-                else:
-                    client.issues[0]["body"] = status.marker(
-                        status.RECORD, {"releaseId": 8, "version": "9.0"}
-                    )
+                client.releases = replacement
+                self.run_check(client)
+                self.assertEqual(client.issues[0]["state_reason"], "not_planned")
                 writes = len(client.writes)
-                with self.assertRaises(status.StatusError):
-                    self.run_check(client, "2.3.0")
+                self.run_check(client)
                 self.assertEqual(len(client.writes), writes)
+
+    def test_equivalent_retag_reuses_record_and_completed_records_stay_quiet(self):
+        client = FakeGitHub()
+        self.run_check(client)
+        client.releases[0]["tag_name"] = "v2.3"
+        self.run_check(client, "2.3.0")
+        writes = len(client.writes)
+        for public in (None, "2.2", "2.10"):
+            self.run_check(client, public)
+        self.assertEqual(len(client.writes), writes)
+        self.assertEqual(len(client.issues), 1)
 
     def test_only_stable_numeric_publications_are_tracked(self):
         client = FakeGitHub()

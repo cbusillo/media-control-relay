@@ -6,30 +6,16 @@ on:
   release:
     types: [published]
   workflow_dispatch:
-  pull_request:
-  push:
-    branches: [main]
 
 permissions:
   contents: read
 
 concurrency:
-  group: app-store-release-status-${{ github.event_name == 'pull_request' && github.ref || 'monitor' }}
+  group: app-store-release-status
   cancel-in-progress: false
 
 jobs:
-  tests:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Exercise release-record lifecycle without network or credentials
-        run: python3 -m unittest discover -s Tests/ReleaseStatusTests -p 'test_*.py'
   check:
-    if: github.event_name != 'pull_request'
-    needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

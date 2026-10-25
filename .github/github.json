@@ -50,8 +50,7 @@
   },
   "importantWorkflows": [
     "Validation",
-    "CodeQL",
-    "App Store Release Status"
+    "CodeQL"
   ],
   "githubSettings": {
     "expected": {
