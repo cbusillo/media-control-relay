@@ -22,6 +22,7 @@ command -v ruby >/dev/null 2>&1 || {
 	exit 69
 }
 python3 -m unittest discover -s Tests/ReleaseStatusTests -p 'test_*.py'
+python3 -m unittest discover -s Tests/SecretScanTests -p 'test_*.py'
 swift test
 runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-build.XXXXXX")"
 release_archive="$runtime_check_root/MediaControlRelay.xcarchive"

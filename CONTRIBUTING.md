@@ -14,11 +14,14 @@ be accepted; see [product scope](docs/product-scope.md).
 ## Setup
 
 Requirements and commands are in the [README](README.md#development). The
-focused local command and full CI command are declared in
+focused (`qualityGate.test.local`) and complete CI commands are declared in
 [workflow metadata](.github/github.json). Select affected package or hosted app
 tests using [AGENTS.md](AGENTS.md#validation), plus required static checks and
 complete affected safety modules. CI runs the complete suite and validation
 script for every PR head before ready. Real-device tests remain optional.
+
+See the [public-source scanner](scripts/check-private-source.py) and its
+[fixture tests](Tests/SecretScanTests) for details and synthetic examples.
 
 ## Rules
 
