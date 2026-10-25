@@ -47,7 +47,7 @@ or pull request and are not replaced by the branch rule.
 ## Validation
 
 The stable required build check is the `validation` job in the `Validation`
-workflow. It runs `scripts/check.sh`, which includes Swift tests, secret checks,
+workflow. It runs the CI command declared in [workflow metadata](../.github/github.json), which includes Swift tests, secret checks,
 shell and workflow linting, immutable GitHub Action pin checks, repository
 metadata syntax checks, a check that the privacy manifest's API
 categories match source usage, a check that local App Store exports never
@@ -112,7 +112,7 @@ an image deprecation or removal, CI emits retirement warnings, the required
 Xcode or Swift baseline changes, or Apple distribution requirements change.
 
 An image migration uses a focused task-branch pull request. The candidate image
-must pass `scripts/check.sh`, CodeQL, and any then-current signing or release
+must pass the declared CI command, CodeQL, and any then-current signing or release
 checks before Validation and CodeQL move together. The previous image is a
 rollback option only while GitHub still supports it; the repository does not
 carry a permanent compatibility matrix for retired images.

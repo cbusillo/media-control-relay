@@ -61,7 +61,7 @@ Project priorities and stop boundaries follow the Director's
 [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md);
 this repository has no separate `DIRECTION.md`. Agent execution guidance lives
 in [AGENTS.md](AGENTS.md). The [repository settings](docs/repo-settings.md)
-describe the repository-specific checks, build settings and distribution procedure.
+describe the repository's GitHub settings and required checks.
 
 Requirements:
 

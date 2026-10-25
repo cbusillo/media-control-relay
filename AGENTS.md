@@ -74,8 +74,8 @@ Follow the shared [Tests rule](https://github.com/cbusillo/codex-skills/blob/mai
 The focused package-test command is declared in [workflow metadata](.github/github.json);
 replace `{test_filter}` with the affected Swift package suite or case. Hosted app
 behavior uses `xcodebuild test -only-testing:<target>/<suite>`, with DerivedData
-and TMPDIR in the task worktree. CI's complete validation entrypoint is
-`scripts/check.sh`. Real-device tests are opt-in and never required for public CI.
+and TMPDIR in the task worktree. CI uses the complete validation command declared in
+that metadata. Real-device tests are opt-in and never required for public CI.
 
 Run scope-applicable secret, action-pin, shell, workflow, type and platform checks.
 Select full safety modules through changed code and its callers; record missing
