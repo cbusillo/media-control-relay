@@ -14,16 +14,12 @@ second, drifting documentation surface.
 
 ## Merge Policy
 
-Pull requests merge with normal merge commits. Squash and rebase merges are
-disabled. This matches the established convention in the owner's maintained
-repositories and preserves the reviewed branch history as one integration
-unit.
+Merge authority and routing follow the Director's
+[overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md#stop-boundaries)
+and the shared [merging procedure](https://github.com/cbusillo/codex-skills/blob/main/skills/github/SKILL.md#merging).
+This repository permits normal merge commits; squash and rebase merges are disabled.
 
-Chris's [standing merge authorization](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026)
-lets agents merge pull requests into `main` after current checks are green and any
-required review findings are accounted for, without a separate approval from
-Chris. Work stays within the owning issue's scope and the Director's overall
-stop boundaries. TestFlight uploads through the supported path in
+TestFlight uploads through the supported path in
 [App Store distribution](app-store-distribution.md) are agent work; App Review
 submission and store release stay Chris's decision ([Q479](https://github.com/cbusillo/codex-skills/issues/1228#issuecomment-6244384620)).
 

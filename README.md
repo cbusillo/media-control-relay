@@ -61,8 +61,7 @@ Project priorities and stop boundaries follow the Director's
 [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md);
 this repository has no separate `DIRECTION.md`. Agent execution guidance lives
 in [AGENTS.md](AGENTS.md). The [repository settings](docs/repo-settings.md)
-describe validation, normal agent merges after green CI and required review,
-and that App Review submission and store release stay Chris's decision.
+describe the repository-specific checks, build settings and distribution procedure.
 
 Requirements:
 
