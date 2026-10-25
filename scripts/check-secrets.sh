@@ -35,16 +35,6 @@ if [ -n "$forbidden_files" ]; then
 	exit 1
 fi
 
-if rg -n --hidden \
-	--glob '!.git/**' \
-	--glob '!.build/**' \
-	--glob '!MediaControlRelay.xcodeproj/**' \
-	--glob '!.venv/**' \
-	--glob '!scratch/**' \
-	--glob '!scripts/check-secrets.sh' \
-	'\b(10\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}|192\.168\.[0-9]{1,3}\.[0-9]{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.[0-9]{1,3}\.[0-9]{1,3}|169\.254\.[0-9]{1,3}\.[0-9]{1,3})\b|(?i:\.local\b)' .; then
-	printf 'private network address found in public source\n' >&2
-	exit 1
-fi
+python3 scripts/check-private-source.py
 
 printf 'Public secret checks passed.\n'

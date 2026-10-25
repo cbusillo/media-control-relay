@@ -20,6 +20,11 @@ tests using [AGENTS.md](AGENTS.md#validation), plus required static checks and
 complete affected safety modules. CI runs the complete suite and validation
 script for every PR head before ready. Real-device tests remain optional.
 
+Public-source checks recognize complete inline-code references to fields declared
+in workflow metadata, such as `qualityGate.test.local`. Private addresses and
+hostnames elsewhere on the same line, including URLs, still fail the check.
+Scanner regression tests are in `Tests/SecretScanTests`; use synthetic inputs.
+
 ## Rules
 
 - Keep `MediaControlCore` free of AppKit, IOKit, Network and real hardware so
