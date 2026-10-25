@@ -21,6 +21,7 @@ command -v ruby >/dev/null 2>&1 || {
 	printf 'Ruby is required for JSON and YAML validation\n' >&2
 	exit 69
 }
+python3 -m unittest discover -s Tests/ReleaseStatusTests -p 'test_*.py'
 swift test
 runtime_check_root="$(mktemp -d "${TMPDIR:-/tmp}/media-control-relay-build.XXXXXX")"
 release_archive="$runtime_check_root/MediaControlRelay.xcarchive"

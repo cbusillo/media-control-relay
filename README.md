@@ -117,6 +117,7 @@ scripts/generate-project.sh
 - [Protocol provenance audit](docs/provenance-audit.md)
 - [Privacy](docs/privacy.md)
 - [App Store distribution qualification](docs/app-store-distribution.md)
+- [Automatic App Store release tracking](docs/app-store-release-status.md)
 - [Security policy](SECURITY.md)
 - [Repository settings](docs/repo-settings.md)
 - [Product plan](https://github.com/cbusillo/media-control-relay/issues/1)

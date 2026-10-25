@@ -14,6 +14,7 @@
     "appleCompanionRuntimeProvenance": "docs/apple-companion-runtime-provenance.md",
     "privacy": "docs/privacy.md",
     "appStoreDistribution": "docs/app-store-distribution.md",
+    "appStoreReleaseStatus": "docs/app-store-release-status.md",
     "security": "SECURITY.md",
     "repoSettings": "docs/repo-settings.md",
     "productScope": "docs/product-scope.md"
@@ -49,7 +50,8 @@
   },
   "importantWorkflows": [
     "Validation",
-    "CodeQL"
+    "CodeQL",
+    "App Store Release Status"
   ],
   "githubSettings": {
     "expected": {
