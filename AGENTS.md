@@ -16,9 +16,10 @@ reviewer approval as a gate.
 
 ## GitHub Workflow
 
-Merge authority and train routing come from the Director's
+Train routing follows the Director's
 [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md#stop-boundaries);
 use the shared [merging procedure](https://github.com/cbusillo/codex-skills/blob/main/skills/github/SKILL.md#merging).
+Standing merge authorization: [the Director's recorded grant](https://github.com/cbusillo/media-control-relay/issues/129#issuecomment-5988376026).
 This repository uses normal merge commits, with `validation` and `Analyze Swift`
 required on the current PR head.
 
@@ -75,3 +76,9 @@ replace `{test_filter}` with the affected Swift package suite or case. Hosted ap
 behavior uses `xcodebuild test -only-testing:<target>/<suite>`, with DerivedData
 and TMPDIR in the task worktree. CI's complete validation entrypoint is
 `scripts/check.sh`. Real-device tests are opt-in and never required for public CI.
+
+Run scope-applicable secret, action-pin, shell, workflow, type and platform checks.
+Select full safety modules through changed code and its callers; record missing
+evidence. For Swift app tests, inspect the built bundle or product code rather
+than repository files read through `#filePath`. A byte-exact icon check belongs
+on the built icon.

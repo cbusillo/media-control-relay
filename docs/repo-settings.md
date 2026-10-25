@@ -14,9 +14,10 @@ second, drifting documentation surface.
 
 ## Merge Policy
 
-Merge authority and routing follow the Director's
+Train routing follows the Director's
 [overall direction](https://github.com/cbusillo/direction/blob/HEAD/DIRECTION.md#stop-boundaries)
 and the shared [merging procedure](https://github.com/cbusillo/codex-skills/blob/main/skills/github/SKILL.md#merging).
+The standing merge grant is linked from [agent guidance](../AGENTS.md#github-workflow).
 This repository permits normal merge commits; squash and rebase merges are disabled.
 
 TestFlight uploads through the supported path in
