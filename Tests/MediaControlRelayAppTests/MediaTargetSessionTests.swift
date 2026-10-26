@@ -245,10 +245,10 @@ struct MediaTargetSessionTests {
         )
 
         let command = Task {
-            await Task.yield()
+            // Cancel this task before entering the session, regardless of scheduling.
+            withUnsafeCurrentTask { $0?.cancel() }
             return await session.execute(.mute)
         }
-        command.cancel()
 
         #expect(await command.value == nil)
         #expect(await target.appliedOperations.isEmpty)
