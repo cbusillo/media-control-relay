@@ -122,10 +122,15 @@ def ensure_record(client, issues: list[dict], release: dict, target: str) -> dic
     if len(matches) > 1:
         raise StatusError("duplicate release records; no automatic closure is safe")
     if matches:
-        return matches[0]
+        issue = matches[0]
+        saved = read_marker(RECORD, issue.get("body") or "")
+        if issue["state"] == "open" and issue["title"] == f"App Store release pending: {saved['version']}":
+            issue["title"] = f"App Store release tracking: {target}"
+            client.api(f"issues/{issue['number']}", {"title": issue["title"]}, method="PATCH")
+        return issue
     url = f"https://github.com/{client.repository}/releases"
     issue = client.api("issues", {
-        "title": f"App Store release pending: {target}",
+        "title": f"App Store release tracking: {target}",
         "body": (
             f"Track public Mac App Store delivery of [{release['tag_name']}]({url}).\n\n"
             "The scheduled App Store Release Status workflow owns this record. "
@@ -148,7 +153,7 @@ def observe(client, issue: dict, target: str, public: str | None, unknown: bool)
     elif public is not None and version(public) > version(target):
         status = "superseded"
     else:
-        status = "pending"
+        status = "not_public"
     value = {"version": target, "publicVersion": public, "status": status}
     comments = client.pages(f"issues/{issue['number']}/comments")
     observations = [read_marker(OBSERVATION, comment.get("body") or "")
@@ -162,8 +167,9 @@ def observe(client, issue: dict, target: str, public: str | None, unknown: bool)
             "Live means this marketing version is publicly available; it does not identify "
             "the exact build or prove installed update behavior. A newer public version "
             "supersedes this record without claiming this older version went live. "
-            "Pending does not distinguish a version not submitted from waiting for review "
-            "or rejection. Unknown means the public lookup could not be established. "
+            "Not public describes storefront availability only. App Review status is "
+            "not checked: the version may be unsubmitted, in review or rejected. "
+            "Unknown means the public lookup could not be established. "
             "No App Store Connect mutation was made.\n\n"
             + marker(OBSERVATION, value),
         })
