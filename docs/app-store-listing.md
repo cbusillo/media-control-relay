@@ -2,7 +2,7 @@
 
 > [!NOTE]
 > Listing text and App Review notes were entered in App Store Connect on
-> September 30, 2026. Build 13 was uploaded and processed as `VALID`. The
+> September 30, 2026. Build 13 was uploaded and processed as `VALID`.
 > The October 25 [media handoff](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-6402660680)
 > and [submission record](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-6403411256)
 > completed the demo, screenshot, build selection and submission. Read-only
