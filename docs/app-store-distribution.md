@@ -388,3 +388,30 @@ saved in App Store Connect. The demo video, screenshots, build selection and
 Chris's submission remained unfinished in that record. Earlier August sections
 are historical qualification evidence, not current app-record or build status.
 No App Review acceptance or storefront availability is established here.
+
+## October 27, 2026 App Review Rejection
+
+Read-only App Store Connect API verification confirmed macOS `1.0.0` is
+`REJECTED`, with selected build `13`, processing `VALID` and unexpired. The
+October 25 review submission is `UNRESOLVED_ISSUES`, with its version item
+`REJECTED`. The authenticated read used the existing team API key without
+changing credentials, signing assets or roles.
+
+Apple's official OpenAPI 4.5.1 exposes version state, review-submission state
+and developer-supplied reviewer notes, but no Resolution Center messages.
+[Issue #155](https://github.com/cbusillo/media-control-relay/issues/155)
+requests Apple's exact guideline numbers, explanation and screenshot text.
+Guideline 2.4.5 is background context above; it is not a confirmed reason for
+this rejection.
+
+A local unsigned AppStore build of `186cb3e` succeeds. Its undefined symbols
+include `CGPreflightListenEventAccess` and `CGRequestListenEventAccess`, and
+exclude `AXIsProcessTrusted` and `AXIsProcessTrustedWithOptions`. This checks
+current source, not the bytes Apple reviewed. The existing AppStore settings
+request only sandbox, network-client and network-server entitlements; the
+network-server use is the UDP socket for SSDP replies.
+
+No new build has been uploaded and no message or submission has been sent to
+Apple. Build `14` is the next candidate after the exact rejection identifies
+the required repair; `1.0.0 (13)` remains the selected rejected build. Reviewer
+text and resubmission must wait for Chris's exact-text approval on issue #155.

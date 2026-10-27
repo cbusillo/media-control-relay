@@ -8,15 +8,29 @@ uses Python's standard library and the job's repository-scoped GitHub token.
 The highest stable numeric GitHub release supplies the marketing version to
 watch. GitHub is the Developer ID channel, so publication there does not prove
 App Store submission or start a review deadline. The checker keeps one delivery
-issue pending until Apple lists that version. It retires obsolete open records
+issue open until Apple lists that version. It retires obsolete open records
 when a newer release replaces the target or the release is withdrawn. It never
 opens records for every historical release.
 
 Apple evidence must identify the configured app ID and Mac software kind. A
-valid empty or older listing is pending; failed or mismatched lookup evidence is
+valid empty or older listing is `not_public`; failed or mismatched lookup evidence is
 unknown. Changed observations get a comment; unchanged runs stay quiet. Neither
-pending nor unknown makes code validation fail. Configuration or GitHub errors
+`not_public` nor unknown makes code validation fail. Configuration or GitHub errors
 still fail the monitoring workflow.
+
+Public lookup does not check App Review status. A rejected version, a version
+waiting for review and an unsubmitted version can all be absent from the store.
+The former `pending` observation described this same absence; it never proved a
+review was pending. Authenticated App Store Connect evidence belongs on the
+delivery issue with its verification time. The public checker does not overwrite
+that evidence or claim it is current on subsequent runs.
+
+The official API can read `appVersionState` and the selected build through
+`GET /v1/apps/{appId}/appStoreVersions?filter[platform]=MAC_OS&include=build`.
+Its OpenAPI 4.5.1 specification has no Resolution Center message resource.
+The scheduled workflow has no declared App Store Connect authentication path;
+it continues to report availability only. Adding account access is a separate
+access decision, not part of correcting the public observation.
 
 When Apple lists the target, its issue closes as completed. A newer public
 version retires the target without claiming it went live. Closed records stay

@@ -54,7 +54,7 @@ class ReleaseStatusTests(unittest.TestCase):
     def test_first_release_absent_then_live_creates_one_record_and_closes_it(self):
         client = FakeGitHub()
         first = self.run_check(client)
-        self.assertEqual(first[0]["status"], "pending")
+        self.assertEqual(first[0]["status"], "not_public")
         writes = len(client.writes)
         self.run_check(client)
         self.assertEqual(len(client.issues), 1)
@@ -66,14 +66,14 @@ class ReleaseStatusTests(unittest.TestCase):
         self.run_check(client, "2.3.0")
         self.assertEqual(len(client.writes), writes)
 
-    def test_unavailable_or_old_store_version_stays_pending_without_repeat_writes(self):
+    def test_absent_or_old_store_version_reports_availability_without_inferring_review(self):
         for public in (None, "2.2.9"):
             with self.subTest(public=public):
                 client = FakeGitHub()
                 self.run_check(client, public)
                 writes = len(client.writes)
                 result = self.run_check(client, public)
-                self.assertEqual(result[0]["status"], "pending")
+                self.assertEqual(result[0]["status"], "not_public")
                 self.assertEqual(client.issues[0]["state"], "open")
                 self.assertEqual(len(client.writes), writes)
 
