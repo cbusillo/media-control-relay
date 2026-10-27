@@ -55,6 +55,10 @@ class ReleaseStatusTests(unittest.TestCase):
         client = FakeGitHub()
         first = self.run_check(client)
         self.assertEqual(first[0]["status"], "not_public")
+        title = client.issues[0]["title"]
+        client.issues[0]["title"] = "App Store release pending: 2.3.0"
+        self.run_check(client)
+        self.assertEqual(client.issues[0]["title"], title)
         writes = len(client.writes)
         self.run_check(client)
         self.assertEqual(len(client.issues), 1)

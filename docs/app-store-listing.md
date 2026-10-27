@@ -3,11 +3,14 @@
 > [!NOTE]
 > Listing text and App Review notes were entered in App Store Connect on
 > September 30, 2026. Build 13 was uploaded and processed as `VALID`. The
-> October 25 walkthrough completed the demo, screenshot, build selection and
-> submission. Read-only API verification on October 27 reports `1.0.0 (13)`
+> The October 25 [media handoff](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-6402660680)
+> and [submission record](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-6403411256)
+> completed the demo, screenshot, build selection and submission. Read-only
+> API verification on October 27 reports `1.0.0 (13)`
 > rejected. [Issue #155](https://github.com/cbusillo/media-control-relay/issues/155)
 > owns diagnosis and the next candidate. These notes describe the submitted
-> build; replacement reviewer text requires Chris's approval before sending.
+> build, matching the reviewer notes read back through the API on October 27;
+> replacement reviewer text requires Chris's approval before sending.
 
 ## Build
 

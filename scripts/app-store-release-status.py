@@ -122,10 +122,15 @@ def ensure_record(client, issues: list[dict], release: dict, target: str) -> dic
     if len(matches) > 1:
         raise StatusError("duplicate release records; no automatic closure is safe")
     if matches:
-        return matches[0]
+        issue = matches[0]
+        saved = read_marker(RECORD, issue.get("body") or "")
+        if issue["state"] == "open" and issue["title"] == f"App Store release pending: {saved['version']}":
+            issue["title"] = f"App Store release tracking: {target}"
+            client.api(f"issues/{issue['number']}", {"title": issue["title"]}, method="PATCH")
+        return issue
     url = f"https://github.com/{client.repository}/releases"
     issue = client.api("issues", {
-            "title": f"App Store release tracking: {target}",
+        "title": f"App Store release tracking: {target}",
         "body": (
             f"Track public Mac App Store delivery of [{release['tag_name']}]({url}).\n\n"
             "The scheduled App Store Release Status workflow owns this record. "

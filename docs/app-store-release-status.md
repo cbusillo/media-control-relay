@@ -24,6 +24,8 @@ The former `pending` observation described this same absence; it never proved a
 review was pending. Authenticated App Store Connect evidence belongs on the
 delivery issue with its verification time. The public checker does not overwrite
 that evidence or claim it is current on subsequent runs.
+It migrates its own open record's original `App Store release pending` title to
+`App Store release tracking`, preserving manually changed titles and closed records.
 
 The official API can read `appVersionState` and the selected build through
 `GET /v1/apps/{appId}/appStoreVersions?filter[platform]=MAC_OS&include=build`.
