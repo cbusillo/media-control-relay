@@ -5,12 +5,12 @@
 > September 30, 2026. Build 13 was uploaded and processed as `VALID`.
 > The October 25 [media handoff](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-6402660680)
 > and [submission record](https://github.com/cbusillo/media-control-relay/issues/16#issuecomment-6403411256)
-> completed the demo, screenshot, build selection and submission. Read-only
-> API verification on October 27 reports `1.0.0 (13)`
-> rejected. [Issue #155](https://github.com/cbusillo/media-control-relay/issues/155)
-> owns diagnosis and the next candidate. These notes describe the submitted
-> build, matching the reviewer notes read back through the API on October 27;
-> replacement reviewer text requires Chris's approval before sending.
+> completed the demo, screenshot, build selection and submission. Apple
+> rejected `1.0.0 (13)` on October 27 over the `network.server` entitlement.
+> Build 13 was resubmitted unchanged that evening with the reviewer notes
+> below; [issue #147](https://github.com/cbusillo/media-control-relay/issues/147)
+> tracks the public release. Changing reviewer text requires Chris's approval
+> before sending.
 
 ## Build
 
@@ -98,26 +98,38 @@ Sign-in required: No.
 
 Notes for the reviewer:
 
-> Media Control Relay sends the Mac's volume and mute keys to a TV on the local
-> network. It needs a compatible TV (tested with a Samsung UN65JU670D) that is
-> both the Mac's current sound output over HDMI and a Mac display. Without that
-> TV, the app runs, shows setup and status, and leaves the volume keys to macOS.
-> A video of the app controlling the TV is attached.
+Stored in App Store Connect on October 27, 2026, replacing the whole earlier
+Notes field. This is the exact text Chris approved on
+[issue #155](https://github.com/cbusillo/media-control-relay/issues/155#issuecomment-6449034548):
+
+> Media Control Relay requires com.apple.security.network.server to receive UDP
+> replies during SSDP discovery of UPnP media renderers on the local network.
 >
-> Input Monitoring: the app creates a listen-only event tap for system-defined
-> events and reads only Volume Up, Volume Down and Mute. It never receives
-> typed characters and never changes or blocks any event. It does not use
-> Accessibility.
+> The app opens a temporary UDP socket on an operating-system-assigned local
+> port, sends an SSDP M-SEARCH request to 239.255.255.250:1900, and receives
+> the media renderers' unicast responses on that socket. Discovery runs when
+> the user chooses Find Media Renderers and when the app needs to locate the
+> previously selected TV before a volume or mute operation, such as after
+> launch or a network change. Each search is bounded, and the socket closes
+> when the search finishes or is cancelled.
 >
-> Local network: the app uses SSDP discovery to find TVs and reads the device
-> descriptions of the media renderers that answer. It then sends UPnP volume
-> and mute commands only to the TV the user selects. It uses no server, account
-> or analytics.
+> The server entitlement is used only for these UDP replies. The app does not
+> accept TCP connections, run a web or FTP server, or listen continuously for
+> advertisements. Device-description requests and volume/mute commands use
+> outgoing HTTP connections.
 >
-> To try it without a TV: open the app from the menu bar, follow setup to grant
-> Input Monitoring, then choose Find Media Renderers in Settings and allow local
-> network access. Pressing the volume keys increases **Detected Presses** in
-> Settings while the Mac keeps control of its own volume.
+> For UDP, App Sandbox controls sending and receiving separately. In our signed
+> sandboxed comparison on macOS 27.2, with Local Network access allowed for
+> both probes, the client-and-server variant received parsed renderer responses
+> in all six searches. The client-only variant, even without an explicit bind,
+> sent its requests but could not complete discovery in any of its six
+> searches. Apple's network-client entitlement documentation explains that a
+> client-only UDP app can send but cannot receive data:
+> <https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.security.network.client>
+>
+> The earlier reviewer note saying the app "uses no server" did not adequately
+> explain this temporary UDP reply socket. This is why the app needs the
+> network.server entitlement.
 
 Attachment: a short screen recording, with the TV in frame, of setup, choosing
 the TV, and the volume keys changing the TV's volume and mute. Chris records it
