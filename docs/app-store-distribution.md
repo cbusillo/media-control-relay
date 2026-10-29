@@ -399,10 +399,10 @@ changing credentials, signing assets or roles.
 
 Apple's official OpenAPI 4.5.1 exposes version state, review-submission state
 and developer-supplied reviewer notes, but no Resolution Center messages.
-[Issue #155](https://github.com/cbusillo/media-control-relay/issues/155)
-requests Apple's exact guideline numbers, explanation and screenshot text.
-Guideline 2.4.5 is background context above; it is not a confirmed reason for
-this rejection.
+Chris supplied the rejection on
+[issue #155](https://github.com/cbusillo/media-control-relay/issues/155#issuecomment-6447078277):
+an automated check found `com.apple.security.network.server` without matching
+functionality. Guideline 2.4.5 and Accessibility were not the reason.
 
 A local unsigned AppStore build of `186cb3e` succeeds. Its undefined symbols
 include `CGPreflightListenEventAccess` and `CGRequestListenEventAccess`, and
@@ -411,7 +411,12 @@ current source, not the bytes Apple reviewed. The existing AppStore settings
 request only sandbox, network-client and network-server entitlements; the
 network-server use is the UDP socket for SSDP replies.
 
-No new build has been uploaded and no message or submission has been sent to
-Apple. Build `14` is the next candidate after the exact rejection identifies
-the required repair; `1.0.0 (13)` remains the selected rejected build. Reviewer
-text and resubmission must wait for Chris's exact-text approval on issue #155.
+A signed sandboxed comparison on a real TV showed discovery needs the
+entitlement: with client and server, all six searches got renderer replies;
+with client only, none did. The entitlement stays. Chris approved reviewer
+notes explaining the UDP reply socket, now recorded in
+[the listing](app-store-listing.md#app-review-information). On October 27 at
+about 8:15 PM ET the existing submission was resubmitted with build `13`
+unchanged, and read back as `WAITING_FOR_REVIEW`.
+[Issue #147](https://github.com/cbusillo/media-control-relay/issues/147)
+tracks Apple's decision and public availability.
