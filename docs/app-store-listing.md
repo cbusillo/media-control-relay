@@ -28,7 +28,7 @@
 | Field | Value |
 | --- | --- |
 | Name | Media Control Relay |
-| Subtitle (30) | Mac volume keys for your TV |
+| Subtitle (30) | Keyboard volume for your TV (changed November 4, 2026 after a guideline 5.2.5 rejection for "Mac" in the subtitle) |
 | Primary category | Utilities |
 | Secondary category | None |
 | Content rights | Contains no third-party content |
